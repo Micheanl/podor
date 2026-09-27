@@ -22,6 +22,8 @@ MSI 在 `desktopApp/build/release/<版本>/main/msi/`。`:desktopApp:createDistr
 
 工具默认值在 `StudioDefaults`，视觉参数在 `StudioTheme`，引擎上限在 `engine/src/model.rs`。
 
+画布旋转和镜像由 Compose 变换图块，`Viewport` 统一正反坐标换算，旋转后的可见范围由视口四角反算，保留图块裁剪。Windows 已检查 Direct3D 下 4096 × 4096 画布连续切换视图时复用原像素帧；压感、双指手势通过输入模拟验证，实体设备仍需测试。
+
 作品画面和光标、选区分别录制到显示层，移动光标不重新录制作品图块，视口外的图块不提交绘制。选中颜色在绘制阶段读取动画值，启动流光和溶解结束后卸载。界面由 Compose / Skia 合成，Rust 像素算法仍在 CPU 后台执行。
 
 ## 引擎

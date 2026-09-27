@@ -338,20 +338,8 @@ fun CanvasFooter(controller: StudioController, compact: Boolean, modifier: Modif
             color = StudioTheme.muted.copy(alpha = 0.8f),
             modifier = Modifier.weight(1f),
         )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(
-                { controller.viewport = Viewport() },
-                contentPadding = PaddingValues(horizontal = 7.dp),
-            ) {
-                Text(
-                    "${(controller.viewport.zoom*100).roundToInt()}%",
-                    fontSize = 11.sp,
-                    color = StudioTheme.muted,
-                )
-            }
-            ToolButton(Glyph.Fit, controller.shortcutLabel(ShortcutAction.Fit)) {
-                controller.viewport = Viewport()
-            }
+        ViewportControls(controller.viewport, controller.shortcutLabel(ShortcutAction.Fit)) {
+            controller.viewport = it
         }
     }
 }

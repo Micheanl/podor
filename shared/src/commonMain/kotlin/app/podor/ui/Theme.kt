@@ -33,6 +33,7 @@ object StudioTheme {
     val blendSource = Color(0xFFE6AABB)
     val railWidth = 68.dp
     val inspectorWidth = 300.dp
+    val viewControlsWidth = 260.dp
     val inspectorShape = RoundedCornerShape(24.dp)
     val inspectorMargin = 18.dp
     val controlSize = 44.dp

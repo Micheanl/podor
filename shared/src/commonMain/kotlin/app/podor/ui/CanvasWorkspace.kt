@@ -3,6 +3,7 @@ package app.podor.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateRotation
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.*
@@ -11,9 +12,11 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.graphics.graphicsLayer
@@ -22,6 +25,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.podor.domain.StudioDefaults
 import app.podor.domain.Tool
 import app.podor.presentation.StudioController
 import kotlin.math.pow
@@ -50,6 +54,7 @@ fun CanvasWorkspace(
         }
     }
     val selectionDash = remember { PathEffect.dashPathEffect(floatArrayOf(5f, 5f)) }
+    val selectionPath = remember { Path() }
     Box(
         modifier
             .clipToBounds()
@@ -77,14 +82,19 @@ fun CanvasWorkspace(
                                 primary.position
                             else null
                         if (event.type == PointerEventType.Scroll) {
-                            if (drawing) continue
+                            if (drawing || selectionStart != null) continue
+                            val rotating = event.keyboardModifiers.isShiftPressed
                             controller.viewport =
                                 controller.viewport.transform(
                                     primary.position,
                                     Offset.Zero,
-                                    1.12f.pow(-primary.scrollDelta.y),
+                                    if (rotating) 1f else 1.12f.pow(-primary.scrollDelta.y),
                                     viewSize,
                                     controller.document,
+                                    degrees =
+                                        if (rotating)
+                                            -primary.scrollDelta.y * StudioDefaults.rotationStep
+                                        else 0f,
                                 )
                             primary.consume()
                             continue
@@ -111,14 +121,18 @@ fun CanvasWorkspace(
                                 drawing = false
                             }
                             gesture = true
-                            controller.viewport =
-                                controller.viewport.transform(
-                                    event.calculateCentroid(),
-                                    event.calculatePan(),
-                                    event.calculateZoom(),
-                                    viewSize,
-                                    controller.document,
-                                )
+                            val centroid = event.calculateCentroid(useCurrent = false)
+                            if (centroid.isSpecified) {
+                                controller.viewport =
+                                    controller.viewport.transform(
+                                        centroid,
+                                        event.calculatePan(),
+                                        event.calculateZoom(),
+                                        viewSize,
+                                        controller.document,
+                                        degrees = event.calculateRotation(),
+                                    )
+                            }
                             event.changes.forEach { it.consume() }
                             continue
                         }
@@ -255,46 +269,44 @@ fun CanvasWorkspace(
     ) {
         Canvas(Modifier.matchParentSize().graphicsLayer()) {
             val document = controller.document
-            val scale = controller.viewport.scale(viewSize, document)
+            val viewport = controller.viewport
+            val scale = viewport.scale(viewSize, document)
             if (scale <= 0f) return@Canvas
-            val origin = controller.viewport.origin(viewSize, document)
-            val width = document.width * scale
-            val height = document.height * scale
-            drawRect(Color.Black.copy(alpha = 0.2f), origin + Offset(0f, 10f), Size(width, height))
-            translate(origin.x, origin.y) {
-                scale(scale, scale, Offset.Zero) {
-                    clipRect(0f, 0f, document.width.toFloat(), document.height.toFloat()) {
-                        drawRect(
-                            Color.White,
-                            size = Size(document.width.toFloat(), document.height.toFloat()),
+            val origin = viewport.origin(viewSize, document)
+            val paper = Size(document.width.toFloat(), document.height.toFloat())
+            val visible = viewport.visibleBounds(viewSize, document, size)
+            withTransform({
+                translate(origin.x, origin.y + 10f)
+                rotate(viewport.rotation, Offset.Zero)
+                scale(scale * viewport.horizontalSign, scale, Offset.Zero)
+            }) {
+                drawRect(Color.Black.copy(alpha = 0.2f), size = paper)
+            }
+            withTransform({
+                translate(origin.x, origin.y)
+                rotate(viewport.rotation, Offset.Zero)
+                scale(scale * viewport.horizontalSign, scale, Offset.Zero)
+            }) {
+                clipRect(0f, 0f, document.width.toFloat(), document.height.toFloat()) {
+                    drawRect(Color.White, size = paper)
+                    controller.frame.tiles.values.forEach { tile ->
+                        val x = tile.x * tile.size
+                        val y = tile.y * tile.size
+                        if (
+                            x >= visible.right ||
+                                y >= visible.bottom ||
+                                x + tile.size <= visible.left ||
+                                y + tile.size <= visible.top
                         )
-                        val left = (-origin.x / scale).coerceAtLeast(0f)
-                        val top = (-origin.y / scale).coerceAtLeast(0f)
-                        val right =
-                            ((size.width - origin.x) / scale).coerceAtMost(document.width.toFloat())
-                        val bottom =
-                            ((size.height - origin.y) / scale).coerceAtMost(
-                                document.height.toFloat()
-                            )
-                        controller.frame.tiles.values.forEach { tile ->
-                            val x = tile.x * tile.size
-                            val y = tile.y * tile.size
-                            if (
-                                x >= right ||
-                                    y >= bottom ||
-                                    x + tile.size <= left ||
-                                    y + tile.size <= top
-                            )
-                                return@forEach
-                            drawContext.canvas.drawImage(
-                                tile.image,
-                                Offset(
-                                    (tile.x * tile.size).toFloat(),
-                                    (tile.y * tile.size).toFloat(),
-                                ),
-                                tilePaint,
-                            )
-                        }
+                            return@forEach
+                        drawContext.canvas.drawImage(
+                            tile.image,
+                            Offset(
+                                (tile.x * tile.size).toFloat(),
+                                (tile.y * tile.size).toFloat(),
+                            ),
+                            tilePaint,
+                        )
                     }
                 }
             }
@@ -303,7 +315,6 @@ fun CanvasWorkspace(
             val document = controller.document
             val scale = controller.viewport.scale(viewSize, document)
             if (scale <= 0f) return@Canvas
-            val origin = controller.viewport.origin(viewSize, document)
             val selected =
                 if (selectionStart != null && selectionEnd != null) {
                     val a = selectionStart!!
@@ -319,13 +330,20 @@ fun CanvasWorkspace(
                         )
                     }
             selected?.let { rect ->
-                val topLeft = origin + Offset(rect.left, rect.top) * scale
-                val selectedSize = Size(rect.width * scale, rect.height * scale)
-                drawRect(Color.Black, topLeft, selectedSize, style = Stroke(2f))
-                drawRect(
+                val a = controller.viewport.toView(rect.topLeft, viewSize, document)
+                val b = controller.viewport.toView(rect.topRight, viewSize, document)
+                val c = controller.viewport.toView(rect.bottomRight, viewSize, document)
+                val d = controller.viewport.toView(rect.bottomLeft, viewSize, document)
+                selectionPath.reset()
+                selectionPath.moveTo(a.x, a.y)
+                selectionPath.lineTo(b.x, b.y)
+                selectionPath.lineTo(c.x, c.y)
+                selectionPath.lineTo(d.x, d.y)
+                selectionPath.close()
+                drawPath(selectionPath, Color.Black, style = Stroke(2f))
+                drawPath(
+                    selectionPath,
                     Color.White,
-                    topLeft,
-                    selectedSize,
                     style = Stroke(1.5f, pathEffect = selectionDash),
                 )
             }

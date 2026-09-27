@@ -75,8 +75,12 @@ class StudioRenderingTest {
                 }
                 withContext(Dispatchers.Main) {
                     val surround = Color(0xFF452D50)
-                    for (pan in listOf(Offset(-35f, -25f), Offset(40f, 30f))) {
-                        controller.viewport = Viewport(zoom = 4f, pan = pan)
+                    for ((pan, rotation) in
+                        listOf(Offset(-35f, -25f), Offset(40f, 30f)).flatMap { pan ->
+                            listOf(0f, 37f, 90f).map { pan to it }
+                        }) {
+                        controller.viewport =
+                            Viewport(zoom = 4f, pan = pan, rotation = rotation, mirrored = rotation != 0f)
                         val scene =
                             ImageComposeScene(320, 240) {
                                 Box(Modifier.fillMaxSize().background(surround)) {

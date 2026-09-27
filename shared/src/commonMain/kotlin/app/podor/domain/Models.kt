@@ -189,4 +189,5 @@ object StudioDefaults {
     const val maxBatchSamples = 256
     const val minZoom = 0.1f
     const val maxZoom = 8f
+    const val rotationStep = 15f
 }
