@@ -15,6 +15,7 @@ bincode = "1.3"
 flate2 = "1"
 png = "0.17"
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "webp"] }
+zip = { version = "8.6.0", default-features = false }
 
 [target.'cfg(not(target_os = "ios"))'.dependencies]
 jni = "0.21"
@@ -37,4 +38,8 @@ harness = false
 
 [[bench]]
 name = "imports"
+harness = false
+
+[[bench]]
+name = "exports"
 harness = false

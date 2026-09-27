@@ -8,10 +8,12 @@ enum class ExportFormat(
     val label: String,
     val extension: String,
     val supportsTransparency: Boolean,
+    val preservesLayers: Boolean = false,
 ) {
     @SerialName("png") Png("PNG", "png", true),
     @SerialName("jpeg") Jpeg("JPEG", "jpg", false),
     @SerialName("webp") Webp("WebP", "webp", true),
+    @SerialName("ora") Ora("ORA", "ora", true, true),
 }
 
 @Serializable

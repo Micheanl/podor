@@ -13,6 +13,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.unit.dp
 import app.podor.data.ProjectFiles
 import app.podor.domain.ExportFormat
@@ -306,7 +307,7 @@ class StudioRenderingTest {
                     }
                     for (format in ExportFormat.entries) {
                         val scene =
-                            ImageComposeScene(432, 540) {
+                            ImageComposeScene(432, 620) {
                                 PodorTheme {
                                     Surface(color = StudioTheme.panel) {
                                         Box(Modifier.padding(16.dp)) {
@@ -352,4 +353,65 @@ class StudioRenderingTest {
                 scope.cancel()
             }
         }
+
+    @Test
+    fun exportCardsKeepLayeredSettingsSeparateAndFinishTheirAnimation() = runBlocking<Unit> {
+        NativeLoader.load()
+        val engine = createNativeEngine(64, 32)
+        val project = try { engine.call(EngineOperation.SAVE) } finally { engine.close() }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        val controller = withContext(Dispatchers.Main) { StudioController(MemoryFiles(project), scope) }
+        try {
+            withTimeout(10_000) {
+                while (!withContext(Dispatchers.Main) { controller.ready }) delay(10)
+            }
+            withContext(Dispatchers.Main) {
+                val options = mutableStateOf(ExportOptions())
+                val scene = ImageComposeScene(432, 620) {
+                    PodorTheme(Language.English) {
+                        Surface(color = StudioTheme.panel) {
+                            Box(Modifier.padding(16.dp)) {
+                                ExportSettings(controller, options.value) { options.value = it }
+                            }
+                        }
+                    }
+                }
+                var frame = 0L
+                fun render() { scene.render(frame++ * 16_666_667L).close() }
+                fun click(x: Float, y: Float) {
+                    scene.sendPointerEvent(PointerEventType.Press, Offset(x, y))
+                    scene.sendPointerEvent(PointerEventType.Release, Offset(x, y))
+                    render()
+                }
+                try {
+                    render()
+                    click(300f, 400f)
+                    assertEquals(ExportFormat.Ora, options.value.format)
+                    click(380f, 485f)
+                    assertFalse(options.value.transparent)
+                    repeat(30) { render() }
+                    scene.render(frame++ * 16_666_667L).use { image ->
+                        image.encodeToData(EncodedImageFormat.PNG)!!.use { png ->
+                            Files.write(Path.of("build/reports/screenshots/export-ora-en.png"), png.bytes)
+                        }
+                    }
+                    click(300f, 320f)
+                    assertEquals(ExportFormat.Jpeg, options.value.format)
+                    repeat(30) { render() }
+                    click(100f, 320f)
+                    assertEquals(ExportFormat.Png, options.value.format)
+                    repeat(30) { render() }
+                    click(380f, 485f)
+                    assertTrue(options.value.transparent)
+                    repeat(30) { render() }
+                    assertFalse(scene.hasInvalidations())
+                } finally {
+                    scene.close()
+                }
+            }
+        } finally {
+            withContext(Dispatchers.Main) { controller.shutdown() }
+            scope.cancel()
+        }
+    }
 }

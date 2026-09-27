@@ -72,7 +72,7 @@ fun ExportSettings(
                 controller.document.width,
                 controller.document.height,
                 Modifier.fillMaxWidth().height(174.dp),
-                options.transparent,
+                options.transparent || options.format.preservesLayers,
             )
             Text(
                 "${controller.document.width} × ${controller.document.height} px",
@@ -81,55 +81,94 @@ fun ExportSettings(
                 color = StudioTheme.muted,
             )
         }
-        Row(
+        Column(
             Modifier.fillMaxWidth().selectableGroup(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            controller.exportFormats.forEach { format ->
-                val selected = format == options.format
-                ChoiceSurface(
-                    selected,
-                    {
-                        onChange(
-                            options.copy(
-                                format = format,
-                                transparent = options.transparent && format.supportsTransparency,
-                            )
-                        )
-                    },
-                    Modifier.weight(1f),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            format.label,
+            controller.exportFormats.chunked(2).forEach { formats ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    formats.forEach { format ->
+                        val selected = format == options.format
+                        ChoiceSurface(
+                            selected,
+                            {
+                                onChange(
+                                    options.copy(
+                                        format = format,
+                                        transparent =
+                                            options.transparent && format.supportsTransparency,
+                                    )
+                                )
+                            },
                             Modifier.weight(1f),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (selected) StudioTheme.onSelection else StudioTheme.text,
-                        )
-                        if (selected)
-                            StudioIcon(Glyph.Check, StudioTheme.accent, Modifier.size(13.dp))
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    format.label,
+                                    Modifier.weight(1f),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color =
+                                        if (selected) StudioTheme.onSelection else StudioTheme.text,
+                                )
+                                if (selected)
+                                    StudioIcon(
+                                        Glyph.Check,
+                                        StudioTheme.accent,
+                                        Modifier.size(13.dp),
+                                    )
+                            }
+                            Text(
+                                tr(
+                                    when {
+                                        format.preservesLayers -> "保留图层"
+                                        format == ExportFormat.Jpeg -> "高兼容"
+                                        else -> "无损"
+                                    }
+                                ),
+                                Modifier.padding(top = 6.dp),
+                                fontSize = 10.sp,
+                                color = StudioTheme.muted,
+                            )
+                        }
                     }
-                    Text(
-                        tr(if (format == ExportFormat.Jpeg) "高兼容" else "无损"),
-                        Modifier.padding(top = 6.dp),
-                        fontSize = 10.sp,
-                        color = StudioTheme.muted,
-                    )
+                    if (formats.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
         }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(tr("透明背景"), fontSize = 13.sp)
-                if (!options.format.supportsTransparency)
-                    Text(tr("JPEG 使用白色背景"), fontSize = 11.sp, color = StudioTheme.muted)
+        Crossfade(
+            options.format.preservesLayers,
+            animationSpec = tween(StudioMotion.feedbackMillis),
+        ) { layered ->
+            if (layered) {
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    StudioIcon(Glyph.Layers, StudioTheme.accent, Modifier.size(21.dp))
+                    Text(tr("保留图层与透明度"), fontSize = 13.sp, modifier = Modifier.weight(1f))
+                    Text(
+                        "${controller.document.layers.size}",
+                        fontSize = 12.sp,
+                        color = StudioTheme.muted,
+                    )
+                }
+            } else {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("透明背景"), fontSize = 13.sp)
+                        if (!options.format.supportsTransparency)
+                            Text(tr("JPEG 使用白色背景"), fontSize = 11.sp, color = StudioTheme.muted)
+                    }
+                    Switch(
+                        options.transparent,
+                        { onChange(options.copy(transparent = it)) },
+                        enabled =
+                            options.format.supportsTransparency && !options.format.preservesLayers,
+                    )
+                }
             }
-            Switch(
-                options.transparent,
-                { onChange(options.copy(transparent = it)) },
-                enabled = options.format.supportsTransparency,
-            )
         }
         AnimatedVisibility(
             options.format == ExportFormat.Jpeg,

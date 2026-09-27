@@ -243,6 +243,22 @@ class ControllerIntegrationTest {
                     files.exports[1].second.copyOfRange(0, 2),
                 )
                 assertEquals("WEBP", files.exports[2].second.copyOfRange(8, 12).decodeToString())
+                val ora = files.exports.single { it.first == ExportFormat.Ora }.second
+                val entries = mutableMapOf<String, ByteArray>()
+                java.util.zip.ZipInputStream(ora.inputStream()).use { archive ->
+                    while (true) {
+                        val entry = archive.nextEntry ?: break
+                        entries[entry.name] = archive.readBytes()
+                    }
+                }
+                assertEquals("image/openraster", entries.getValue("mimetype").decodeToString())
+                val stack = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+                    .newDocumentBuilder().parse(entries.getValue("stack.xml").inputStream())
+                assertEquals("64", stack.documentElement.getAttribute("w"))
+                assertEquals("64", stack.documentElement.getAttribute("h"))
+                assertEquals(1, stack.getElementsByTagName("layer").length)
+                val merged = javax.imageio.ImageIO.read(entries.getValue("mergedimage.png").inputStream())
+                assertEquals(0xFF8B2942.toInt(), merged.getRGB(32, 32))
                 withContext(Dispatchers.Main) { controller.command("undo") }
                 awaitState {
                     !controller.document.canUndo &&

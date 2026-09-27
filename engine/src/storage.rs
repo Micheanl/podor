@@ -138,6 +138,7 @@ pub enum ExportFormat {
     Png,
     Jpeg,
     Webp,
+    Ora,
 }
 
 #[derive(Clone, Copy, serde::Deserialize)]
@@ -165,6 +166,9 @@ pub fn export_image(doc: &Document, options: ExportOptions) -> Result<Vec<u8>, S
     if options.transparent && options.format == ExportFormat::Jpeg {
         return Err("JPEG 不支持透明背景".into());
     }
+    if options.format == ExportFormat::Ora {
+        return crate::openraster::export(doc);
+    }
     let mut rgba = vec![255; doc.width as usize * doc.height as usize * 4];
     for ty in 0..doc.height.div_ceil(TILE_SIZE) {
         for tx in 0..doc.width.div_ceil(TILE_SIZE) {
@@ -181,15 +185,7 @@ pub fn export_image(doc: &Document, options: ExportOptions) -> Result<Vec<u8>, S
         }
     }
     if options.transparent {
-        for pixel in rgba.as_chunks_mut::<4>().0 {
-            let alpha = u32::from(pixel[3]);
-            for value in &mut pixel[..3] {
-                *value = (u32::from(*value) * 255 + alpha / 2)
-                    .checked_div(alpha)
-                    .unwrap_or(0)
-                    .min(255) as u8;
-            }
-        }
+        unpremultiply(&mut rgba);
     }
     let mut output = Vec::new();
     match options.format {
@@ -215,6 +211,19 @@ pub fn export_image(doc: &Document, options: ExportOptions) -> Result<Vec<u8>, S
             let mut writer = encoder.write_header().map_err(|e| e.to_string())?;
             writer.write_image_data(&rgba).map_err(|e| e.to_string())?;
         }
+        ExportFormat::Ora => unreachable!(),
     }
     Ok(output)
+}
+
+pub(crate) fn unpremultiply(rgba: &mut [u8]) {
+    for pixel in rgba.as_chunks_mut::<4>().0 {
+        let alpha = u32::from(pixel[3]);
+        for value in &mut pixel[..3] {
+            *value = (u32::from(*value) * 255 + alpha / 2)
+                .checked_div(alpha)
+                .unwrap_or(0)
+                .min(255) as u8;
+        }
+    }
 }

@@ -5,6 +5,7 @@ mod history;
 #[cfg(not(target_os = "ios"))]
 mod jni_bridge;
 pub mod model;
+mod openraster;
 mod previews;
 mod raster;
 mod stabilizer;

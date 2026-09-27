@@ -10,6 +10,7 @@ pub const MAX_HISTORY_BYTES: usize = 64 * 1024 * 1024;
 pub const MAX_DOCUMENT_BYTES: usize = 128 * 1024 * 1024;
 pub const MAX_HISTORY_ENTRIES: usize = 60;
 pub const PREVIEW_EDGE: u32 = 96;
+pub const EXPORT_THUMBNAIL_EDGE: u32 = 256;
 pub const DEFAULT_EXPORT_QUALITY: u8 = 90;
 pub const BRUSH_SPACING_RATIO: f32 = 0.08;
 pub const MAX_STABILIZER_DISTANCE: f32 = 40.0;
