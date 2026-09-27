@@ -1,8 +1,8 @@
 {
-  "version": "0.2.9",
-  "notes": "- 恢复弧线彩虹，色条加宽并保留平直端头，颜色在画面内持续流动。\r\n- 彩虹与图标交接时同步淡入淡出，消除中间的空白停顿，点击或按 Esc 可跳过。\r\n- 路径、渐变与变换矩阵复用，动效结束后停止刷新。\r\n",
+  "version": "0.2.10",
+  "notes": "- 移除彩虹和流光，启动只显示图标，保留图标的溶解消散，结束后停止刷新。\r\n- Windows 改用与界面一致的标题栏，提供拖动、缩放、最小化、最大化和关闭操作。\n- 主页与画布使用统一的圆角窗口按钮，沿用深灰与酒红配色，加入轻微悬停和按下反馈。\n- 关闭窗口仍会确认未保存的作品。\r\n",
   "platform": "windows-x64",
-  "url": "https://gitee.com/Micheanl/podor/releases/download/v0.2.9/podor-0.2.9.msi",
-  "sha256": "47750c2945ec23de9b225e3486d0aee74274dbd96a6b43123956f8c10f97bffd",
-  "size": 70135808
+  "url": "https://gitee.com/Micheanl/podor/releases/download/v0.2.10/podor-0.2.10.msi",
+  "sha256": "935674e30947f62305e6f62ecf7de05238d80b1e7814c9f7af77547113378895",
+  "size": 70148096
 }
