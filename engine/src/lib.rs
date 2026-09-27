@@ -108,6 +108,7 @@ pub enum Command {
 
 struct Stroke {
     before: Document,
+    compositor: raster::StrokeCompositor,
     brush: Brush,
     stabilizer: Stabilizer,
     last: Option<Sample>,
@@ -224,6 +225,7 @@ impl Engine {
                 let brush = brush.validate()?;
                 self.stroke = Some(Stroke {
                     before: self.document.clone(),
+                    compositor: raster::StrokeCompositor::new(&self.document),
                     brush,
                     stabilizer: Stabilizer::new(brush.stabilization),
                     last: None,
@@ -627,7 +629,11 @@ impl Engine {
         for key in dirty {
             output.extend(key.0.to_le_bytes());
             output.extend(key.1.to_le_bytes());
-            output.extend(raster::composite_tile(&self.document, key));
+            output.extend(if let Some(stroke) = self.stroke.as_mut() {
+                stroke.compositor.tile(&self.document, key)
+            } else {
+                raster::composite_tile(&self.document, key)
+            });
         }
         output
     }

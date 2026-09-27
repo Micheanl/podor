@@ -57,3 +57,7 @@ harness = false
 [[bench]]
 name = "canvas_size"
 harness = false
+
+[[bench]]
+name = "canvas_frames"
+harness = false

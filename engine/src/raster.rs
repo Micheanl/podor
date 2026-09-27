@@ -1,5 +1,8 @@
 use crate::model::*;
-use std::{collections::BTreeSet, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet, VecDeque},
+    sync::Arc,
+};
 
 pub fn stamp(
     doc: &mut Document,
@@ -128,12 +131,23 @@ pub fn composite_tile(doc: &Document, key: TileKey) -> Vec<u8> {
 }
 
 pub fn composite_tile_background(doc: &Document, key: TileKey, transparent: bool) -> Vec<u8> {
-    let opaque = !transparent
-        && doc.layers.iter().all(|layer| {
-            !layer.visible || layer.opacity == 0.0 || layer.blend == BlendMode::Normal
-        });
+    let opaque = !transparent && normal_layers(doc);
     let mut result = vec![if opaque { 255 } else { 0 }; TILE_BYTES];
-    for layer in &doc.layers {
+    composite_layers(&mut result, &doc.layers, key, opaque);
+    if !transparent && !opaque {
+        white_background(&mut result);
+    }
+    result
+}
+
+fn normal_layers(doc: &Document) -> bool {
+    doc.layers
+        .iter()
+        .all(|layer| !layer.visible || layer.opacity == 0.0 || layer.blend == BlendMode::Normal)
+}
+
+fn composite_layers(result: &mut [u8], layers: &[Layer], key: TileKey, opaque: bool) {
+    for layer in layers {
         if !layer.visible || layer.opacity == 0.0 {
             continue;
         }
@@ -141,16 +155,94 @@ pub fn composite_tile_background(doc: &Document, key: TileKey, transparent: bool
             continue;
         };
         let opacity = (layer.opacity * 255.0).round() as u32;
-        crate::blending::composite(&mut result, source, opacity, layer.blend, opaque);
+        crate::blending::composite(result, source, opacity, layer.blend, opaque);
     }
-    if !transparent && !opaque {
-        for pixel in result.as_chunks_mut::<4>().0 {
-            let white = 255 - pixel[3];
-            for channel in &mut pixel[..3] {
-                *channel = channel.saturating_add(white);
-            }
-            pixel[3] = 255;
+}
+
+fn white_background(result: &mut [u8]) {
+    for pixel in result.as_chunks_mut::<4>().0 {
+        let white = 255 - pixel[3];
+        for channel in &mut pixel[..3] {
+            *channel = channel.saturating_add(white);
+        }
+        pixel[3] = 255;
+    }
+}
+
+pub struct StrokeCompositor {
+    lower_count: usize,
+    opaque: bool,
+    tiles: BTreeMap<TileKey, Vec<u8>>,
+    order: VecDeque<TileKey>,
+}
+
+impl StrokeCompositor {
+    pub fn new(doc: &Document) -> Self {
+        Self {
+            lower_count: doc
+                .layers
+                .iter()
+                .position(|layer| layer.id == doc.active)
+                .unwrap(),
+            opaque: normal_layers(doc),
+            tiles: BTreeMap::new(),
+            order: VecDeque::new(),
         }
     }
-    result
+
+    pub fn tile(&mut self, doc: &Document, key: TileKey) -> Vec<u8> {
+        if self.lower_count == 0 {
+            return composite_tile(doc, key);
+        }
+        if !self.tiles.contains_key(&key) {
+            if self.tiles.len() == MAX_STROKE_CACHE_BYTES / TILE_BYTES {
+                self.tiles.remove(&self.order.pop_front().unwrap());
+            }
+            let mut lower = vec![if self.opaque { 255 } else { 0 }; TILE_BYTES];
+            composite_layers(
+                &mut lower,
+                &doc.layers[..self.lower_count],
+                key,
+                self.opaque,
+            );
+            self.tiles.insert(key, lower);
+            self.order.push_back(key);
+        }
+        let mut result = self.tiles[&key].clone();
+        composite_layers(
+            &mut result,
+            &doc.layers[self.lower_count..],
+            key,
+            self.opaque,
+        );
+        if !self.opaque {
+            white_background(&mut result);
+        }
+        result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stroke_cache_is_bounded_and_recreates_evicted_tiles() {
+        let mut doc = Document::new(8192, 512).unwrap();
+        doc.layers.push(Layer::new(2, "Paint".into()));
+        doc.active = 2;
+        let mut cache = StrokeCompositor::new(&doc);
+        for y in 0..4 {
+            for x in 0..64 {
+                assert_eq!(cache.tile(&doc, (x, y)), composite_tile(&doc, (x, y)));
+                assert!(
+                    cache.tiles.values().map(Vec::len).sum::<usize>() <= MAX_STROKE_CACHE_BYTES
+                );
+                assert_eq!(cache.tiles.len(), cache.order.len());
+            }
+        }
+        assert!(!cache.tiles.contains_key(&(0, 0)));
+        assert_eq!(cache.tile(&doc, (0, 0)), composite_tile(&doc, (0, 0)));
+        assert_eq!(cache.tiles.len() * TILE_BYTES, MAX_STROKE_CACHE_BYTES);
+    }
 }

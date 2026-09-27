@@ -32,7 +32,7 @@ Windows 指针消息在接收线程读取，再通过 AWT 交给 Compose 命中�
 
 ## 引擎
 
-像素按 128 × 128 分块，按需分配。输入批量送入 Rust，界面只接收脏块。笔刷与合成在 CPU 执行，文件读写、压缩和光栅化放在后台线程。
+像素按 128 × 128 分块，按需分配。输入批量送入 Rust，界面只接收脏块。笔刷与合成在 CPU 执行，文件读写、压缩和光栅化放在后台线程。同一笔内缓存当前层下方的合成图块，最多 4 MiB，结束或取消笔画后释放；当前层及上方图层仍按原顺序合成。
 
 笔触沿弧长插值，压力控制半径，距离场控制笔尖形状，坐标哈希生成颗粒。填充使用四连通扫描线，模糊使用三次可分离盒式滤波。历史通过 `Arc` 共享未修改的块，修改时复制。
 
@@ -74,11 +74,14 @@ cargo bench --bench exports
 cargo bench --bench layers
 cargo bench --bench ora_import
 cargo bench --bench canvas_size
+cargo bench --bench canvas_frames
 ```
 
 基准测量引擎负载，不包含设备输入、GPU 上传和屏幕延迟。
 
 Windows 可设置 `PODOR_GPU_TEST=1` 后运行 `scripts/check.ps1`，额外检查原生窗口的硬件渲染通道，结果写入 `desktopApp/build/reports/gpu-renderer.txt`。离屏动画耗时包含图像读回，不能作为整机帧率承诺。
+
+`painting-performance.txt` 记录完整桌面界面中八图层连续绘画的输入批次到像素帧耗时、强制渲染调用耗时和主线程排队时间，超时采样附带线程栈。测试窗口位于屏幕外，结果不代表实际显示帧率或实体笔延迟。
 
 交互式 Windows 会话可另设 `PODOR_INK_SYSTEM_TEST=1`，测试通过系统指针注入检查压感、笔尾擦除和重复鼠标事件。注入前逐点确认命中测试窗口，结束后关闭窗口。实体数位板、触控笔仍需设备验证；双指手势目前只有 Compose 输入模拟测试。
 
