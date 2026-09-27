@@ -111,7 +111,19 @@ class WorkspaceRenderingTest {
                     )) {
                     val scene =
                         withContext(Dispatchers.Main) {
-                            ImageComposeScene(width, height) { WorkspaceHome(controller) }
+                            ImageComposeScene(width, height) {
+                                Column(Modifier.fillMaxSize()) {
+                                    WindowTitleBar(
+                                        controller.preferences.language,
+                                        false,
+                                        {},
+                                        {},
+                                        {},
+                                        background = StudioTheme.background,
+                                    )
+                                    Box(Modifier.weight(1f)) { WorkspaceHome(controller) }
+                                }
+                            }
                         }
                     try {
                         withContext(Dispatchers.Main) { scene.render().close() }
@@ -120,8 +132,10 @@ class WorkspaceRenderingTest {
                             repeat(30) { scene.render((it + 1) * 16_666_667L).close() }
                             capture(scene, name, 600_000_000L)
                             if (name == "workspace") {
-                                scene.sendPointerEvent(PointerEventType.Press, Offset(210f, 310f))
-                                scene.sendPointerEvent(PointerEventType.Release, Offset(210f, 310f))
+                                val artworkPosition =
+                                    Offset(210f, 310f + StudioTheme.windowTitleHeight.value)
+                                scene.sendPointerEvent(PointerEventType.Press, artworkPosition)
+                                scene.sendPointerEvent(PointerEventType.Release, artworkPosition)
                             }
                         }
                         if (name == "workspace") {

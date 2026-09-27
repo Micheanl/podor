@@ -2,30 +2,25 @@ package app.podor.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.podor.domain.AppIdentity
 import app.podor.presentation.StudioController
 import app.podor.presentation.UpdateController
 import app.podor.resources.Res
 import app.podor.resources.brand
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
 
@@ -42,63 +37,43 @@ fun PodorApp(controller: StudioController, updates: UpdateController? = null) {
 
 @Composable
 fun StudioLaunch(ready: Boolean, content: @Composable () -> Unit) {
-    val intro = remember { Animatable(0f) }
+    var shownEnough by remember { mutableStateOf(false) }
+    var dismissed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(StudioMotion.launchHoldMillis.toLong())
+        shownEnough = true
+    }
     val reveal = remember { Animatable(0f) }
-    var introFinished by remember { mutableStateOf(false) }
-    var finished by remember { mutableStateOf(false) }
     val texture by
-        produceState<ImageBitmap?>(null, finished) {
+        produceState<ImageBitmap?>(null, dismissed) {
             value =
-                if (finished) null else withContext(Dispatchers.Default) { createDissolveTexture() }
+                if (dismissed) null
+                else withContext(Dispatchers.Default) { createDissolveTexture() }
         }
-    LaunchedEffect(finished) {
-        if (!finished) {
-            intro.animateTo(
-                1f,
-                keyframes {
-                    durationMillis = StudioMotion.launchMillis + StudioMotion.launchHoldMillis
-                    0f at 0 using LinearEasing
-                    1f at StudioMotion.launchMillis
-                    1f at durationMillis
-                },
-            )
-            introFinished = true
-        }
-    }
-    LaunchedEffect(ready, introFinished, finished) {
-        if (ready && introFinished && !finished) {
+    LaunchedEffect(ready, shownEnough, dismissed) {
+        if (ready && shownEnough && !dismissed) {
             reveal.animateTo(1f, tween(StudioMotion.revealMillis, easing = LinearEasing))
-            finished = true
+            dismissed = true
         }
     }
+    val visible = !dismissed
     Box(
         Modifier.fillMaxSize().onPreviewKeyEvent {
-            if (!finished) {
-                if (it.type == KeyEventType.KeyDown && it.key == Key.Escape) finished = true
+            if (visible && it.type == KeyEventType.KeyDown && it.key == Key.Escape) {
+                dismissed = true
                 true
-            } else false
+            } else visible
         }
     ) {
-        Box(
-            Modifier.fillMaxSize()
-                .then(
-                    if (finished) Modifier
-                    else
-                        Modifier.graphicsLayer {
-                            translationY = 8.dp.toPx() * (1f - reveal.value)
-                        }
-                )
-        ) {
-            content()
-        }
-        if (!finished) {
+        content()
+        if (visible) {
             Box(
                 Modifier.fillMaxSize().clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClickLabel = trValue("跳过启动动画", LocalLanguage.current),
                 ) {
-                    finished = true
+                    dismissed = true
                 },
                 contentAlignment = Alignment.Center,
             ) {
@@ -106,63 +81,20 @@ fun StudioLaunch(ready: Boolean, content: @Composable () -> Unit) {
                     Modifier.fillMaxSize()
                         .graphicsLayer {
                             val progress = ((reveal.value - 0.3f) / 0.7f).coerceIn(0f, 1f)
-                            alpha = 1f - StudioMotion.launchEasing.transform(progress)
+                            alpha = 1f - StudioMotion.easing.transform(progress)
                         }
                         .background(StudioTheme.background)
                 )
-                LaunchLight { intro.value }
                 val mask = texture
-                Column(
-                    Modifier.width(220.dp)
-                        .padding(20.dp)
+                Image(
+                    painterResource(Res.drawable.brand),
+                    AppIdentity.name,
+                    Modifier.size(StudioTheme.launchIconSize)
                         .then(
                             if (mask != null) Modifier.dissolve(mask) { reveal.value }
                             else Modifier.graphicsLayer { alpha = 1f - reveal.value }
                         ),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(
-                        painterResource(Res.drawable.brand),
-                        AppIdentity.name,
-                        Modifier.size(88.dp)
-                            .logoLight { launchLogoProgress(intro.value) }
-                            .graphicsLayer {
-                                val progress = launchLogoProgress(intro.value)
-                                alpha = progress
-                                scaleX = 0.92f + progress * 0.08f
-                                scaleY = scaleX
-                                translationY = 10.dp.toPx() * (1f - progress)
-                            },
-                    )
-                    Spacer(Modifier.height(22.dp))
-                    Text(
-                        AppIdentity.name,
-                        color = StudioTheme.text,
-                        fontSize = 23.sp,
-                        letterSpacing = 4.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier =
-                            Modifier.graphicsLayer {
-                                val progress =
-                                    ((launchLogoProgress(intro.value) - 0.25f) / 0.75f).coerceIn(
-                                        0f,
-                                        1f,
-                                    )
-                                alpha = progress
-                                translationY = 6.dp.toPx() * (1f - progress)
-                            },
-                    )
-                }
-                if (introFinished && !ready) {
-                    LinearProgressIndicator(
-                        Modifier.align(Alignment.BottomCenter)
-                            .padding(bottom = 64.dp)
-                            .width(80.dp)
-                            .height(2.dp),
-                        color = StudioTheme.accent,
-                        trackColor = StudioTheme.border,
-                    )
-                }
+                )
             }
         }
     }

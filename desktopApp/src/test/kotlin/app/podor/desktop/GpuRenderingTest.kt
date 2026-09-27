@@ -37,13 +37,7 @@ class GpuRenderingTest {
                     }
                 }
             try {
-                delay(
-                    (StudioMotion.launchMillis +
-                            StudioMotion.launchHoldMillis +
-                            StudioMotion.revealMillis +
-                            350)
-                        .toLong()
-                )
+                delay((StudioMotion.launchHoldMillis + StudioMotion.revealMillis + 200).toLong())
                 withContext(Dispatchers.Main) {
                     window.renderImmediately()
                     val api = window.renderApi.toString()
@@ -51,7 +45,7 @@ class GpuRenderingTest {
                     Files.createDirectories(report.parent)
                     Files.writeString(
                         report,
-                        "Renderer: $api\nStartup effect exercised in a 1360x900 native window outside the visible desktop. This is not a full-app frame-rate benchmark.\n",
+                        "Renderer: $api\nLogo dissolve exercised in a 1360x900 native window outside the visible desktop. This is not a full-app frame-rate benchmark.\n",
                     )
                     assertTrue(
                         api in listOf("DIRECT3D", "OPENGL", "METAL"),
