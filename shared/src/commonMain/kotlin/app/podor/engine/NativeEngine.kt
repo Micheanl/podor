@@ -22,4 +22,5 @@ object EngineOperation {
     const val PREVIEWS = 6
     const val THUMBNAIL = 7
     const val LAYERS = 8
+    const val IMPORT_LAYER = 9
 }

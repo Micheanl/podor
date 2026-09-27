@@ -2,6 +2,7 @@ mod adjustments;
 mod blending;
 mod ffi;
 mod history;
+mod import_layer;
 #[cfg(not(target_os = "ios"))]
 mod jni_bridge;
 mod layers;
@@ -588,6 +589,29 @@ impl Engine {
 
     pub fn save(&self) -> Result<Vec<u8>, String> {
         storage::save(&self.document)
+    }
+    pub fn import_layer(&mut self, bytes: &[u8], name: &str) -> Result<(), String> {
+        if self.stroke.is_some() {
+            return Err("请先结束当前笔画".into());
+        }
+        let next_id = self
+            .document
+            .next_id
+            .checked_add(1)
+            .ok_or("图层编号超出限制")?;
+        let layer = import_layer::prepare(&self.document, bytes, name)?;
+        let before = self.document.clone();
+        let index = self.layer_index(self.document.active)?;
+        self.dirty.extend(layer.tiles.keys());
+        self.document.active = layer.id;
+        self.document.layers.insert(index + 1, layer);
+        self.document.next_id = next_id;
+        self.selection = None;
+        self.history
+            .push(before, self.content_id, &self.document, true);
+        self.revision += 1;
+        self.content_id = self.revision;
+        Ok(())
     }
     pub fn layer_frame(&self) -> Vec<u8> {
         translation::frame(&self.document)

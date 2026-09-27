@@ -89,7 +89,7 @@ class LayerProtectionTest {
                 }
                 render()
                 val before = withContext(Dispatchers.Main) { controller.frame }
-                click(190f, 22f)
+                click(146f, 22f)
                 awaitState { controller.document.layers.first().alphaLocked }
                 val painting =
                     withContext(Dispatchers.Main) {
@@ -112,7 +112,7 @@ class LayerProtectionTest {
                     assertEquals(1f, preview[48, 48].blue, 0.01f)
                     assertEquals(0f, preview[0, 0].alpha)
                 }
-                click(234f, 22f)
+                click(190f, 22f)
                 awaitState { controller.document.layers.first().locked }
                 render()
                 withContext(Dispatchers.Main) {
@@ -152,9 +152,9 @@ class LayerProtectionTest {
                 } finally {
                     restored.close()
                 }
-                click(234f, 22f)
-                awaitState { !controller.document.layers.first().locked }
                 click(190f, 22f)
+                awaitState { !controller.document.layers.first().locked }
+                click(146f, 22f)
                 awaitState { !controller.document.layers.first().alphaLocked }
                 withContext(Dispatchers.Main) { controller.command("undo") }
                 awaitState { controller.document.layers.first().alphaLocked }

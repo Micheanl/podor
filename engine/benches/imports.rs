@@ -35,6 +35,22 @@ fn main() {
                 samples[2],
                 bytes.len() as f64 / 1024.0
             );
+            let mut placement = Vec::new();
+            for run in 0..7 {
+                let mut engine = Engine::new(1600, 1200).unwrap();
+                let start = Instant::now();
+                engine.import_layer(black_box(&bytes), "Reference").unwrap();
+                if run >= 2 {
+                    placement.push(start.elapsed().as_secs_f64() * 1000.0);
+                }
+                assert_eq!(engine.document.layers.len(), 2);
+                black_box(&engine);
+            }
+            placement.sort_by(f64::total_cmp);
+            println!(
+                "{edge}x{edge} {name} as layer into 1600x1200: median {:.2} ms",
+                placement[2]
+            );
         }
     }
 }

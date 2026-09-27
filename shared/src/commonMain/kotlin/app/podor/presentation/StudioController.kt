@@ -133,6 +133,7 @@ class StudioController(
         Save,
         SaveAs,
         ImportBrushes,
+        ImportLayer,
         ExportBrushes,
     }
 
@@ -521,6 +522,38 @@ class StudioController(
                                     }
                                     withContext(Dispatchers.Main) { busy = true }
                                     when (action.kind) {
+                                        FileAction.ImportLayer -> {
+                                            finishDrawing()
+                                            files.openImage()?.let { opened ->
+                                                val name =
+                                                    opened.reference?.name?.take(60)?.takeIf {
+                                                        it.isNotBlank()
+                                                    } ?: "导入的图像"
+                                                val encoded = name.encodeToByteArray()
+                                                val input =
+                                                    ByteArray(4 + encoded.size + opened.bytes.size)
+                                                repeat(4) {
+                                                    input[it] =
+                                                        (encoded.size ushr (it * 8)).toByte()
+                                                }
+                                                encoded.copyInto(input, 4)
+                                                opened.bytes.copyInto(input, 4 + encoded.size)
+                                                info =
+                                                    parser.decodeFromString(
+                                                        engine
+                                                            .call(
+                                                                EngineOperation.IMPORT_LAYER,
+                                                                input,
+                                                            )
+                                                            .decodeToString()
+                                                    )
+                                                publishFrame()
+                                                withContext(Dispatchers.Main) {
+                                                    tool = Tool.MoveLayer
+                                                    status = "图像已导入为图层"
+                                                }
+                                            }
+                                        }
                                         FileAction.ImportBrushes ->
                                             files.openBrushPack()?.let { bytes ->
                                                 val pack = BrushPack.parse(bytes)
@@ -699,6 +732,7 @@ class StudioController(
     }
 
     fun file(action: FileAction) {
+        if (action == FileAction.ImportLayer && (!hasCanvas || showWorkspace)) return
         if (action == FileAction.Open) {
             navigate(WorkspaceDestination.Open())
             return

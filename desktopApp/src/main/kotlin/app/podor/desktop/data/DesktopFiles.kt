@@ -20,6 +20,11 @@ class DesktopFiles(
     private val workspace = DesktopWorkspace(storage.root)
     override val exportFormats = ExportFormat.entries
 
+    override suspend fun openImage(): OpenedProject? {
+        val path = choose(false, images = true) ?: return null
+        return openDocument(reference(path))
+    }
+
     override suspend fun openDocument(reference: ProjectReference?): OpenedProject? {
         val path = reference?.let { Path.of(it.id) } ?: choose(false) ?: return null
         return withContext(Dispatchers.IO) {
@@ -111,6 +116,7 @@ class DesktopFiles(
         extension: String = AppIdentity.projectExtension,
         brushes: Boolean = false,
         suggestedName: String = AppIdentity.name,
+        images: Boolean = false,
     ): Path? =
         withContext(Dispatchers.Main) {
             val dialog =
@@ -122,6 +128,7 @@ class DesktopFiles(
             dialog.file =
                 if (save) "$suggestedName.$extension"
                 else if (brushes) "*.json"
+                else if (images) "*.png;*.jpg;*.jpeg;*.webp"
                 else "*.${AppIdentity.projectExtension};*.ora;*.png;*.jpg;*.jpeg;*.webp"
             try {
                 dialog.isVisible = true

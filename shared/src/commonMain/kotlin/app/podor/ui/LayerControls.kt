@@ -59,6 +59,13 @@ fun LayerControls(controller: StudioController) {
                 }
             }
             ToolButton(
+                Glyph.ImportImage,
+                "导入为图层",
+                enabled = enabled && layers.size < controller.document.maxLayers,
+            ) {
+                controller.file(StudioController.FileAction.ImportLayer)
+            }
+            ToolButton(
                 Glyph.Plus,
                 "新建图层",
                 enabled = enabled && layers.size < controller.document.maxLayers,

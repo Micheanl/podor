@@ -80,6 +80,17 @@ pub fn dispatch(handle: u64, operation: u32, bytes: &[u8]) -> Result<Vec<u8>, St
         6 => engine.previews(),
         7 => Ok(engine.thumbnail()),
         8 => Ok(engine.layer_frame()),
+        9 => {
+            let size = bytes.get(..4).ok_or("导入图层数据无效")?;
+            let length = u32::from_le_bytes(size.try_into().unwrap()) as usize;
+            if length == 0 || length > crate::model::MAX_LAYER_NAME_BYTES {
+                return Err("导入图层数据无效".into());
+            }
+            let name = bytes.get(4..4 + length).ok_or("导入图层数据无效")?;
+            let name = std::str::from_utf8(name).map_err(|_| "图层属性无效")?;
+            engine.import_layer(&bytes[4 + length..], name)?;
+            Ok(engine.state().to_string().into_bytes())
+        }
         _ => Err("未知引擎操作".into()),
     }
 }
