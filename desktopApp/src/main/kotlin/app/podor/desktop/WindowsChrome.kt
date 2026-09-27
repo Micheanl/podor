@@ -3,6 +3,7 @@ package app.podor.desktop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.graphics.Color
+import app.podor.desktop.input.WindowsPenInput
 import app.podor.ui.StudioTheme
 import com.sun.jna.Callback
 import com.sun.jna.Memory
@@ -122,6 +123,7 @@ internal class NativeWindowChrome(window: Window) : AutoCloseable {
     private val point = Memory(8)
     private val monitor = Memory(40)
     private val children = mutableMapOf<Pointer, Pair<Pointer, WindowProcedure>>()
+    private val penInput = WindowsPenInput(window, user)
     private val procedure =
         object : WindowProcedure {
             override fun invoke(
@@ -130,6 +132,7 @@ internal class NativeWindowChrome(window: Window) : AutoCloseable {
                 wParam: Long,
                 lParam: Long,
             ): Long {
+                if (penInput.message(message, wParam)) return 0L
                 when (message) {
                     0x0083 -> return 0L
                     0x0084 -> {
@@ -216,6 +219,7 @@ internal class NativeWindowChrome(window: Window) : AutoCloseable {
                                 wParam: Long,
                                 lParam: Long,
                             ): Long {
+                                if (penInput.message(message, wParam)) return 0L
                                 if (message == 0x0084) {
                                     val target = hit(lParam)
                                     if (target != null && target != WindowHit.CLIENT) return -1L
@@ -239,6 +243,7 @@ internal class NativeWindowChrome(window: Window) : AutoCloseable {
     }
 
     override fun close() {
+        penInput.close()
         for ((window, hook) in children) {
             if (user.IsWindow(window)) user.SetWindowLongPtrW(window, -4, hook.first)
         }

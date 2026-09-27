@@ -22,7 +22,9 @@ MSI 在 `desktopApp/build/release/<版本>/main/msi/`。`:desktopApp:createDistr
 
 工具默认值在 `StudioDefaults`，视觉参数在 `StudioTheme`，引擎上限在 `engine/src/model.rs`。
 
-画布旋转和镜像由 Compose 变换图块，`Viewport` 统一正反坐标换算，旋转后的可见范围由视口四角反算，保留图块裁剪。Windows 已检查 Direct3D 下 4096 × 4096 画布连续切换视图时复用原像素帧；压感、双指手势通过输入模拟验证，实体设备仍需测试。
+画布旋转和镜像由 Compose 变换图块，`Viewport` 统一正反坐标换算，旋转后的可见范围由视口四角反算，保留图块裁剪。Windows 已检查 Direct3D 下 4096 × 4096 画布连续切换视图时复用原像素帧。
+
+Windows Ink 在接收消息的线程读取压力和历史采样，再通过 AWT 交给 Compose 命中检测。采样保留逐点压力，排队上限 64 批，每批最多 256 点，每轮最多派发 8 批；溢出或系统取消会撤回当前笔画。未添加轮询定时器，光栅化继续在后台执行。笔进入感应范围后抑制新触摸，普通触摸仍沿用系统鼠标事件，不支持 Windows 原生多点手势。
 
 作品画面和光标、选区分别录制到显示层，移动光标不重新录制作品图块，视口外的图块不提交绘制。选中颜色在绘制阶段读取动画值，启动流光和溶解结束后卸载。界面由 Compose / Skia 合成，Rust 像素算法仍在 CPU 后台执行。
 
@@ -63,6 +65,8 @@ cargo bench --bench layers
 基准测量引擎负载，不包含设备输入、GPU 上传和屏幕延迟。
 
 Windows 可设置 `PODOR_GPU_TEST=1` 后运行 `scripts/check.ps1`，额外检查原生窗口的硬件渲染通道，结果写入 `desktopApp/build/reports/gpu-renderer.txt`。离屏动画耗时包含图像读回，不能作为整机帧率承诺。
+
+交互式 Windows 会话可另设 `PODOR_INK_SYSTEM_TEST=1`，测试通过系统指针注入检查压感、笔尾擦除和重复鼠标事件。注入前逐点确认命中测试窗口，结束后关闭窗口。实体数位板、触控笔仍需设备验证；双指手势目前只有 Compose 输入模拟测试。
 
 ## 其他平台
 

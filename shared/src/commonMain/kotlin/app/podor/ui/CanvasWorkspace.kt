@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import app.podor.domain.StudioDefaults
 import app.podor.domain.Tool
 import app.podor.presentation.StudioController
+import app.podor.ui.input.platformPenInput
 import kotlin.math.pow
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
@@ -40,6 +41,7 @@ fun CanvasWorkspace(
     endInset: Dp = 0.dp,
 ) {
     var fullSize by remember { mutableStateOf(Size.Zero) }
+    val density by rememberUpdatedState(LocalDensity.current.density)
     val inset by rememberUpdatedState(with(LocalDensity.current) { endInset.toPx() })
     val viewSize by remember {
         derivedStateOf { Size((fullSize.width - inset).coerceAtLeast(0f), fullSize.height) }
@@ -66,35 +68,87 @@ fun CanvasWorkspace(
                 try {
                     while (currentCoroutineContext().isActive) {
                         val event = awaitPointerEventScope { awaitPointerEvent() }
+                        val pen = event.platformPenInput()
+                        if (pen?.cancelled == true) {
+                            if (drawing) controller.end(cancel = true)
+                            drawing = false
+                            activePointer = null
+                            gesture = false
+                            selectionStart = null
+                            selectionEnd = null
+                            continue
+                        }
                         val pressed = event.changes.filter { it.pressed }
                         val stylus = pressed.firstOrNull {
-                            it.type == PointerType.Stylus || it.type == PointerType.Eraser
+                            pen != null ||
+                                it.type == PointerType.Stylus ||
+                                it.type == PointerType.Eraser
                         }
                         val primary =
                             stylus
                                 ?: event.changes.firstOrNull { it.id == activePointer }
                                 ?: event.changes.first()
+                        val mouse = primary.type == PointerType.Mouse && pen == null
+                        val position =
+                            primary.position +
+                                (pen?.samples?.lastOrNull()?.offset ?: Offset.Zero) * density
+                        val pressure =
+                            (pen?.samples?.lastOrNull()?.pressure
+                                    ?: if (mouse) 1f else primary.pressure)
+                                .coerceIn(0.05f, 1f)
+                        fun samples(): List<Triple<Float, Float, Float>> = buildList {
+                            if (pen != null) {
+                                for (sample in pen.samples) {
+                                    val point =
+                                        controller.viewport.toDocument(
+                                            primary.position + sample.offset * density,
+                                            viewSize,
+                                            controller.document,
+                                        )
+                                    add(
+                                        Triple(
+                                            point.x,
+                                            point.y,
+                                            sample.pressure.coerceIn(0.05f, 1f),
+                                        )
+                                    )
+                                }
+                            } else {
+                                for (historical in primary.historical) {
+                                    val point =
+                                        controller.viewport.toDocument(
+                                            historical.position,
+                                            viewSize,
+                                            controller.document,
+                                        )
+                                    add(Triple(point.x, point.y, pressure))
+                                }
+                                val point =
+                                    controller.viewport.toDocument(
+                                        position,
+                                        viewSize,
+                                        controller.document,
+                                    )
+                                add(Triple(point.x, point.y, pressure))
+                            }
+                        }
                         cursor =
-                            if (
-                                primary.type == PointerType.Mouse &&
-                                    event.type != PointerEventType.Exit
-                            )
-                                primary.position
-                            else null
+                            if (mouse && event.type != PointerEventType.Exit) position else null
                         if (event.type == PointerEventType.Scroll) {
                             if (drawing || selectionStart != null) continue
                             val rotating = event.keyboardModifiers.isShiftPressed
+                            val scroll =
+                                if (rotating && primary.scrollDelta.y == 0f) primary.scrollDelta.x
+                                else primary.scrollDelta.y
                             controller.viewport =
                                 controller.viewport.transform(
                                     primary.position,
                                     Offset.Zero,
-                                    if (rotating) 1f else 1.12f.pow(-primary.scrollDelta.y),
+                                    if (rotating) 1f else 1.12f.pow(-scroll),
                                     viewSize,
                                     controller.document,
                                     degrees =
-                                        if (rotating)
-                                            -primary.scrollDelta.y * StudioDefaults.rotationStep
-                                        else 0f,
+                                        if (rotating) -scroll * StudioDefaults.rotationStep else 0f,
                                 )
                             primary.consume()
                             continue
@@ -140,7 +194,7 @@ fun CanvasWorkspace(
                             selectionStart?.let { start ->
                                 val end =
                                     controller.viewport.toDocument(
-                                        primary.position,
+                                        position,
                                         viewSize,
                                         controller.document,
                                     )
@@ -149,23 +203,11 @@ fun CanvasWorkspace(
                             selectionStart = null
                             selectionEnd = null
                             if (drawing) {
-                                if (primary.position != primary.previousPosition) {
-                                    val point =
-                                        controller.viewport.toDocument(
-                                            primary.position,
-                                            viewSize,
-                                            controller.document,
-                                        )
-                                    controller.points(
-                                        listOf(
-                                            Triple(
-                                                point.x,
-                                                point.y,
-                                                if (primary.type == PointerType.Mouse) 1f
-                                                else primary.pressure.coerceIn(0.05f, 1f),
-                                            )
-                                        )
-                                    )
+                                if (
+                                    position != primary.previousPosition ||
+                                        (pen?.samples?.size ?: 0) > 1
+                                ) {
+                                    controller.points(samples())
                                 }
                                 controller.end()
                                 drawing = false
@@ -188,7 +230,7 @@ fun CanvasWorkspace(
                         if (primary.type == PointerType.Touch && !controller.fingerDrawing) continue
                         val point =
                             controller.viewport.toDocument(
-                                primary.position,
+                                position,
                                 viewSize,
                                 controller.document,
                             )
@@ -228,37 +270,17 @@ fun CanvasWorkspace(
                             activePointer = primary.id
                             controller.begin(
                                 point,
-                                if (primary.type == PointerType.Mouse) 1f
-                                else primary.pressure.coerceIn(0.05f, 1f),
-                                primary.type == PointerType.Eraser,
+                                pressure,
+                                pen?.eraser == true || primary.type == PointerType.Eraser,
                             )
                             drawing = true
                         } else if (
                             drawing &&
                                 primary.id == activePointer &&
-                                primary.position != primary.previousPosition
+                                (position != primary.previousPosition ||
+                                    (pen?.samples?.size ?: 0) > 1)
                         ) {
-                            val samples =
-                                primary.historical.map { historical ->
-                                    val position =
-                                        controller.viewport.toDocument(
-                                            historical.position,
-                                            viewSize,
-                                            controller.document,
-                                        )
-                                    Triple(
-                                        position.x,
-                                        position.y,
-                                        primary.pressure.coerceIn(0.05f, 1f),
-                                    )
-                                } +
-                                    Triple(
-                                        point.x,
-                                        point.y,
-                                        if (primary.type == PointerType.Mouse) 1f
-                                        else primary.pressure.coerceIn(0.05f, 1f),
-                                    )
-                            controller.points(samples)
+                            controller.points(samples())
                         }
                         if (drawing) primary.consume()
                     }
