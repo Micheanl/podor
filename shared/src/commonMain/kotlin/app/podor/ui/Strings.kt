@@ -88,6 +88,8 @@ private val english =
         "大小" to "Size",
         "不透明度" to "Opacity",
         "墨水笔" to "Ink",
+        "勾线笔" to "Liner",
+        "稳笔" to "Stabilization",
         "马克笔" to "Marker",
         "柔边笔" to "Soft",
         "铅笔" to "Pencil",

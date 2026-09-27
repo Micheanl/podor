@@ -12,6 +12,7 @@ pub const MAX_HISTORY_ENTRIES: usize = 60;
 pub const PREVIEW_EDGE: u32 = 96;
 pub const DEFAULT_EXPORT_QUALITY: u8 = 90;
 pub const BRUSH_SPACING_RATIO: f32 = 0.08;
+pub const MAX_STABILIZER_DISTANCE: f32 = 40.0;
 pub type TileKey = (u32, u32);
 pub type Tile = Arc<Vec<u8>>;
 
@@ -177,6 +178,8 @@ pub struct Brush {
     pub grain: f32,
     #[serde(default = "default_spacing")]
     pub spacing: f32,
+    #[serde(default)]
+    pub stabilization: f32,
 }
 
 #[derive(Clone, Copy, Default, Deserialize, PartialEq)]
@@ -207,6 +210,7 @@ impl Default for Brush {
             angle: 0.0,
             grain: 0.0,
             spacing: BRUSH_SPACING_RATIO,
+            stabilization: 0.0,
         }
     }
 }
@@ -227,6 +231,8 @@ impl Brush {
             || !(0.0..=1.0).contains(&self.grain)
             || !self.spacing.is_finite()
             || !(0.02..=1.0).contains(&self.spacing)
+            || !self.stabilization.is_finite()
+            || !(0.0..=1.0).contains(&self.stabilization)
         {
             return Err("画笔参数无效".into());
         }

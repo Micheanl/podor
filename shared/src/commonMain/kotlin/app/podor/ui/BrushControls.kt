@@ -87,6 +87,18 @@ fun BrushControls(controller: StudioController) {
                     ) {
                         controller.brush = controller.brush.copy(opacity = it)
                     }
+                    LabeledSlider(
+                        "稳笔",
+                        controller.brush.preset.stabilization,
+                        0f..1f,
+                        if (controller.brush.preset.stabilization == 0f) tr("关闭")
+                        else "${(controller.brush.preset.stabilization * 100).roundToInt()}%",
+                    ) {
+                        controller.brush =
+                            controller.brush.copy(
+                                preset = controller.brush.preset.copy(stabilization = it)
+                            )
+                    }
                 }
                 HorizontalDivider(color = StudioTheme.border.copy(alpha = 0.5f))
             }

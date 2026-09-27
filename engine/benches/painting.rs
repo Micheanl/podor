@@ -5,6 +5,12 @@ use podor_engine::{
 use std::time::Instant;
 
 fn main() {
+    for stabilization in [0.0, 0.5, 1.0] {
+        painting(stabilization);
+    }
+}
+
+fn painting(stabilization: f32) {
     let mut engine = Engine::new(2048, 2048).unwrap();
     let brush = Brush {
         size: 24.0,
@@ -12,6 +18,7 @@ fn main() {
         hardness: 0.8,
         color: [30, 90, 240],
         eraser: false,
+        stabilization,
         ..Brush::default()
     };
     let start = Instant::now();
@@ -30,9 +37,10 @@ fn main() {
             bytes += engine.frame().len();
         }
         engine.command(Command::End).unwrap();
+        bytes += engine.frame().len();
     }
     println!(
-        "100 strokes, 12000 samples, 1500 dirty frames: {:.2} ms; {:.1} MiB transferred",
+        "stabilization={stabilization:.1}, 100 strokes, 12000 samples, 1600 frames: {:.2} ms; {:.1} MiB transferred",
         start.elapsed().as_secs_f64() * 1000.0,
         bytes as f64 / 1048576.0
     );

@@ -460,6 +460,7 @@ class StudioController(private val files: ProjectFiles, parentScope: CoroutineSc
                         put("angle", settings.preset.angle)
                         put("grain", settings.preset.grain)
                         put("spacing", settings.preset.spacing)
+                        put("stabilization", settings.preset.stabilization)
                         put("eraser", tool == Tool.Eraser || stylusEraser)
                         putJsonArray("color") {
                             add((settings.color shr 16 and 255).toInt())

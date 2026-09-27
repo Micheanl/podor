@@ -7,6 +7,7 @@ mod jni_bridge;
 pub mod model;
 mod previews;
 mod raster;
+mod stabilizer;
 mod storage;
 pub use storage::{ExportFormat, ExportOptions};
 
@@ -14,6 +15,7 @@ use history::History;
 use model::*;
 use serde::Deserialize;
 use serde_json::{json, Value};
+use stabilizer::Stabilizer;
 use std::collections::BTreeSet;
 
 #[derive(Deserialize)]
@@ -77,9 +79,57 @@ pub enum Command {
 struct Stroke {
     before: Document,
     brush: Brush,
+    stabilizer: Stabilizer,
     last: Option<Sample>,
     distance: f32,
     changed: bool,
+}
+
+impl Stroke {
+    fn paint(
+        &mut self,
+        point: Sample,
+        document: &mut Document,
+        selection: Option<Rect>,
+        dirty: &mut BTreeSet<TileKey>,
+        remaining: &mut usize,
+    ) -> Result<(), String> {
+        if let Some(last) = self.last {
+            let dx = point.x - last.x;
+            let dy = point.y - last.y;
+            let length = dx.hypot(dy);
+            if length > f32::EPSILON {
+                let spacing = (self.brush.size
+                    * last.pressure.min(point.pressure).clamp(0.05, 1.0)
+                    * self.brush.spacing)
+                    .max(0.5);
+                let mut cursor = spacing - self.distance.min(spacing);
+                while cursor <= length {
+                    let t = cursor / length;
+                    raster::stamp(
+                        document,
+                        selection,
+                        self.brush,
+                        Sample {
+                            x: last.x + dx * t,
+                            y: last.y + dy * t,
+                            pressure: last.pressure + (point.pressure - last.pressure) * t,
+                        },
+                        dirty,
+                        remaining,
+                    )?;
+                    self.changed = true;
+                    cursor += spacing;
+                }
+                self.distance = (self.distance + length) % spacing;
+            }
+        } else {
+            raster::stamp(document, selection, self.brush, point, dirty, remaining)?;
+            self.changed = true;
+        }
+        self.last = Some(point);
+        Ok(())
+    }
 }
 
 pub struct Engine {
@@ -116,15 +166,41 @@ impl Engine {
                 if !self.document.active_mut().visible {
                     return Err("请先显示当前图层".into());
                 }
+                let brush = brush.validate()?;
                 self.stroke = Some(Stroke {
                     before: self.document.clone(),
-                    brush: brush.validate()?,
+                    brush,
+                    stabilizer: Stabilizer::new(brush.stabilization),
                     last: None,
                     distance: 0.0,
                     changed: false,
                 });
             }
             Command::End => {
+                if let Some(stroke) = self.stroke.as_mut() {
+                    if let Some(point) = stroke.stabilizer.finish() {
+                        let mut remaining = (MAX_DOCUMENT_BYTES / TILE_BYTES)
+                            .saturating_sub(self.document.tile_count());
+                        stroke.paint(
+                            point,
+                            &mut self.document,
+                            self.selection,
+                            &mut self.dirty,
+                            &mut remaining,
+                        )?;
+                        if stroke.distance > f32::EPSILON {
+                            raster::stamp(
+                                &mut self.document,
+                                self.selection,
+                                stroke.brush,
+                                point,
+                                &mut self.dirty,
+                                &mut remaining,
+                            )?;
+                            stroke.changed = true;
+                        }
+                    }
+                }
                 if let Some(stroke) = self.stroke.take() {
                     if stroke.changed {
                         self.history.push(stroke.before, &self.document);
@@ -324,49 +400,14 @@ impl Engine {
             (MAX_DOCUMENT_BYTES / TILE_BYTES).saturating_sub(self.document.tile_count());
         let stroke = self.stroke.as_mut().ok_or("尚未开始笔画")?;
         for &point in samples {
-            if let Some(last) = stroke.last {
-                let dx = point.x - last.x;
-                let dy = point.y - last.y;
-                let length = dx.hypot(dy);
-                if length <= f32::EPSILON {
-                    stroke.last = Some(point);
-                    continue;
-                }
-                let spacing = (stroke.brush.size
-                    * last.pressure.min(point.pressure).clamp(0.05, 1.0)
-                    * stroke.brush.spacing)
-                    .max(0.5);
-                let mut cursor = spacing - stroke.distance.min(spacing);
-                while cursor <= length {
-                    let t = cursor / length;
-                    raster::stamp(
-                        &mut self.document,
-                        self.selection,
-                        stroke.brush,
-                        Sample {
-                            x: last.x + dx * t,
-                            y: last.y + dy * t,
-                            pressure: last.pressure + (point.pressure - last.pressure) * t,
-                        },
-                        &mut self.dirty,
-                        &mut remaining,
-                    )?;
-                    stroke.changed = true;
-                    cursor += spacing;
-                }
-                stroke.distance = (stroke.distance + length) % spacing;
-            } else {
-                raster::stamp(
-                    &mut self.document,
-                    self.selection,
-                    stroke.brush,
-                    point,
-                    &mut self.dirty,
-                    &mut remaining,
-                )?;
-                stroke.changed = true;
-            }
-            stroke.last = Some(point);
+            let filtered = stroke.stabilizer.push(point);
+            stroke.paint(
+                filtered,
+                &mut self.document,
+                self.selection,
+                &mut self.dirty,
+                &mut remaining,
+            )?;
         }
         Ok(())
     }

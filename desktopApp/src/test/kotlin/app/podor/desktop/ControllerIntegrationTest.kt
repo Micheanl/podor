@@ -387,6 +387,9 @@ class ControllerIntegrationTest {
                         .copy(language = Language.English)
                         .assign(ShortcutAction.Brush, Shortcut("P"))
                 )
+                controller.brush = controller.brush.copy(
+                    preset = controller.brush.preset.copy(stabilization = 0.7f)
+                )
                 controller.saveBrush("My ink")
             }
             assertTrue(withContext(Dispatchers.Main) { controller.shutdown() })
@@ -402,12 +405,14 @@ class ControllerIntegrationTest {
                     controller.preferences.shortcut(ShortcutAction.Brush)
                 },
             )
-            assertEquals(12, withContext(Dispatchers.Main) { controller.brushes.size })
+            assertEquals(BrushPreset.entries.size + 2, withContext(Dispatchers.Main) { controller.brushes.size })
+            assertEquals(0.7f, withContext(Dispatchers.Main) { controller.preferences.brushes.single().stabilization })
             withContext(Dispatchers.Main) {
                 controller.file(StudioController.FileAction.ExportBrushes)
             }
             awaitState { files.exportedPack != null && !controller.busy }
             assertEquals("My ink", BrushPack.parse(files.exportedPack!!).brushes.single().label)
+            assertEquals(0.7f, BrushPack.parse(files.exportedPack!!).brushes.single().stabilization)
             files.brushPack = "{}".encodeToByteArray()
             withContext(Dispatchers.Main) {
                 controller.file(StudioController.FileAction.ImportBrushes)
@@ -420,6 +425,57 @@ class ControllerIntegrationTest {
             scope.cancel()
         }
     }
+
+    @Test
+    fun stabilizationReachesTheNativeEngineAndShutdownFinishesItsTail() =
+        runBlocking<Unit> {
+            NativeLoader.load()
+            val files = Files()
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+            val controller = withContext(Dispatchers.Main) { StudioController(files, scope) }
+            suspend fun awaitState(predicate: () -> Boolean) =
+                withTimeout(10_000) {
+                    while (!withContext(Dispatchers.Main) { predicate() }) delay(10)
+                }
+            try {
+                awaitState { controller.ready }
+                withContext(Dispatchers.Main) {
+                    controller.brush =
+                        controller.brush.copy(
+                            size = 3f,
+                            preset = controller.brush.preset.copy(stabilization = 1f),
+                        )
+                    controller.begin(Offset(20.5f, 64.5f), 1f)
+                    controller.points(listOf(Triple(210.5f, 64.5f, 1f)))
+                }
+                awaitState { controller.frame.tiles.size == 2 }
+                withContext(Dispatchers.Main) {
+                    val pixels =
+                        controller.frame.tiles.values.single { it.x == 1 }.image.toPixelMap()
+                    assertEquals(1f, pixels[210 - 128, 64].green)
+                    assertTrue(pixels[160 - 128, 64].green < 0.3f)
+                }
+                assertTrue(withContext(Dispatchers.Main) { controller.shutdown() })
+                val restored = createNativeEngine(1, 1)
+                try {
+                    restored.call(EngineOperation.LOAD, assertNotNull(files.recovery))
+                    assertEquals(
+                        """{"color":[139,41,66]}""",
+                        restored
+                            .call(
+                                EngineOperation.COMMAND,
+                                """{"type":"pick","x":210,"y":64}""".encodeToByteArray(),
+                            )
+                            .decodeToString(),
+                    )
+                } finally {
+                    restored.close()
+                }
+            } finally {
+                withContext(Dispatchers.Main) { controller.close() }
+                scope.cancel()
+            }
+        }
 
     @Test
     fun shutdownFlushesQueuedInputAndAllowsRetryWhenStorageFails() = runBlocking<Unit> {

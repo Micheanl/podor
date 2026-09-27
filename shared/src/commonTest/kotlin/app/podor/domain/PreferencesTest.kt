@@ -28,6 +28,8 @@ class PreferencesTest {
             listOf(
                 pack.copy(version = 99),
                 pack.copy(brushes = listOf(BrushPreset.Ink.copy(aspect = 0f))),
+                pack.copy(brushes = listOf(BrushPreset.Ink.copy(stabilization = -0.1f))),
+                pack.copy(brushes = listOf(BrushPreset.Ink.copy(stabilization = 1.1f))),
                 pack.copy(brushes = listOf(BrushPreset.Ink, BrushPreset.Ink)),
             )) {
             assertFailsWith<IllegalArgumentException> {
@@ -45,6 +47,20 @@ class PreferencesTest {
     }
 
     @Test
+    fun stabilizationSurvivesBrushPackAndPreferencesRoundTrips() {
+        val brush = BrushPreset.Ink.copy(id = "custom-1", stabilization = 0.65f)
+        val preferences = Preferences(brushes = listOf(brush))
+        assertEquals(
+            preferences,
+            Json.decodeFromString<Preferences>(Json.encodeToString(preferences)),
+        )
+        val pack = BrushPack("artist.liner", "Liner", brushes = listOf(brush))
+        assertEquals(pack, BrushPack.parse(Json.encodeToString(pack).encodeToByteArray()))
+        assertFalse(brush.copy(stabilization = Float.NaN).valid())
+        assertFalse(brush.copy(stabilization = Float.POSITIVE_INFINITY).valid())
+    }
+
+    @Test
     fun customCanvasValidatesAreaDimensionsAndMissingInput() {
         assertTrue(validCanvasSize(4096, 4096))
         assertTrue(validCanvasSize(8192, 2048))
@@ -56,10 +72,11 @@ class PreferencesTest {
 
     @Test
     fun bundledBrushesHaveDistinctAndValidParameters() {
-        assertEquals(10, BrushPreset.entries.size)
+        assertEquals(11, BrushPreset.entries.size)
         assertTrue(BrushPreset.entries.all { it.valid() })
-        assertEquals(10, BrushPreset.entries.map { it.id }.distinct().size)
+        assertEquals(11, BrushPreset.entries.map { it.id }.distinct().size)
         assertTrue(BrushPreset.entries.any { it.tip == BrushTip.Flat })
         assertTrue(BrushPreset.entries.any { it.grain > 0f })
+        assertTrue(BrushPreset.entries.any { it.stabilization > 0f })
     }
 }

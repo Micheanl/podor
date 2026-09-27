@@ -46,6 +46,7 @@ data class BrushPreset(
     val angle: Float = 0f,
     val grain: Float = 0f,
     val spacing: Float = 0.08f,
+    val stabilization: Float = StudioDefaults.stabilization,
 ) {
     fun valid(): Boolean =
         id.matches(Regex("[a-zA-Z0-9._-]{1,64}")) &&
@@ -64,7 +65,9 @@ data class BrushPreset(
             grain.isFinite() &&
             grain in 0f..1f &&
             spacing.isFinite() &&
-            spacing in 0.02f..1f
+            spacing in 0.02f..1f &&
+            stabilization.isFinite() &&
+            stabilization in 0f..1f
 
     companion object {
         val Ink = BrushPreset("ink", "墨水笔", 0.9f, 1f, 12f)
@@ -73,6 +76,14 @@ data class BrushPreset(
         val entries =
             listOf(
                 Ink,
+                BrushPreset(
+                    "liner",
+                    "勾线笔",
+                    1f,
+                    1f,
+                    8f,
+                    stabilization = StudioDefaults.lineStabilization,
+                ),
                 Marker,
                 Soft,
                 BrushPreset("pencil", "铅笔", 0.8f, 0.7f, 5f, grain = 0.8f, spacing = 0.04f),
@@ -102,6 +113,8 @@ data class BrushSettings(
 data class CanvasPreset(val label: String, val width: Int, val height: Int)
 
 object StudioDefaults {
+    const val stabilization = 0f
+    const val lineStabilization = 0.5f
     const val exportQuality = 90
     const val maxDimension = 8192
     const val maxCanvasPixels = 16_777_216L
