@@ -51,6 +51,7 @@ enum class Glyph(val resource: DrawableResource) {
     AlphaLock(Res.drawable.ic_alpha_lock),
     Rotate(Res.drawable.ic_rotate),
     Mirror(Res.drawable.ic_mirror),
+    Move(Res.drawable.ic_move),
 }
 
 @Composable

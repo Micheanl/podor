@@ -11,6 +11,7 @@ mod previews;
 mod raster;
 mod stabilizer;
 mod storage;
+mod translation;
 pub use storage::{ExportFormat, ExportOptions};
 
 use history::{History, Snapshot};
@@ -74,6 +75,11 @@ pub enum Command {
     MoveLayer {
         id: u32,
         direction: i32,
+    },
+    TranslateLayer {
+        id: u32,
+        dx: i32,
+        dy: i32,
     },
     Clear,
     Pick {
@@ -331,6 +337,23 @@ impl Engine {
                         }
                         self.document.active = id;
                     }
+                    Command::TranslateLayer { id, dx, dy } => {
+                        if self.selection.is_some() {
+                            return Err("请先取消选区，再移动图层".into());
+                        }
+                        let tiles = translation::translate(&self.document, id, dx, dy)?;
+                        let index = self.layer_index(id)?;
+                        if tiles != self.document.layers[index].tiles {
+                            let before = self.document.clone();
+                            self.dirty.extend(self.document.layers[index].tiles.keys());
+                            self.dirty.extend(tiles.keys());
+                            self.document.layers[index].tiles = tiles;
+                            self.history
+                                .push(before, self.content_id, &self.document, true);
+                            self.revision += 1;
+                            self.content_id = self.revision;
+                        }
+                    }
                     command => {
                         let pixels_changed = !matches!(command, Command::SetProtection { .. });
                         let before = self.document.clone();
@@ -535,6 +558,9 @@ impl Engine {
 
     pub fn save(&self) -> Result<Vec<u8>, String> {
         storage::save(&self.document)
+    }
+    pub fn layer_frame(&self) -> Vec<u8> {
+        translation::frame(&self.document)
     }
     pub fn export_png(&self) -> Result<Vec<u8>, String> {
         storage::export_png(&self.document)

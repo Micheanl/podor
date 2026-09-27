@@ -62,7 +62,8 @@ enum class ShortcutAction(val label: String, val default: Shortcut) {
     Brush("画笔", Shortcut("B")),
     Eraser("橡皮", Shortcut("E")),
     Picker("取色", Shortcut("I")),
-    Hand("移动", Shortcut("H")),
+    Hand("平移画布", Shortcut("H")),
+    MoveLayer("移动图层", Shortcut("V")),
     Select("矩形选区", Shortcut("M")),
     Fill("填充", Shortcut("G")),
     Fit("适合窗口", Shortcut("0")),
@@ -84,6 +85,16 @@ data class Preferences(
     val brushes: List<BrushPreset> = emptyList(),
 ) {
     fun shortcut(action: ShortcutAction) = shortcuts[action] ?: action.default
+
+    fun withMoveShortcut(): Preferences {
+        val action = ShortcutAction.MoveLayer
+        if (action in shortcuts || action.default !in shortcuts.values) return this
+        val used = ShortcutAction.entries.filter { it != action }.map(::shortcut).toSet()
+        val candidates =
+            sequenceOf(action.default.copy(shift = true), action.default.copy(alt = true)) +
+                ('A'..'Z').asSequence().map { Shortcut(it.toString(), shift = true, alt = true) }
+        return copy(shortcuts = shortcuts + (action to candidates.first { it !in used }))
+    }
 
     fun valid() =
         plugins.size <= 16 &&

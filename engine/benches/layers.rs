@@ -43,5 +43,22 @@ fn main() {
             "{edge}x{edge}: 100 alpha-lock switches {:.2} ms, no canvas pixels transferred",
             start.elapsed().as_secs_f64() * 1000.0
         );
+        for (dx, dy) in [(1, 1), (128, -128)] {
+            let start = Instant::now();
+            engine
+                .command(Command::TranslateLayer {
+                    id: engine.document.active,
+                    dx,
+                    dy,
+                })
+                .unwrap();
+            let shifted = start.elapsed();
+            let start = Instant::now();
+            let bytes = engine.frame().len();
+            println!("{edge}x{edge}: translate {dx},{dy} {:.2} ms, dirty composite {:.2} ms, {bytes} bytes",
+                shifted.as_secs_f64() * 1000.0, start.elapsed().as_secs_f64() * 1000.0);
+            engine.command(Command::Undo).unwrap();
+            engine.frame();
+        }
     }
 }

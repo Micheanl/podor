@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.unit.IntOffset
 import app.podor.data.ProjectFiles
 import app.podor.domain.*
 import app.podor.engine.*
@@ -40,6 +41,11 @@ class StudioController(
 
     var previews by mutableStateOf(RenderPreviews())
         private set
+
+    var layerMove by mutableStateOf<LayerMovePreview?>(null)
+        private set
+
+    private var preparingLayerMove = false
 
     val exportFormats = files.exportFormats
 
@@ -105,6 +111,10 @@ class StudioController(
         data class Export(val options: ExportOptions) : Action
 
         data object Frame : Action
+
+        data object PrepareLayerMove : Action
+
+        data class TranslateLayer(val id: Int, val revision: Long, val offset: IntOffset) : Action
 
         data class Navigate(
             val destination: WorkspaceDestination,
@@ -182,6 +192,10 @@ class StudioController(
                         document = info
                         hasUnsavedChanges = info.contentId != savedContentId
                         if (updated != null) frame = updated
+                        layerMove?.let {
+                            if (it.revision != info.revision || it.layerId != info.active)
+                                layerMove = null
+                        }
                     }
                     frameDirty = false
                 }
@@ -258,9 +272,12 @@ class StudioController(
                     engine = createNativeEngine(info.width, info.height)
                     files.readPreferences()?.let { bytes ->
                         runCatching {
-                            parser.decodeFromString<Preferences>(bytes.decodeToString()).also {
-                                require(it.valid())
-                            }
+                            parser
+                                .decodeFromString<Preferences>(bytes.decodeToString())
+                                .withMoveShortcut()
+                                .also {
+                                    require(it.valid())
+                                }
                         }
                             .onSuccess { value ->
                                 withContext(Dispatchers.Main) { preferences = value }
@@ -292,6 +309,59 @@ class StudioController(
                                 is Action.Shutdown -> {
                                     action.finished.complete(true)
                                     break
+                                }
+                                Action.PrepareLayerMove -> {
+                                    finishDrawing()
+                                    val bytes = engine.call(EngineOperation.LAYERS)
+                                    val size = bytes.intAt(8)
+                                    var position = 16
+                                    val layers = buildList {
+                                        repeat(bytes.intAt(12)) {
+                                            val id = bytes.intAt(position)
+                                            val count = bytes.intAt(position + 4)
+                                            position += 8
+                                            val images = buildList {
+                                                repeat(count) {
+                                                    add(
+                                                        TileImage(
+                                                            bytes.intAt(position),
+                                                            bytes.intAt(position + 4),
+                                                            size,
+                                                            rgbaBitmap(bytes, position + 8, size),
+                                                        )
+                                                    )
+                                                    position += 8 + size * size * 4
+                                                }
+                                            }
+                                            add(
+                                                LayerFrame(
+                                                    info.layers.first { it.id == id },
+                                                    images,
+                                                )
+                                            )
+                                        }
+                                    }
+                                    withContext(Dispatchers.Main) {
+                                        if (
+                                            tool == Tool.MoveLayer && document.active == info.active
+                                        ) {
+                                            layerMove =
+                                                LayerMovePreview(info.active, info.revision, layers)
+                                        }
+                                    }
+                                }
+                                is Action.TranslateLayer -> {
+                                    check(info.revision == action.revision) { "图层已变化，请重新移动" }
+                                    info =
+                                        command(
+                                            jsonCommand("translate_layer") {
+                                                put("id", action.id)
+                                                put("dx", action.offset.x)
+                                                put("dy", action.offset.y)
+                                            }
+                                        )
+                                    publishFrame()
+                                    withContext(Dispatchers.Main) { layerMove = null }
                                 }
                                 is Action.Forget -> {
                                     files.forgetProject(action.reference)
@@ -513,10 +583,20 @@ class StudioController(
                                 publishFrame()
                             }
                             withContext(Dispatchers.Main) {
+                                if (
+                                    action == Action.PrepareLayerMove ||
+                                        action is Action.TranslateLayer
+                                ) {
+                                    layerMove = null
+                                    tool = Tool.Brush
+                                }
                                 error = exception.message ?: "操作失败，请重试"
                             }
                         } finally {
-                            withContext(Dispatchers.Main) { busy = false }
+                            withContext(Dispatchers.Main) {
+                                if (action == Action.PrepareLayerMove) preparingLayerMove = false
+                                busy = false
+                            }
                         }
                     }
                 } catch (cancel: CancellationException) {
@@ -541,6 +621,43 @@ class StudioController(
 
     fun command(type: String, values: JsonObjectBuilder.() -> Unit = {}) {
         if (ready && !busy) scope.launch { actions.send(Action.Command(jsonCommand(type, values))) }
+    }
+
+    fun prepareLayerMove() {
+        if (!ready || busy || preparingLayerMove || layerMove != null || tool != Tool.MoveLayer)
+            return
+        val active = document.layers.firstOrNull { it.id == document.active } ?: return
+        if (!active.visible || active.locked || active.alphaLocked || document.selection != null)
+            return
+        preparingLayerMove = true
+        busy = true
+        scope.launch { actions.send(Action.PrepareLayerMove) }
+    }
+
+    fun previewLayerMove(offset: IntOffset) {
+        val preview = layerMove ?: return
+        if (preview.committing) return
+        preview.offset =
+            IntOffset(
+                offset.x.coerceIn(-document.width, document.width),
+                offset.y.coerceIn(-document.height, document.height),
+            )
+    }
+
+    fun commitLayerMove() {
+        val preview = layerMove ?: return
+        if (preview.committing || preview.offset == IntOffset.Zero) return
+        preview.committing = true
+        busy = true
+        scope.launch {
+            actions.send(Action.TranslateLayer(preview.layerId, preview.revision, preview.offset))
+        }
+    }
+
+    fun cancelLayerMove(exit: Boolean = false) {
+        if (layerMove?.committing == true) return
+        layerMove?.offset = IntOffset.Zero
+        if (exit) layerMove = null
     }
 
     suspend fun begin(point: Offset, pressure: Float, stylusEraser: Boolean = false) {

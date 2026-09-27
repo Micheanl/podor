@@ -32,6 +32,11 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
         LaunchedEffect(Unit) { focus.requestFocus() }
         fun handleShortcut(event: KeyEvent): Boolean {
             if (event.type != KeyEventType.KeyDown || dialog != StudioDialog.None) return false
+            if (event.key == Key.Escape && controller.tool == Tool.MoveLayer) {
+                controller.cancelLayerMove(exit = true)
+                controller.tool = Tool.Brush
+                return true
+            }
             val binding = event.shortcut() ?: return false
             val action =
                 ShortcutAction.entries.firstOrNull {
@@ -42,6 +47,7 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                 ShortcutAction.Eraser -> controller.tool = Tool.Eraser
                 ShortcutAction.Picker -> controller.tool = Tool.Picker
                 ShortcutAction.Hand -> controller.tool = Tool.Hand
+                ShortcutAction.MoveLayer -> controller.tool = Tool.MoveLayer
                 ShortcutAction.Select -> controller.tool = Tool.Select
                 ShortcutAction.Fill -> controller.tool = Tool.Fill
                 ShortcutAction.Fit -> controller.viewport = Viewport()
@@ -131,12 +137,20 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                                             openPanel(StudioPanel.Layers)
                                         }
                                 }
-                                BrushDock(
-                                    controller,
-                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
-                                ) {
-                                    openPanel(StudioPanel.Brushes)
-                                }
+                                if (controller.tool == Tool.MoveLayer)
+                                    LayerMoveDock(
+                                        controller,
+                                        Modifier.align(Alignment.BottomCenter)
+                                            .padding(bottom = 55.dp),
+                                    )
+                                else
+                                    BrushDock(
+                                        controller,
+                                        Modifier.align(Alignment.BottomCenter)
+                                            .padding(bottom = 55.dp),
+                                    ) {
+                                        openPanel(StudioPanel.Brushes)
+                                    }
                             }
                             CanvasFooter(
                                 controller,

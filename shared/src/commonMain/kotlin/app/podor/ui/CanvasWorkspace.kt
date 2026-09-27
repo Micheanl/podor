@@ -24,12 +24,15 @@ import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.podor.domain.StudioDefaults
 import app.podor.domain.Tool
+import app.podor.presentation.LayerMovePreview
 import app.podor.presentation.StudioController
 import app.podor.ui.input.platformPenInput
 import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.serialization.json.put
@@ -49,6 +52,15 @@ fun CanvasWorkspace(
     var cursor by remember { mutableStateOf<Offset?>(null) }
     var selectionStart by remember { mutableStateOf<Offset?>(null) }
     var selectionEnd by remember { mutableStateOf<Offset?>(null) }
+    LaunchedEffect(
+        controller.tool,
+        controller.document.revision,
+        controller.document.active,
+        controller.busy,
+    ) {
+        if (controller.tool == Tool.MoveLayer) controller.prepareLayerMove()
+        else controller.cancelLayerMove(exit = true)
+    }
     val tilePaint = remember {
         Paint().apply {
             isAntiAlias = false
@@ -65,6 +77,8 @@ fun CanvasWorkspace(
                 var drawing = false
                 var activePointer: PointerId? = null
                 var gesture = false
+                var moveAnchor: Offset? = null
+                var movePreview: LayerMovePreview? = null
                 try {
                     while (currentCoroutineContext().isActive) {
                         val event = awaitPointerEventScope { awaitPointerEvent() }
@@ -76,6 +90,8 @@ fun CanvasWorkspace(
                             gesture = false
                             selectionStart = null
                             selectionEnd = null
+                            moveAnchor = null
+                            controller.cancelLayerMove()
                             continue
                         }
                         val pressed = event.changes.filter { it.pressed }
@@ -135,7 +151,7 @@ fun CanvasWorkspace(
                         cursor =
                             if (mouse && event.type != PointerEventType.Exit) position else null
                         if (event.type == PointerEventType.Scroll) {
-                            if (drawing || selectionStart != null) continue
+                            if (drawing || selectionStart != null || moveAnchor != null) continue
                             val rotating = event.keyboardModifiers.isShiftPressed
                             val scroll =
                                 if (rotating && primary.scrollDelta.y == 0f) primary.scrollDelta.x
@@ -168,6 +184,8 @@ fun CanvasWorkspace(
                             gesture = true
                         }
                         if (stylus == null && pressed.size >= 2) {
+                            if (moveAnchor != null) controller.cancelLayerMove()
+                            moveAnchor = null
                             selectionStart = null
                             selectionEnd = null
                             if (drawing) {
@@ -191,6 +209,27 @@ fun CanvasWorkspace(
                             continue
                         }
                         if (pressed.isEmpty()) {
+                            moveAnchor?.let { anchor ->
+                                if (
+                                    controller.tool == Tool.MoveLayer &&
+                                        controller.layerMove === movePreview
+                                ) {
+                                    val end =
+                                        controller.viewport.toDocument(
+                                            position,
+                                            viewSize,
+                                            controller.document,
+                                        )
+                                    controller.previewLayerMove(
+                                        IntOffset(
+                                            (end.x - anchor.x).roundToInt(),
+                                            (end.y - anchor.y).roundToInt(),
+                                        )
+                                    )
+                                    controller.commitLayerMove()
+                                }
+                            }
+                            moveAnchor = null
                             selectionStart?.let { start ->
                                 val end =
                                     controller.viewport.toDocument(
@@ -217,6 +256,41 @@ fun CanvasWorkspace(
                             continue
                         }
                         if (gesture) continue
+                        if (controller.tool == Tool.MoveLayer) {
+                            if (primary.type == PointerType.Touch && !controller.fingerDrawing)
+                                continue
+                            val preview = controller.layerMove
+                            val point =
+                                controller.viewport.toDocument(
+                                    position,
+                                    viewSize,
+                                    controller.document,
+                                )
+                            if (
+                                primary.pressed &&
+                                    !primary.previousPressed &&
+                                    preview != null &&
+                                    !preview.committing &&
+                                    point.x >= 0 &&
+                                    point.y >= 0 &&
+                                    point.x < controller.document.width &&
+                                    point.y < controller.document.height
+                            ) {
+                                moveAnchor = point
+                                movePreview = preview
+                            }
+                            moveAnchor?.let { anchor ->
+                                if (preview === movePreview)
+                                    controller.previewLayerMove(
+                                        IntOffset(
+                                            (point.x - anchor.x).roundToInt(),
+                                            (point.y - anchor.y).roundToInt(),
+                                        )
+                                    )
+                            }
+                            primary.consume()
+                            continue
+                        }
                         if (controller.tool == Tool.Hand) {
                             controller.viewport =
                                 controller.viewport.copy(
@@ -286,6 +360,7 @@ fun CanvasWorkspace(
                     }
                 } finally {
                     if (drawing) controller.command("cancel")
+                    if (moveAnchor != null) controller.cancelLayerMove()
                 }
             }
     ) {
@@ -311,27 +386,31 @@ fun CanvasWorkspace(
             }) {
                 clipRect(0f, 0f, document.width.toFloat(), document.height.toFloat()) {
                     drawRect(Color.White, size = paper)
-                    controller.frame.tiles.values.forEach { tile ->
-                        val x = tile.x * tile.size
-                        val y = tile.y * tile.size
-                        if (
-                            x >= visible.right ||
-                                y >= visible.bottom ||
-                                x + tile.size <= visible.left ||
-                                y + tile.size <= visible.top
-                        )
-                            return@forEach
-                        drawContext.canvas.drawImage(
-                            tile.image,
-                            Offset(
-                                (tile.x * tile.size).toFloat(),
-                                (tile.y * tile.size).toFloat(),
-                            ),
-                            tilePaint,
-                        )
-                    }
+                    if (controller.layerMove == null)
+                        controller.frame.tiles.values.forEach { tile ->
+                            val x = tile.x * tile.size
+                            val y = tile.y * tile.size
+                            if (
+                                x >= visible.right ||
+                                    y >= visible.bottom ||
+                                    x + tile.size <= visible.left ||
+                                    y + tile.size <= visible.top
+                            )
+                                return@forEach
+                            drawContext.canvas.drawImage(
+                                tile.image,
+                                Offset(
+                                    (tile.x * tile.size).toFloat(),
+                                    (tile.y * tile.size).toFloat(),
+                                ),
+                                tilePaint,
+                            )
+                        }
                 }
             }
+        }
+        controller.layerMove?.let {
+            LayerMoveOverlay(controller, it, viewSize, Modifier.matchParentSize())
         }
         Canvas(Modifier.matchParentSize().graphicsLayer()) {
             val document = controller.document

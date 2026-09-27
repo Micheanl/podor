@@ -5,6 +5,23 @@ import kotlinx.serialization.json.Json
 
 class PreferencesTest {
     @Test
+    fun addingMoveToolPreservesOlderCustomShortcuts() {
+        val old = Preferences(shortcuts = mapOf(
+            ShortcutAction.Brush to Shortcut("V"),
+            ShortcutAction.Eraser to Shortcut("V", shift = true),
+            ShortcutAction.Picker to Shortcut("V", alt = true),
+        ), language = Language.English)
+        val restored = Json.decodeFromString<Preferences>(Json.encodeToString(old)).withMoveShortcut()
+        assertTrue(restored.valid())
+        old.shortcuts.forEach { (action, key) -> assertEquals(key, restored.shortcut(action)) }
+        assertEquals(Language.English, restored.language)
+        assertEquals(restored, restored.withMoveShortcut())
+        assertEquals(Shortcut("V"), Preferences().withMoveShortcut().shortcut(ShortcutAction.MoveLayer))
+        val assigned = Preferences().assign(ShortcutAction.MoveLayer, Shortcut("T", command = true))
+        assertEquals(assigned, assigned.withMoveShortcut())
+    }
+
+    @Test
     fun shortcutConflictsAreRejectedAndCustomKeysSurviveSerialization() {
         val original = Preferences()
         assertFailsWith<IllegalArgumentException> {

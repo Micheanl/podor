@@ -1,6 +1,7 @@
 package app.podor.ui
 
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -9,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.podor.domain.Language
 
 object StudioTheme {
@@ -36,6 +38,11 @@ object StudioTheme {
     val viewControlsWidth = 260.dp
     val inspectorShape = RoundedCornerShape(24.dp)
     val inspectorMargin = 18.dp
+    val moveDockPadding = PaddingValues(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
+    val moveDockSpacing = 12.dp
+    val moveDockBorderWidth = 1.dp
+    val moveDockTitleSize = 11.sp
+    val moveDockValueSize = 10.sp
     val controlSize = 44.dp
     val iconSize = 21.dp
     val layerStatusIconSize = 12.dp

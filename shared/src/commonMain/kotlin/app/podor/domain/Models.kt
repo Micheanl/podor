@@ -33,9 +33,10 @@ enum class Tool(val label: String) {
     Brush("画笔"),
     Eraser("橡皮"),
     Picker("取色"),
-    Hand("移动"),
+    Hand("平移画布"),
     Select("矩形选区"),
     Fill("填充"),
+    MoveLayer("移动图层"),
 }
 
 @Serializable
