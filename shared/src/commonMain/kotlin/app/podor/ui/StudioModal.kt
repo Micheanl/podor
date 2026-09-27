@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -63,6 +64,15 @@ fun StudioModal(
             if (it) 0f else 1f
         }
     val dismiss = { visible.targetState = false }
+    val rim = remember {
+        Brush.linearGradient(
+            listOf(
+                StudioTheme.surfaceRim,
+                StudioTheme.border,
+                StudioTheme.border.copy(alpha = 0.65f),
+            )
+        )
+    }
     LaunchedEffect(visible.isIdle, visible.currentState) {
         if (visible.isIdle && !visible.currentState && !visible.targetState) onDismissRequest()
     }
@@ -76,7 +86,7 @@ fun StudioModal(
             },
             shape = RoundedCornerShape(28.dp),
             color = StudioTheme.panel,
-            border = BorderStroke(1.dp, StudioTheme.border),
+            border = BorderStroke(1.dp, rim),
         ) {
             Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

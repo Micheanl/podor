@@ -7,6 +7,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
 import app.podor.ui.StudioLaunch
+import app.podor.ui.StudioMotion
 import app.podor.ui.StudioTheme
 import java.nio.file.Files
 import java.nio.file.Path
@@ -36,7 +37,13 @@ class GpuRenderingTest {
                     }
                 }
             try {
-                delay(4500)
+                delay(
+                    (StudioMotion.launchMillis +
+                            StudioMotion.launchHoldMillis +
+                            StudioMotion.revealMillis +
+                            350)
+                        .toLong()
+                )
                 withContext(Dispatchers.Main) {
                     window.renderImmediately()
                     val api = window.renderApi.toString()

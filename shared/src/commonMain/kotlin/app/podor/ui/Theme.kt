@@ -40,9 +40,18 @@ object StudioTheme {
     val workspaceWidth = 1200.dp
     val projectCardWidth = 240.dp
     val projectPreviewHeight = 174.dp
-    val launchFieldSize = 420.dp
-    val launchGlow = Color(0x2478354A)
     val launchHighlight = Color(0x99FFE8EE)
+    val launchSpectrum =
+        listOf(
+            Color(0xFFE7818D),
+            Color(0xFFDEAD70),
+            Color(0xFFEACB78),
+            Color(0xFF9CC391),
+            Color(0xFF70BEC5),
+            Color(0xFF7D99D4),
+            Color(0xFFB593D3),
+        )
+    val surfaceRim = Color(0xFF62616B)
     const val colorRingRadius = 0.455f
     const val colorRingWidth = 0.075f
     const val colorPlaneFraction = 0.54f
@@ -53,6 +62,7 @@ object StudioMotion {
     const val feedbackMillis = 160
     const val releaseMillis = 220
     const val pressScale = 0.96f
+    const val cardPressScale = 0.99f
     const val sliderActiveScale = 1.18f
     const val pageMillis = 380
     const val pageFadeMillis = 80
@@ -63,11 +73,11 @@ object StudioMotion {
     const val iconSelectAngle = -10f
     const val panelMillis = 280
     const val dismissMillis = 180
-    const val launchMillis = 1300
-    const val launchHoldMillis = 800
-    const val revealMillis = 1800
-    const val launchFieldScale = 0.86f
-    const val launchLightAngle = 115f
+    const val launchMillis = 3400
+    const val launchHoldMillis = 600
+    const val revealMillis = 1500
+    const val launchFlowEnd = 0.72f
+    const val launchBandWidth = 0.28f
     const val dissolveTextureSize = 96
     const val dissolveSoftness = 0.12f
     val launchEasing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)

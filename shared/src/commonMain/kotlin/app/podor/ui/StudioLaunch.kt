@@ -20,9 +20,9 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.podor.domain.AppIdentity
 import app.podor.presentation.StudioController
 import app.podor.presentation.UpdateController
-import app.podor.domain.AppIdentity
 import app.podor.resources.Res
 import app.podor.resources.brand
 import kotlinx.coroutines.Dispatchers
@@ -57,7 +57,7 @@ fun StudioLaunch(ready: Boolean, content: @Composable () -> Unit) {
                 1f,
                 keyframes {
                     durationMillis = StudioMotion.launchMillis + StudioMotion.launchHoldMillis
-                    0f at 0 using StudioMotion.launchEasing
+                    0f at 0 using LinearEasing
                     1f at StudioMotion.launchMillis
                     1f at durationMillis
                 },
@@ -110,7 +110,7 @@ fun StudioLaunch(ready: Boolean, content: @Composable () -> Unit) {
                         }
                         .background(StudioTheme.background)
                 )
-                LaunchLight({ intro.value }, { reveal.value })
+                LaunchLight { intro.value }
                 val mask = texture
                 Column(
                     Modifier.width(220.dp)
@@ -124,12 +124,15 @@ fun StudioLaunch(ready: Boolean, content: @Composable () -> Unit) {
                     Image(
                         painterResource(Res.drawable.brand),
                         AppIdentity.name,
-                        Modifier.size(88.dp).logoLight { intro.value }.graphicsLayer {
-                            alpha = intro.value
-                            scaleX = 0.92f + intro.value * 0.08f
-                            scaleY = scaleX
-                            translationY = 10.dp.toPx() * (1f - intro.value)
-                        },
+                        Modifier.size(88.dp)
+                            .logoLight { launchLogoProgress(intro.value) }
+                            .graphicsLayer {
+                                val progress = launchLogoProgress(intro.value)
+                                alpha = progress
+                                scaleX = 0.92f + progress * 0.08f
+                                scaleY = scaleX
+                                translationY = 10.dp.toPx() * (1f - progress)
+                            },
                     )
                     Spacer(Modifier.height(22.dp))
                     Text(
@@ -140,7 +143,11 @@ fun StudioLaunch(ready: Boolean, content: @Composable () -> Unit) {
                         fontWeight = FontWeight.Medium,
                         modifier =
                             Modifier.graphicsLayer {
-                                val progress = ((intro.value - 0.25f) / 0.75f).coerceIn(0f, 1f)
+                                val progress =
+                                    ((launchLogoProgress(intro.value) - 0.25f) / 0.75f).coerceIn(
+                                        0f,
+                                        1f,
+                                    )
                                 alpha = progress
                                 translationY = 6.dp.toPx() * (1f - progress)
                             },

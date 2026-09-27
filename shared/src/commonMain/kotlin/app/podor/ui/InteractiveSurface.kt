@@ -39,6 +39,7 @@ internal fun Modifier.controlFeedback(
     interaction: MutableInteractionSource,
     shape: Shape,
     enabled: Boolean = true,
+    pressedScale: Float = StudioMotion.pressScale,
 ): Modifier {
     val pressed by interaction.collectIsPressedAsState()
     val hovered by interaction.collectIsHoveredAsState()
@@ -46,7 +47,7 @@ internal fun Modifier.controlFeedback(
     val keyboardFocus = focused && LocalInputModeManager.current.inputMode == InputMode.Keyboard
     val scale =
         animateFloatAsState(
-            if (pressed && enabled) StudioMotion.pressScale else 1f,
+            if (pressed && enabled) pressedScale else 1f,
             tween(
                 if (pressed) StudioMotion.pressMillis else StudioMotion.releaseMillis,
                 easing = StudioMotion.easing,

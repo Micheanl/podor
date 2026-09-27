@@ -32,8 +32,15 @@ class StudioLaunchTest {
                         StudioLaunch(true) { Box(Modifier.fillMaxSize().background(Color.White)) }
                     }
                 try {
-                    val middle = (StudioMotion.launchMillis + StudioMotion.launchHoldMillis + StudioMotion.revealMillis * 0.7f).toInt() * 60 / 1000
-                    val end = (StudioMotion.launchMillis + StudioMotion.launchHoldMillis + StudioMotion.revealMillis) * 60 / 1000 + 12
+                    val middle =
+                        (StudioMotion.launchMillis +
+                                StudioMotion.launchHoldMillis +
+                                StudioMotion.revealMillis * 0.7f)
+                            .toInt() * 60 / 1000
+                    val end =
+                        (StudioMotion.launchMillis +
+                            StudioMotion.launchHoldMillis +
+                            StudioMotion.revealMillis) * 60 / 1000 + 12
                     for (frame in 0..end) {
                         scene.render(frame * 16_666_667L).use { image ->
                             if (frame == 100 || frame == middle || frame == end) {
@@ -67,10 +74,14 @@ class StudioLaunchTest {
                 try {
                     val output = Path.of("build", "reports", "screenshots")
                     Files.createDirectories(output)
-                    for (frame in 0..270) {
+                    val end =
+                        (StudioMotion.launchMillis +
+                            StudioMotion.launchHoldMillis +
+                            StudioMotion.revealMillis) * 60 / 1000 + 12
+                    for (frame in 0..end) {
                         if (frame == 140) ready.value = true
                         scene.render(frame * 16_666_667L).use { image ->
-                            if (frame == 135 || frame == 270) {
+                            if (frame == 135 || frame == end) {
                                 val pixel = image.toComposeImageBitmap().toPixelMap()[8, 8]
                                 val expected =
                                     if (frame == 135) StudioTheme.background else Color.White

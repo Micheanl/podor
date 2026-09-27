@@ -4,13 +4,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.pointer.PointerEventType
+import app.podor.ui.LaunchLight
 import app.podor.ui.StudioLaunch
+import app.podor.ui.StudioMotion
 import app.podor.ui.StudioTheme
+import app.podor.ui.launchLogoProgress
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.*
@@ -19,6 +25,55 @@ import org.jetbrains.skia.EncodedImageFormat
 
 @OptIn(ExperimentalComposeUiApi::class)
 class MotionRenderingTest {
+    @Test
+    fun colorFlowTravelsDownLeftBeforeTheLogoAppears() =
+        runBlocking<Unit> {
+            withContext(Dispatchers.Main) {
+                val intro = mutableFloatStateOf(0f)
+                val scene =
+                    ImageComposeScene(640, 420) {
+                        Box(Modifier.fillMaxSize().background(StudioTheme.background)) {
+                            LaunchLight { intro.floatValue }
+                        }
+                    }
+                try {
+                    fun center(phase: Float, time: Long): Offset {
+                        intro.floatValue = phase * StudioMotion.launchFlowEnd
+                        return scene.render(time).use { image ->
+                            val pixels = image.toComposeImageBitmap().toPixelMap()
+                            var xTotal = 0f
+                            var yTotal = 0f
+                            var weight = 0f
+                            for (y in 0 until pixels.height step 4) {
+                                for (x in 0 until pixels.width step 4) {
+                                    val color = pixels[x, y]
+                                    val intensity =
+                                        (maxOf(color.red, color.green, color.blue) - 0.15f)
+                                            .coerceAtLeast(0f)
+                                    xTotal += x * intensity
+                                    yTotal += y * intensity
+                                    weight += intensity
+                                }
+                            }
+                            assertTrue(weight > 10f, "Color flow should be visible")
+                            Offset(xTotal / weight, yTotal / weight)
+                        }
+                    }
+                    val entry = center(0.3f, 0L)
+                    val exit = center(0.7f, 100_000_000L)
+                    assertTrue(entry.x > 640 * 0.6f && entry.y < 420 * 0.4f, "entry=$entry")
+                    assertTrue(exit.x < 640 * 0.4f && exit.y > 420 * 0.6f, "exit=$exit")
+                    assertEquals(0f, launchLogoProgress(StudioMotion.launchFlowEnd))
+                    assertEquals(1f, launchLogoProgress(1f))
+                    assertTrue(
+                        launchLogoProgress((1f + StudioMotion.launchFlowEnd) / 2f) in 0.1f..0.99f
+                    )
+                } finally {
+                    scene.close()
+                }
+            }
+        }
+
     @Test
     fun launchLightDissolvesAndStopsWithoutRecomposingTheWorkspaceEachFrame() =
         runBlocking<Unit> {
@@ -39,11 +94,15 @@ class MotionRenderingTest {
                 delay(200)
                 withContext(Dispatchers.Main) {
                     val durations = mutableListOf<Long>()
-                    for (frame in 1..285) {
+                    val end =
+                        (StudioMotion.launchMillis +
+                            StudioMotion.launchHoldMillis +
+                            StudioMotion.revealMillis) * 60 / 1000 + 36
+                    for (frame in 1..end) {
                         val started = System.nanoTime()
                         scene.render(frame * 16_666_667L).use { image ->
                             durations += System.nanoTime() - started
-                            if (frame in listOf(65, 112, 162, 204)) {
+                            if (frame in listOf(30, 50, 65, 90, 112, 162, 200, 275)) {
                                 image.encodeToData(EncodedImageFormat.PNG)!!.use {
                                     Files.write(
                                         directory.resolve("launch-light-$frame.png"),

@@ -1,9 +1,11 @@
 package app.podor.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -16,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
@@ -255,12 +258,27 @@ private fun ProjectCard(controller: StudioController, project: RecentProject) {
             value = controller.projectThumbnail(project.reference)
         }
     var menu by remember { mutableStateOf(false) }
+    val interaction = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(20.dp)
+    val rim = remember {
+        Brush.linearGradient(
+            listOf(StudioTheme.surfaceRim.copy(alpha = 0.5f), StudioTheme.border.copy(alpha = 0.3f))
+        )
+    }
     Surface(
-        Modifier.fillMaxWidth().clickable(enabled = !controller.busy) {
-            controller.navigate(WorkspaceDestination.Open(project.reference))
-        },
-        shape = RoundedCornerShape(20.dp),
+        Modifier.fillMaxWidth()
+            .clickable(interaction, indication = null, enabled = !controller.busy) {
+                controller.navigate(WorkspaceDestination.Open(project.reference))
+            }
+            .controlFeedback(
+                interaction,
+                shape,
+                enabled = !controller.busy,
+                pressedScale = StudioMotion.cardPressScale,
+            ),
+        shape = shape,
         color = StudioTheme.panel,
+        border = BorderStroke(1.dp, rim),
     ) {
         Column {
             Box(
