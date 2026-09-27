@@ -1,8 +1,8 @@
 {
-  "version": "0.2.2",
-  "notes": "# podor 0.2.2\n\n整理了项目目录、说明和下载页，更新了封面与界面预览。\n\n工程只支持 `.podor`，移除了旧格式读取与旧目录迁移。\n\nWindows x64，安装前请保存作品并退出应用。\n",
+  "version": "0.2.3",
+  "notes": "# podor 0.2.3\n\n画笔面板新增稳笔强度，描线更平顺，抬笔时补齐线尾。新增勾线笔，内置笔刷增至 11 支。\n\n稳笔参数可随自定义笔刷保存，也可通过笔刷包分享。\n\nWindows x64，安装前请保存作品并退出应用。\n",
   "platform": "windows-x64",
-  "url": "https://gitee.com/Micheanl/podor/releases/download/v0.2.2/podor-0.2.2.msi",
-  "sha256": "8f912792c0f1bcaea5b80700bf072a4bf291172536c485c4b6eb551f054f6064",
-  "size": 69821922
+  "url": "https://gitee.com/Micheanl/podor/releases/download/v0.2.3/podor-0.2.3.msi",
+  "sha256": "c370e8868fee8ce3d23c56de9fb742a34aaac43c54ab7902029b4bb013f9e9ff",
+  "size": 69821923
 }
