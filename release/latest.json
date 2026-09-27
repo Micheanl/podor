@@ -1,8 +1,8 @@
 {
-  "version": "0.2.14",
-  "notes": "- 新增画布旋转与镜像查看，底部可调整角度、向左右旋转和一键回正，保存与导出方向保持原样。\n- Shift + 滚轮绕指针旋转，普通滚轮继续缩放，适合窗口按钮恢复完整视图。\n- 双指手势加入旋转处理，修正同时缩放、平移时的中心点偏移，实体触控设备仍需验证。\n- 笔迹、取色、填充和选区随视图准确定位，视图变化复用原有图块，不写入作品历史。\n",
+  "version": "0.2.15",
+  "notes": "- 接入 Windows Ink，读取触控笔压力，支持笔尾橡皮和逐点历史采样。\n- 修复连续落笔丢失，失去焦点或系统取消时撤回当前笔画，避免留下半截笔迹。\n- 修复 Windows 下 Shift + 滚轮无法旋转画布。\n- 面板右上角可直接收起，顶部图标重新展开，保留颜色页面和画笔设置。\n- 压感与笔尾擦除通过 Windows 系统指针注入验证，实体数位板仍需测试。\n",
   "platform": "windows-x64",
-  "url": "https://gitee.com/Micheanl/podor/releases/download/v0.2.14/podor-0.2.14.msi",
-  "sha256": "105ec1ded23c97fcaa1741c89b618e04aafb3642611fd2bf515ed704cae388e3",
-  "size": 70361088
+  "url": "https://gitee.com/Micheanl/podor/releases/download/v0.2.15/podor-0.2.15.msi",
+  "sha256": "bace85684b4471c138213919f48dbf05a8a33d5a5cf5eac97a7ef48973e94ce9",
+  "size": 70393856
 }
