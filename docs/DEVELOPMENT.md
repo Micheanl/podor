@@ -90,6 +90,8 @@ iOS 需要 Apple Silicon Mac、Xcode、Rust 和 XcodeGen。运行 `bash scripts/
 
 仓库地址在 `release/publishing.json`，应用更新入口在 `release/channel.properties`。应用从 Gitee 发行接口读取清单，下载完成后校验大小和 SHA-256，再保留 MSI 文件。
 
+最新发行若是预发布或缺少更新附件，应用按降序查询最近的稳定发行，最多检查 5 页，每页 20 条。清单限 64 KiB，发行列表每页限 512 KiB，网络失败仍显示错误。发版失败时撤下本次新建且未完成的 Gitee 发行记录，避免遮住稳定更新入口。
+
 安装前再次校验文件，后台安装助手就绪后应用才退出。助手等待旧进程结束，再运行带 `/norestart REBOOT=ReallySuppress` 的安装程序。MSI 构建最后执行 `scripts/configure-msi.ps1`，检查桌面快捷方式、禁止自动重启，添加完成后的启动选项。用户取消安装时不会重启应用；遇到文件占用仍需手动处理，不自动重启 Windows。
 
 本机通过 `scripts/configure-publishing.ps1` 设置 `GITEE_TOKEN`，GitHub 使用 Git 凭据或 `GITHUB_TOKEN`。凭据只保存在本机。

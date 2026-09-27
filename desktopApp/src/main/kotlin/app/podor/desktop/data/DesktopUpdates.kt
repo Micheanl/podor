@@ -30,8 +30,9 @@ class DesktopUpdates(
         withContext(Dispatchers.IO) {
             if (manifestUrl.isBlank()) throw UpdateException(UpdateProblem.Unconfigured)
             try {
-                val published = json.decodeFromString<PublishedRelease>(fetch(URI(manifestUrl)))
-                require(!published.prerelease)
+                val uri = URI(manifestUrl)
+                val latest = json.decodeFromString<PublishedRelease>(fetch(uri))
+                val published = if (complete(latest)) latest else stableRelease(uri)
                 val manifest = published.assets.single { it.name == "latest.json" }
                 json.decodeFromString<AppRelease>(fetch(URI(manifest.url))).also {
                     it.validate()
@@ -51,13 +52,51 @@ class DesktopUpdates(
             }
         }
 
-    private suspend fun fetch(uri: URI): String {
+    private fun complete(release: PublishedRelease): Boolean {
+        if (release.prerelease || !release.tag.startsWith('v')) return false
+        val version = release.tag.removePrefix("v")
+        try {
+            AppVersion.parse(version)
+        } catch (_: IllegalArgumentException) {
+            return false
+        }
+        return release.assets.count { it.name == "latest.json" } == 1 &&
+            release.assets.count { it.name == "${AppIdentity.name}-$version.msi" } == 1
+    }
+
+    private suspend fun stableRelease(latestUri: URI): PublishedRelease {
+        require(latestUri.path.endsWith("/releases/latest"))
+        for (page in 1..maxReleasePages) {
+            val index =
+                URI(
+                    latestUri.scheme,
+                    null,
+                    latestUri.host,
+                    latestUri.port,
+                    latestUri.path.removeSuffix("/latest"),
+                    "page=$page&per_page=$releasePageSize&direction=desc",
+                    null,
+                )
+            val releases =
+                json.decodeFromString<List<PublishedRelease>>(fetch(index, maxIndexBytes))
+            require(releases.size <= releasePageSize)
+            releases
+                .filter(::complete)
+                .maxByOrNull { AppVersion.parse(it.tag.removePrefix("v")) }
+                ?.let {
+                    return it
+                }
+            if (releases.size < releasePageSize) break
+        }
+        throw UpdateException(UpdateProblem.Manifest)
+    }
+
+    private suspend fun fetch(uri: URI, limit: Int = maxManifestBytes): String {
         val connection = connect(uri)
         try {
-            val bytes =
-                connection.inputStream.use { input -> input.readNBytes(maxManifestBytes + 1) }
+            val bytes = connection.inputStream.use { input -> input.readNBytes(limit + 1) }
             currentCoroutineContext().ensureActive()
-            if (bytes.size > maxManifestBytes) throw UpdateException(UpdateProblem.Manifest)
+            if (bytes.size > limit) throw UpdateException(UpdateProblem.Manifest)
             return bytes.decodeToString()
         } catch (_: IOException) {
             throw UpdateException(UpdateProblem.Connection)
@@ -142,7 +181,12 @@ class DesktopUpdates(
         var uri = initial
         repeat(maxRedirects + 1) { attempt ->
             validateUrl(uri)
-            val connection = openConnection(uri)
+            val connection =
+                try {
+                    openConnection(uri)
+                } catch (_: IOException) {
+                    throw UpdateException(UpdateProblem.Connection)
+                }
             connection.connectTimeout = connectTimeoutMillis
             connection.readTimeout = readTimeoutMillis
             connection.instanceFollowRedirects = false
@@ -188,6 +232,9 @@ class DesktopUpdates(
 
     companion object {
         const val maxManifestBytes = 64 * 1024
+        private const val maxIndexBytes = 512 * 1024
+        private const val releasePageSize = 20
+        private const val maxReleasePages = 5
         private const val bufferBytes = 64 * 1024
         private const val connectTimeoutMillis = 10_000
         private const val readTimeoutMillis = 5_000
