@@ -125,6 +125,122 @@ class StudioRenderingTest {
         }
 
     @Test
+    fun floatingInspectorLeavesCanvasVisibleAndInteractiveOutsideItsSurface() =
+        runBlocking<Unit> {
+            NativeLoader.load()
+            val engine = createNativeEngine(64, 64)
+            val project =
+                try {
+                    engine.call(EngineOperation.SAVE)
+                } finally {
+                    engine.close()
+                }
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+            val controller = openController(project, scope)
+            val scene =
+                withContext(Dispatchers.Main) {
+                    controller.viewport = Viewport(zoom = 4f)
+                    ImageComposeScene(1360, 900) { StudioApp(controller) }
+                }
+            try {
+                val revision =
+                    withContext(Dispatchers.Main) {
+                        scene.render(0).close()
+                        scene.render(16_666_667L).use { image ->
+                            val pixels = image.toComposeImageBitmap().toPixelMap()
+                            for (point in listOf(1200 to 70, 1200 to 890, 1350 to 300)) {
+                                assertEquals(
+                                    1f,
+                                    pixels[point.first, point.second].red,
+                                    0.005f,
+                                    "Inspector margin hides canvas at $point",
+                                )
+                            }
+                            assertEquals(StudioTheme.panel.red, pixels[1200, 93].red, 0.005f)
+                            image.encodeToData(EncodedImageFormat.PNG)!!.use {
+                                Files.write(
+                                    Path.of("build/reports/screenshots/desktop-overlay.png"),
+                                    it.bytes,
+                                )
+                            }
+                        }
+                        scene.sendPointerEvent(PointerEventType.Press, Offset(1200f, 93f))
+                        scene.sendPointerEvent(PointerEventType.Release, Offset(1200f, 93f))
+                        controller.document.revision
+                    }
+                delay(150)
+                withContext(Dispatchers.Main) {
+                    assertEquals(
+                        revision,
+                        controller.document.revision,
+                        "Panel surface painted through to canvas",
+                    )
+                    var frame = 2L
+                    fun settle() {
+                        repeat(35) { scene.render(frame++ * 16_666_667L).close() }
+                    }
+                    fun click(x: Float, y: Float) {
+                        scene.sendPointerEvent(PointerEventType.Press, Offset(x, y))
+                        scene.sendPointerEvent(PointerEventType.Release, Offset(x, y))
+                        scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
+                        settle()
+                    }
+                    fun assertPaletteVisible() {
+                        scene.render(frame++ * 16_666_667L).use { image ->
+                            val pixels = image.toComposeImageBitmap().toPixelMap()
+                            var colorful = 0
+                            for (x in 1070..1310 step 2) {
+                                for (y in 240..500 step 2) {
+                                    val color = pixels[x, y]
+                                    if (
+                                        maxOf(color.red, color.green, color.blue) -
+                                            minOf(color.red, color.green, color.blue) > 0.3f
+                                    )
+                                        colorful++
+                                }
+                            }
+                            assertTrue(colorful > 500, "Palette selection was not retained")
+                        }
+                    }
+                    click(1158f, 172f)
+                    assertPaletteVisible()
+                    val brush = controller.brush
+                    click(1314f, 32f)
+                    scene.render(frame++ * 16_666_667L).use { image ->
+                        assertEquals(
+                            1f,
+                            image.toComposeImageBitmap().toPixelMap()[1200, 93].red,
+                            0.005f,
+                            "Inspector did not collapse",
+                        )
+                        image.encodeToData(EncodedImageFormat.PNG)!!.use {
+                            Files.write(
+                                Path.of("build/reports/screenshots/desktop-collapsed.png"),
+                                it.bytes,
+                            )
+                        }
+                    }
+                    click(1314f, 32f)
+                    assertPaletteVisible()
+                    assertEquals(brush, controller.brush)
+                    scene.sendPointerEvent(PointerEventType.Press, Offset(1200f, 70f))
+                    scene.sendPointerEvent(PointerEventType.Release, Offset(1200f, 70f))
+                }
+                withTimeout(5_000) {
+                    while (
+                        !withContext(Dispatchers.Main) { controller.document.revision > revision }
+                    ) delay(10)
+                }
+            } finally {
+                withContext(Dispatchers.Main) {
+                    scene.close()
+                    controller.shutdown()
+                }
+                scope.cancel()
+            }
+        }
+
+    @Test
     fun fractionalZoomHasNoTileSeamsAndAllLayoutsRender() =
         runBlocking<Unit> {
             NativeLoader.load()

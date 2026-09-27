@@ -3,6 +3,7 @@ package app.podor.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -14,6 +15,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import app.podor.domain.*
 import app.podor.presentation.StudioController
@@ -24,6 +26,7 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
     PodorTheme(controller.preferences.language) {
         var panel by remember { mutableStateOf(StudioPanel.Brushes) }
         var showInspector by remember { mutableStateOf(false) }
+        var inspectorExpanded by remember { mutableStateOf(true) }
         var dialog by remember { mutableStateOf(StudioDialog.None) }
         val focus = remember { FocusRequester() }
         LaunchedEffect(Unit) { focus.requestFocus() }
@@ -74,13 +77,29 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                 val showDocument = maxWidth >= 820.dp
                 fun openPanel(next: StudioPanel) {
                     panel = next
-                    if (!wide) showInspector = true
+                    if (wide) inspectorExpanded = true else showInspector = true
                 }
+                val inspectorInset =
+                    if (wide && inspectorExpanded)
+                        StudioTheme.inspectorWidth + StudioTheme.inspectorMargin
+                    else 0.dp
                 Column(Modifier.fillMaxSize()) {
-                    StudioHeader(controller, compact, showDocument, { dialog = it })
-                    Row(Modifier.weight(1f).fillMaxWidth()) {
-                        Box(Modifier.weight(1f).fillMaxHeight()) {
-                            CanvasWorkspace(controller, Modifier.fillMaxSize())
+                    StudioHeader(
+                        controller,
+                        compact,
+                        showDocument,
+                        { dialog = it },
+                        inspectorExpanded = inspectorExpanded,
+                        onToggleInspector =
+                            if (wide) ({ inspectorExpanded = !inspectorExpanded }) else null,
+                    )
+                    Box(Modifier.weight(1f).fillMaxWidth()) {
+                        CanvasWorkspace(
+                            controller,
+                            Modifier.fillMaxSize(),
+                            endInset = inspectorInset,
+                        )
+                        Box(Modifier.fillMaxSize().padding(end = inspectorInset)) {
                             if (!compact) {
                                 Column(
                                     Modifier.align(Alignment.CenterStart)
@@ -134,19 +153,24 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                                     Modifier.fillMaxWidth().align(Alignment.TopCenter)
                                 )
                         }
-                        if (wide) {
+                        if (wide && inspectorExpanded) {
                             Box(
-                                Modifier.padding(top = 18.dp, end = 18.dp, bottom = 18.dp)
+                                Modifier.align(Alignment.CenterEnd)
+                                    .padding(
+                                        top = StudioTheme.inspectorMargin,
+                                        end = StudioTheme.inspectorMargin,
+                                        bottom = StudioTheme.inspectorMargin,
+                                    )
                                     .width(StudioTheme.inspectorWidth)
                                     .fillMaxHeight()
-                                    .shadow(12.dp, RoundedCornerShape(24.dp))
-                                    .clip(RoundedCornerShape(24.dp))
+                                    .clip(StudioTheme.inspectorShape)
                                     .background(StudioTheme.panel)
                                     .border(
                                         1.dp,
                                         StudioTheme.border.copy(alpha = 0.6f),
-                                        RoundedCornerShape(24.dp),
+                                        StudioTheme.inspectorShape,
                                     )
+                                    .pointerInput(Unit) { detectTapGestures {} }
                             ) {
                                 Inspector(controller, panel, { panel = it }, Modifier.fillMaxSize())
                             }

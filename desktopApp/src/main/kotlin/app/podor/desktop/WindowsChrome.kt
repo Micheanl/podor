@@ -19,7 +19,13 @@ internal interface WindowProcedure : StdCallLibrary.StdCallCallback {
     fun invoke(windowHandle: Pointer, message: Int, wParam: Long, lParam: Long): Long
 }
 
+internal interface WindowVisitor : StdCallLibrary.StdCallCallback {
+    fun invoke(window: Pointer, data: Long): Boolean
+}
+
 internal interface WindowApi : StdCallLibrary {
+    fun EnumChildWindows(window: Pointer, visitor: WindowVisitor, data: Long): Boolean
+
     fun GetWindowLongW(window: Pointer, index: Int): Int
 
     fun SetWindowLongW(window: Pointer, index: Int, value: Int): Int
@@ -65,6 +71,8 @@ internal interface WindowApi : StdCallLibrary {
     fun GetMonitorInfoW(monitor: Pointer, info: Pointer): Boolean
 
     fun SendMessageW(window: Pointer, message: Int, wParam: Long, lParam: Long): Long
+
+    fun PostMessageW(window: Pointer, message: Int, wParam: Long, lParam: Long): Boolean
 }
 
 private interface DwmApi : StdCallLibrary {
@@ -113,6 +121,7 @@ internal class NativeWindowChrome(window: Window) : AutoCloseable {
     private val rect = Memory(16)
     private val point = Memory(8)
     private val monitor = Memory(40)
+    private val children = mutableMapOf<Pointer, Pair<Pointer, WindowProcedure>>()
     private val procedure =
         object : WindowProcedure {
             override fun invoke(
@@ -124,21 +133,8 @@ internal class NativeWindowChrome(window: Window) : AutoCloseable {
                 when (message) {
                     0x0083 -> return 0L
                     0x0084 -> {
-                        point.setInt(0, (lParam and 0xffff).toShort().toInt())
-                        point.setInt(4, ((lParam shr 16) and 0xffff).toShort().toInt())
-                        if (
-                            user.ScreenToClient(windowHandle, point) &&
-                                user.GetClientRect(windowHandle, rect)
-                        ) {
-                            return WindowHit.at(
-                                    point.getInt(0),
-                                    point.getInt(4),
-                                    rect.getInt(8),
-                                    rect.getInt(12),
-                                    user.GetDpiForWindow(windowHandle) / 96f,
-                                    user.IsZoomed(windowHandle),
-                                )
-                                .toLong()
+                        hit(lParam)?.let {
+                            return it.toLong()
                         }
                     }
                     0x0024 -> {
@@ -191,7 +187,61 @@ internal class NativeWindowChrome(window: Window) : AutoCloseable {
         user.SetWindowPos(handle, null, 0, 0, 0, 0, 0x0037)
     }
 
+    private fun hit(position: Long): Int? {
+        point.setInt(0, (position and 0xffff).toShort().toInt())
+        point.setInt(4, ((position shr 16) and 0xffff).toShort().toInt())
+        if (!user.ScreenToClient(handle, point) || !user.GetClientRect(handle, rect)) return null
+        return WindowHit.at(
+            point.getInt(0),
+            point.getInt(4),
+            rect.getInt(8),
+            rect.getInt(12),
+            user.GetDpiForWindow(handle) / 96f,
+            user.IsZoomed(handle),
+        )
+    }
+
+    fun attachChildren() {
+        user.EnumChildWindows(
+            handle,
+            object : WindowVisitor {
+                override fun invoke(window: Pointer, data: Long): Boolean {
+                    if (window in children) return true
+                    val original = user.GetWindowLongPtrW(window, -4)
+                    val callback =
+                        object : WindowProcedure {
+                            override fun invoke(
+                                windowHandle: Pointer,
+                                message: Int,
+                                wParam: Long,
+                                lParam: Long,
+                            ): Long {
+                                if (message == 0x0084) {
+                                    val target = hit(lParam)
+                                    if (target != null && target != WindowHit.CLIENT) return -1L
+                                }
+                                return user.CallWindowProcW(
+                                    original,
+                                    windowHandle,
+                                    message,
+                                    wParam,
+                                    lParam,
+                                )
+                            }
+                        }
+                    children[window] = original to callback
+                    user.SetWindowLongPtrW(window, -4, callback)
+                    return true
+                }
+            },
+            0,
+        )
+    }
+
     override fun close() {
+        for ((window, hook) in children) {
+            if (user.IsWindow(window)) user.SetWindowLongPtrW(window, -4, hook.first)
+        }
         if (user.IsWindow(handle)) {
             user.SetWindowLongPtrW(handle, -4, originalProcedure)
             user.SetWindowLongW(handle, -16, originalStyle)
@@ -205,6 +255,7 @@ fun WindowsChrome(window: Window) {
         var chrome: NativeWindowChrome? = null
         fun install() {
             if (chrome == null) chrome = NativeWindowChrome(window)
+            chrome.attachChildren()
         }
         val listener =
             object : WindowAdapter() {

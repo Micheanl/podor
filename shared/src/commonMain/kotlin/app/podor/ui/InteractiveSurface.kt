@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun Modifier.controlFeedback(
+internal fun Modifier.controlFeedback(
     interaction: MutableInteractionSource,
     shape: Shape,
     enabled: Boolean = true,

@@ -112,6 +112,8 @@ private val english =
         "快捷键" to "Shortcuts",
         "插件" to "Plugins",
         "关闭" to "Close",
+        "收起面板" to "Hide panel",
+        "展开面板" to "Show panel",
         "最小化" to "Minimize",
         "最大化" to "Maximize",
         "还原窗口" to "Restore window",

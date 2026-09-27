@@ -33,6 +33,8 @@ object StudioTheme {
     val blendSource = Color(0xFFE6AABB)
     val railWidth = 68.dp
     val inspectorWidth = 300.dp
+    val inspectorShape = RoundedCornerShape(24.dp)
+    val inspectorMargin = 18.dp
     val controlSize = 44.dp
     val iconSize = 21.dp
     val sliderThumbSize = 18.dp
@@ -46,9 +48,20 @@ object StudioTheme {
     val windowTitleHeight = 44.dp
     val windowButtonWidth = 46.dp
     val windowButtonInset = 6.dp
-    val windowButtonRadius = 10.dp
     val windowIconSize = 12.dp
     val windowResizeBorder = 6.dp
+    val windowSpectrum =
+        listOf(
+            Color(0xFFDA6982),
+            Color(0xFFDF9977),
+            Color(0xFFD2BD7F),
+            Color(0xFF78B5A2),
+            Color(0xFF76A8CF),
+            Color(0xFF9A86C5),
+        )
+    const val windowTintAlpha = 0.3f
+    const val windowRimAlpha = 0.55f
+    val windowRimHeight = 1.dp
     val surfaceRim = Color(0xFF62616B)
     const val colorRingRadius = 0.455f
     const val colorRingWidth = 0.075f

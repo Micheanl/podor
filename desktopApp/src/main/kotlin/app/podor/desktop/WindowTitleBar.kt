@@ -1,25 +1,27 @@
 package app.podor.desktop
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.semantics.Role
@@ -29,7 +31,6 @@ import androidx.compose.ui.unit.dp
 import app.podor.domain.Language
 import app.podor.ui.StudioMotion
 import app.podor.ui.StudioTheme
-import app.podor.ui.controlFeedback
 import app.podor.ui.trValue
 
 @Composable
@@ -41,7 +42,24 @@ internal fun WindowTitleBar(
     onClose: () -> Unit,
     background: Color = StudioTheme.panel,
 ) {
-    Row(Modifier.fillMaxWidth().height(StudioTheme.windowTitleHeight).background(background)) {
+    Row(
+        Modifier.fillMaxWidth()
+            .height(StudioTheme.windowTitleHeight)
+            .background(background)
+            .drawWithCache {
+                val spectrum = Brush.horizontalGradient(StudioTheme.windowSpectrum)
+                val fade = Brush.verticalGradient(listOf(Color.Transparent, background))
+                onDrawBehind {
+                    drawRect(spectrum, alpha = StudioTheme.windowTintAlpha)
+                    drawRect(fade)
+                    drawRect(
+                        spectrum,
+                        size = Size(size.width, StudioTheme.windowRimHeight.toPx()),
+                        alpha = StudioTheme.windowRimAlpha,
+                    )
+                }
+            }
+    ) {
         Spacer(Modifier.weight(1f))
         WindowButton(trValue("最小化", language), 0, onClick = onMinimize)
         WindowButton(
@@ -59,24 +77,17 @@ private fun WindowButton(label: String, glyph: Int, onClick: () -> Unit) {
     val hovered by interaction.collectIsHoveredAsState()
     val pressed by interaction.collectIsPressedAsState()
     val focused by interaction.collectIsFocusedAsState()
-    val active =
-        hovered ||
-            pressed ||
-            (focused && LocalInputModeManager.current.inputMode == InputMode.Keyboard)
-    val shape = RoundedCornerShape(StudioTheme.windowButtonRadius)
-    val background =
-        animateColorAsState(
-            when {
-                active && glyph == 3 -> StudioTheme.selection
-                active -> StudioTheme.elevated
-                else -> StudioTheme.elevated.copy(alpha = 0.5f)
-            },
-            tween(StudioMotion.feedbackMillis),
+    val keyboardFocus = focused && LocalInputModeManager.current.inputMode == InputMode.Keyboard
+    val active = hovered || pressed || keyboardFocus
+    val scale =
+        animateFloatAsState(
+            if (pressed) StudioMotion.pressScale else 1f,
+            tween(StudioMotion.pressMillis, easing = StudioMotion.easing),
         )
     val tint =
         animateColorAsState(
             when {
-                active && glyph == 3 -> StudioTheme.onSelection
+                active && glyph == 3 -> StudioTheme.accent
                 active -> StudioTheme.text
                 else -> StudioTheme.muted
             },
@@ -85,15 +96,18 @@ private fun WindowButton(label: String, glyph: Int, onClick: () -> Unit) {
     Box(
         Modifier.width(StudioTheme.windowButtonWidth)
             .fillMaxHeight()
-            .padding(StudioTheme.windowButtonInset)
+            .hoverable(interaction)
             .clickable(interaction, indication = null, role = Role.Button, onClick = onClick)
-            .controlFeedback(interaction, shape)
-            .drawBehind { drawRect(background.value) }
-            .border(1.dp, StudioTheme.border.copy(alpha = 0.55f), shape)
+            .padding(StudioTheme.windowButtonInset)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.size(StudioTheme.windowIconSize)) {
+        Canvas(
+            Modifier.size(StudioTheme.windowIconSize).graphicsLayer {
+                scaleX = scale.value
+                scaleY = scale.value
+            }
+        ) {
             val color = tint.value
             val stroke = 1.dp.toPx()
             val inset = stroke / 2f

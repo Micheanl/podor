@@ -19,6 +19,9 @@ import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import app.podor.domain.Tool
 import app.podor.presentation.StudioController
 import kotlin.math.pow
@@ -27,8 +30,16 @@ import kotlinx.coroutines.isActive
 import kotlinx.serialization.json.put
 
 @Composable
-fun CanvasWorkspace(controller: StudioController, modifier: Modifier = Modifier) {
-    var viewSize by remember { mutableStateOf(Size.Zero) }
+fun CanvasWorkspace(
+    controller: StudioController,
+    modifier: Modifier = Modifier,
+    endInset: Dp = 0.dp,
+) {
+    var fullSize by remember { mutableStateOf(Size.Zero) }
+    val inset by rememberUpdatedState(with(LocalDensity.current) { endInset.toPx() })
+    val viewSize by remember {
+        derivedStateOf { Size((fullSize.width - inset).coerceAtLeast(0f), fullSize.height) }
+    }
     var cursor by remember { mutableStateOf<Offset?>(null) }
     var selectionStart by remember { mutableStateOf<Offset?>(null) }
     var selectionEnd by remember { mutableStateOf<Offset?>(null) }
@@ -42,7 +53,7 @@ fun CanvasWorkspace(controller: StudioController, modifier: Modifier = Modifier)
     Box(
         modifier
             .clipToBounds()
-            .onSizeChanged { viewSize = Size(it.width.toFloat(), it.height.toFloat()) }
+            .onSizeChanged { fullSize = Size(it.width.toFloat(), it.height.toFloat()) }
             .pointerInput(controller) {
                 var drawing = false
                 var activePointer: PointerId? = null
@@ -244,9 +255,9 @@ fun CanvasWorkspace(controller: StudioController, modifier: Modifier = Modifier)
     ) {
         Canvas(Modifier.matchParentSize().graphicsLayer()) {
             val document = controller.document
-            val scale = controller.viewport.scale(size, document)
+            val scale = controller.viewport.scale(viewSize, document)
             if (scale <= 0f) return@Canvas
-            val origin = controller.viewport.origin(size, document)
+            val origin = controller.viewport.origin(viewSize, document)
             val width = document.width * scale
             val height = document.height * scale
             drawRect(Color.Black.copy(alpha = 0.2f), origin + Offset(0f, 10f), Size(width, height))
@@ -290,9 +301,9 @@ fun CanvasWorkspace(controller: StudioController, modifier: Modifier = Modifier)
         }
         Canvas(Modifier.matchParentSize().graphicsLayer()) {
             val document = controller.document
-            val scale = controller.viewport.scale(size, document)
+            val scale = controller.viewport.scale(viewSize, document)
             if (scale <= 0f) return@Canvas
-            val origin = controller.viewport.origin(size, document)
+            val origin = controller.viewport.origin(viewSize, document)
             val selected =
                 if (selectionStart != null && selectionEnd != null) {
                     val a = selectionStart!!

@@ -11,6 +11,7 @@ import app.podor.domain.Language
 import app.podor.ui.StudioTheme
 import com.sun.jna.Memory
 import com.sun.jna.Native
+import com.sun.jna.Pointer
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.*
@@ -105,7 +106,8 @@ class WindowsChromeTest {
                 withContext(Dispatchers.Main) {
                     ComposeWindow().apply {
                         isUndecorated = true
-                        focusableWindowState = false
+                        opacity = 0f
+                        isAutoRequestFocus = false
                         setBounds(-3000, -2000, 800, 600)
                         val frame = this
                         setContent {
@@ -129,13 +131,13 @@ class WindowsChromeTest {
                             assertEquals(width, client.getInt(8))
                             assertEquals(height, client.getInt(12))
                             val scale = api.GetDpiForWindow(handle) / 96f
-                            fun hit(x: Int, y: Int): Long {
+                            fun hit(x: Int, y: Int, target: Pointer = handle): Long {
                                 val screenX = outer.getInt(0) + (x * scale).toInt()
                                 val screenY = outer.getInt(4) + (y * scale).toInt()
                                 val position =
                                     ((screenY.toLong() and 0xffff) shl 16) or
                                         (screenX.toLong() and 0xffff)
-                                return api.SendMessageW(handle, 0x0084, 0, position)
+                                return api.SendMessageW(target, 0x0084, 0, position)
                             }
                             assertEquals(WindowHit.CAPTION.toLong(), hit(200, 20))
                             assertEquals(WindowHit.TOP_LEFT.toLong(), hit(1, 1))
@@ -143,6 +145,27 @@ class WindowsChromeTest {
                                 WindowHit.CLIENT.toLong(),
                                 hit((width / scale).toInt() - 25, 20),
                             )
+                            val children = mutableListOf<Pointer>()
+                            api.EnumChildWindows(
+                                handle,
+                                object : WindowVisitor {
+                                    override fun invoke(window: Pointer, data: Long): Boolean {
+                                        children.add(window)
+                                        return true
+                                    }
+                                },
+                                0,
+                            )
+                            assertTrue(children.isNotEmpty())
+                            for (child in children) {
+                                assertEquals(-1L, hit(200, 20, child), "Child blocks title drag")
+                                assertEquals(-1L, hit(1, 1, child), "Child blocks edge resize")
+                                assertEquals(WindowHit.CLIENT.toLong(), hit(200, 80, child))
+                                assertEquals(
+                                    WindowHit.CLIENT.toLong(),
+                                    hit((width / scale).toInt() - 25, 20, child),
+                                )
+                            }
                             Memory(40).use { limits ->
                                 api.SendMessageW(
                                     handle,
@@ -155,6 +178,16 @@ class WindowsChromeTest {
                             }
                         }
                     }
+                }
+                val api = Native.load("user32", WindowApi::class.java)
+                val handle = withContext(Dispatchers.Main) { Native.getWindowPointer(window) }
+                for (maximized in listOf(true, false)) {
+                    assertTrue(api.PostMessageW(handle, 0x00A3, WindowHit.CAPTION.toLong(), 0))
+                    assertTrue(api.PostMessageW(handle, 0x00A2, WindowHit.CAPTION.toLong(), 0))
+                    withTimeoutOrNull(3_000) {
+                        while (api.IsZoomed(handle) != maximized) delay(10)
+                    }
+                    assertEquals(maximized, api.IsZoomed(handle), "Native caption double-click")
                 }
             } finally {
                 withContext(Dispatchers.Main) { window.dispose() }

@@ -31,6 +31,8 @@ fun StudioHeader(
     compact: Boolean,
     showDocument: Boolean,
     onDialog: (StudioDialog) -> Unit,
+    inspectorExpanded: Boolean = false,
+    onToggleInspector: (() -> Unit)? = null,
 ) {
     var menu by remember { mutableStateOf(false) }
     Row(
@@ -184,6 +186,15 @@ fun StudioHeader(
             enabled = controller.ready && !controller.busy,
         ) {
             onDialog(StudioDialog.Export)
+        }
+        if (onToggleInspector != null) {
+            Spacer(Modifier.width(8.dp))
+            ToolButton(
+                Glyph.Sidebar,
+                if (inspectorExpanded) "收起面板" else "展开面板",
+                selected = inspectorExpanded,
+                onClick = onToggleInspector,
+            )
         }
     }
 }

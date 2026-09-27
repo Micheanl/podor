@@ -46,6 +46,7 @@ enum class Glyph(val resource: DrawableResource) {
     Home(Res.drawable.ic_home),
     Search(Res.drawable.ic_search),
     Update(Res.drawable.ic_update),
+    Sidebar(Res.drawable.ic_sidebar),
 }
 
 @Composable
