@@ -32,6 +32,9 @@ pub fn duplicate(doc: &mut Document, source: u32) -> Result<(), String> {
 }
 
 pub fn merge_visible(doc: &mut Document) -> Result<(), String> {
+    if doc.layers.iter().any(|layer| layer.visible && layer.locked) {
+        return Err("请先解锁要合并的图层".into());
+    }
     if doc.layers.iter().filter(|layer| layer.visible).count() < 2 {
         return Err("至少需要两个可见图层".into());
     }

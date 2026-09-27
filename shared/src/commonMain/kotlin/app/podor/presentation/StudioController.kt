@@ -597,6 +597,13 @@ class StudioController(
             put("opacity", layer.opacity)
         }
 
+    fun setLayerProtection(id: Int, alphaLocked: Boolean? = null, locked: Boolean? = null) =
+        command("set_protection") {
+            put("id", id)
+            alphaLocked?.let { put("alpha_locked", it) }
+            locked?.let { put("locked", it) }
+        }
+
     fun selectPreset(preset: BrushPreset) {
         brush = brush.copy(preset = preset, size = preset.size, opacity = preset.opacity)
         tool = Tool.Brush

@@ -89,6 +89,9 @@ impl Surface {
         let width = (self.region.right - self.region.left) as usize;
         for ty in area.top / TILE_SIZE..=(area.bottom - 1) / TILE_SIZE {
             for tx in area.left / TILE_SIZE..=(area.right - 1) / TILE_SIZE {
+                if layer.alpha_locked && !layer.tiles.contains_key(&(tx, ty)) {
+                    continue;
+                }
                 let region = area
                     .intersect(Rect {
                         left: tx * TILE_SIZE,
@@ -108,7 +111,26 @@ impl Surface {
                     let target =
                         (((y % TILE_SIZE) * TILE_SIZE + region.left % TILE_SIZE) * 4) as usize;
                     let len = (region.right - region.left) as usize * 4;
-                    tile[target..target + len].copy_from_slice(&self.pixels[source..source + len]);
+                    if layer.alpha_locked {
+                        for (old, new) in tile[target..target + len]
+                            .as_chunks_mut::<4>()
+                            .0
+                            .iter_mut()
+                            .zip(self.pixels[source..source + len].as_chunks::<4>().0)
+                        {
+                            let alpha = u32::from(old[3]);
+                            let new_alpha = u32::from(new[3]);
+                            for channel in 0..3 {
+                                old[channel] = (u32::from(new[channel]) * alpha + new_alpha / 2)
+                                    .checked_div(new_alpha)
+                                    .map(|value| value.min(alpha) as u8)
+                                    .unwrap_or(old[channel]);
+                            }
+                        }
+                    } else {
+                        tile[target..target + len]
+                            .copy_from_slice(&self.pixels[source..source + len]);
+                    }
                 }
                 if tile.as_chunks::<4>().0.iter().any(|p| p[3] != 0) {
                     layer.tiles.insert((tx, ty), Arc::new(tile));
@@ -131,6 +153,16 @@ pub fn fill(
     if !region.contains(x, y) {
         return Err("填充位置不在选区内".into());
     }
+    if layer.alpha_locked
+        && layer
+            .tiles
+            .get(&(x / TILE_SIZE, y / TILE_SIZE))
+            .is_none_or(|tile| {
+                tile[((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4 + 3) as usize] == 0
+            })
+    {
+        return Ok(());
+    }
     let mut surface = Surface::read(layer, region);
     let width = (region.right - region.left) as usize;
     let height = (region.bottom - region.top) as usize;
@@ -149,7 +181,8 @@ pub fn fill(
     let mut visited = vec![false; width * height];
     let mut stack = vec![seed as u32];
     let matches = |pixels: &[u8], i: usize| {
-        (0..4).all(|c| pixels[i * 4 + c].abs_diff(target[c]) <= tolerance)
+        (!layer.alpha_locked || pixels[i * 4 + 3] != 0)
+            && (0..4).all(|c| pixels[i * 4 + c].abs_diff(target[c]) <= tolerance)
     };
     while let Some(seed) = stack.pop() {
         let seed = seed as usize;
@@ -174,7 +207,16 @@ pub fn fill(
         for col in left..=right {
             let i = row * width + col;
             visited[i] = true;
-            surface.pixels[i * 4..i * 4 + 4].copy_from_slice(&replacement);
+            let pixel = &mut surface.pixels[i * 4..i * 4 + 4];
+            if layer.alpha_locked {
+                crate::blending::paint_preserving_alpha(
+                    pixel,
+                    [color[0], color[1], color[2]],
+                    alpha,
+                );
+            } else {
+                pixel.copy_from_slice(&replacement);
+            }
         }
         for next_row in [row.checked_sub(1), (row + 1 < height).then_some(row + 1)]
             .into_iter()

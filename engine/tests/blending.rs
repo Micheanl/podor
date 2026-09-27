@@ -217,7 +217,7 @@ fn blend_changes_round_trip_and_undo() {
         })
         .unwrap();
     let saved = engine.save().unwrap();
-    assert!(saved.starts_with(b"PODOR\x01"));
+    assert!(saved.starts_with(b"PODOR\x02"));
     let mut reopened = Engine::new(1, 1).unwrap();
     reopened.load(&saved).unwrap();
     assert_eq!(reopened.document.layers[1].blend, BlendMode::SoftLight);

@@ -11,14 +11,22 @@ pub struct History {
 pub struct Snapshot {
     pub document: Document,
     pub content_id: u64,
+    pub pixels_changed: bool,
 }
 
 impl History {
-    pub fn push(&mut self, before: Document, content_id: u64, current: &Document) {
+    pub fn push(
+        &mut self,
+        before: Document,
+        content_id: u64,
+        current: &Document,
+        pixels_changed: bool,
+    ) {
         self.redo.clear();
         self.undo.push_back(Snapshot {
             document: before,
             content_id,
+            pixels_changed,
         });
         while self.undo.len() > MAX_HISTORY_ENTRIES
             || (!self.undo.is_empty() && self.retained_bytes(current) > MAX_HISTORY_BYTES)

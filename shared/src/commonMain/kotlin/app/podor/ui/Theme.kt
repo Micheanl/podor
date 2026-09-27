@@ -37,6 +37,7 @@ object StudioTheme {
     val inspectorMargin = 18.dp
     val controlSize = 44.dp
     val iconSize = 21.dp
+    val layerStatusIconSize = 12.dp
     val sliderThumbSize = 18.dp
     val colorWheelSize = 240.dp
     val workspaceWidth = 1200.dp

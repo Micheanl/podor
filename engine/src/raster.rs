@@ -42,12 +42,13 @@ fn stamp_impl<const SIMPLE: bool>(
         return Ok(());
     }
     let layer = doc.active_mut();
+    let alpha_locked = layer.alpha_locked;
     let inner = radius * brush.hardness;
     let feather = (radius - inner).max(0.75);
     for ty in top / TILE_SIZE..=(bottom - 1) / TILE_SIZE {
         for tx in left / TILE_SIZE..=(right - 1) / TILE_SIZE {
             let key = (tx, ty);
-            if brush.eraser && !layer.tiles.contains_key(&key) {
+            if (brush.eraser || alpha_locked) && !layer.tiles.contains_key(&key) {
                 continue;
             }
             if !layer.tiles.contains_key(&key) {
@@ -100,6 +101,8 @@ fn stamp_impl<const SIMPLE: bool>(
                         for value in pixel.iter_mut() {
                             *value = (u32::from(*value) * inverse / 255) as u8;
                         }
+                    } else if alpha_locked {
+                        crate::blending::paint_preserving_alpha(pixel, brush.color, alpha);
                     } else {
                         for (channel, value) in pixel.iter_mut().enumerate().take(3) {
                             *value = ((u32::from(brush.color[channel]) * alpha

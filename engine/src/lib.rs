@@ -66,6 +66,11 @@ pub enum Command {
         id: u32,
         mode: BlendMode,
     },
+    SetProtection {
+        id: u32,
+        alpha_locked: Option<bool>,
+        locked: Option<bool>,
+    },
     MoveLayer {
         id: u32,
         direction: i32,
@@ -190,6 +195,13 @@ impl Engine {
                 if !self.document.active_mut().visible {
                     return Err("请先显示当前图层".into());
                 }
+                let layer = self.document.active_mut();
+                if layer.locked {
+                    return Err("图层已锁定，请先解锁".into());
+                }
+                if layer.alpha_locked && brush.eraser {
+                    return Err("请先解除透明度锁定".into());
+                }
                 let brush = brush.validate()?;
                 self.stroke = Some(Stroke {
                     before: self.document.clone(),
@@ -235,7 +247,7 @@ impl Engine {
                 if let Some(stroke) = self.stroke.take() {
                     if stroke.changed {
                         self.history
-                            .push(stroke.before, self.content_id, &self.document);
+                            .push(stroke.before, self.content_id, &self.document, true);
                         self.revision += 1;
                         self.content_id = self.revision;
                     }
@@ -281,25 +293,35 @@ impl Engine {
                     }
                     Command::Undo => {
                         if let Some(previous) = self.history.undo.pop_back() {
-                            self.mark_all();
+                            if previous.pixels_changed {
+                                self.mark_all();
+                            }
                             self.history.redo.push(Snapshot {
                                 document: std::mem::replace(&mut self.document, previous.document),
                                 content_id: self.content_id,
+                                pixels_changed: previous.pixels_changed,
                             });
                             self.content_id = previous.content_id;
-                            self.mark_all();
+                            if previous.pixels_changed {
+                                self.mark_all();
+                            }
                             self.revision += 1;
                         }
                     }
                     Command::Redo => {
                         if let Some(next) = self.history.redo.pop() {
-                            self.mark_all();
+                            if next.pixels_changed {
+                                self.mark_all();
+                            }
                             self.history.undo.push_back(Snapshot {
                                 document: std::mem::replace(&mut self.document, next.document),
                                 content_id: self.content_id,
+                                pixels_changed: next.pixels_changed,
                             });
                             self.content_id = next.content_id;
-                            self.mark_all();
+                            if next.pixels_changed {
+                                self.mark_all();
+                            }
                             self.revision += 1;
                         }
                     }
@@ -310,6 +332,7 @@ impl Engine {
                         self.document.active = id;
                     }
                     command => {
+                        let pixels_changed = !matches!(command, Command::SetProtection { .. });
                         let before = self.document.clone();
                         if let Err(error) = self
                             .edit_layers(command)
@@ -318,11 +341,14 @@ impl Engine {
                             self.document = before;
                             return Err(error);
                         }
-                        for layer in &before.layers {
-                            self.dirty.extend(layer.tiles.keys());
+                        if pixels_changed {
+                            for layer in &before.layers {
+                                self.dirty.extend(layer.tiles.keys());
+                            }
+                            self.mark_all();
                         }
-                        self.mark_all();
-                        self.history.push(before, self.content_id, &self.document);
+                        self.history
+                            .push(before, self.content_id, &self.document, pixels_changed);
                         self.revision += 1;
                         self.content_id = self.revision;
                     }
@@ -335,6 +361,18 @@ impl Engine {
     fn edit_layers(&mut self, command: Command) -> Result<(), String> {
         let bounds = self.document.bounds();
         let region = self.selection.unwrap_or(bounds);
+        if matches!(
+            command,
+            Command::Fill { .. } | Command::Tone { .. } | Command::Blur { .. } | Command::Clear
+        ) {
+            let layer = self.document.active_mut();
+            if layer.locked {
+                return Err("图层已锁定，请先解锁".into());
+            }
+            if layer.alpha_locked && matches!(command, Command::Clear) {
+                return Err("请先解除透明度锁定".into());
+            }
+        }
         match command {
             Command::Fill {
                 x,
@@ -373,6 +411,9 @@ impl Engine {
                     return Err("至少保留一个图层".into());
                 }
                 let index = self.layer_index(id)?;
+                if self.document.layers[index].locked {
+                    return Err("图层已锁定，请先解锁".into());
+                }
                 self.document.layers.remove(index);
                 if self.document.active == id {
                     self.document.active = self.document.layers[index.saturating_sub(1)].id;
@@ -400,6 +441,20 @@ impl Engine {
             Command::SetBlend { id, mode } => {
                 let index = self.layer_index(id)?;
                 self.document.layers[index].blend = mode;
+            }
+            Command::SetProtection {
+                id,
+                alpha_locked,
+                locked,
+            } => {
+                let index = self.layer_index(id)?;
+                let layer = &mut self.document.layers[index];
+                if let Some(value) = alpha_locked {
+                    layer.alpha_locked = value;
+                }
+                if let Some(value) = locked {
+                    layer.locked = value;
+                }
             }
             Command::MoveLayer { id, direction } => {
                 let index = self.layer_index(id)?;
@@ -456,7 +511,7 @@ impl Engine {
     pub fn state(&self) -> Value {
         json!({ "width": self.document.width, "height": self.document.height, "active": self.document.active,
             "revision": self.revision, "contentId": self.content_id, "canUndo": !self.history.undo.is_empty(), "canRedo": !self.history.redo.is_empty(), "selection": self.selection, "maxLayers": MAX_LAYERS,
-            "layers": self.document.layers.iter().map(|l| json!({"id": l.id, "name": l.name, "visible": l.visible, "opacity": l.opacity, "blend": l.blend})).collect::<Vec<_>>() })
+            "layers": self.document.layers.iter().map(|l| json!({"id": l.id, "name": l.name, "visible": l.visible, "opacity": l.opacity, "blend": l.blend, "alphaLocked": l.alpha_locked, "locked": l.locked})).collect::<Vec<_>>() })
     }
 
     pub fn frame(&mut self) -> Vec<u8> {

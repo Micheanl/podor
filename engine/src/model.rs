@@ -50,6 +50,8 @@ pub struct Layer {
     pub opacity: f32,
     pub tiles: BTreeMap<TileKey, Tile>,
     pub blend: BlendMode,
+    pub alpha_locked: bool,
+    pub locked: bool,
 }
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
@@ -76,6 +78,8 @@ impl Layer {
             opacity: 1.0,
             tiles: BTreeMap::new(),
             blend: BlendMode::Normal,
+            alpha_locked: false,
+            locked: false,
         }
     }
 }

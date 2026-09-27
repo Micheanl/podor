@@ -38,6 +38,8 @@ MSI 在 `desktopApp/build/release/<版本>/main/msi/`。`:desktopApp:createDistr
 
 工程保留图层，普通图片不保留图层。PNG、WebP 支持透明，WebP 导出为无损编码。JPEG 叠加白底，可调整质量。导入会处理 EXIF 方向，不保留元数据，不转换 ICC 配置。
 
+锁定透明度保留原像素的 Alpha，画笔、填充和滤镜只改颜色，橡皮和清空需先解除锁定。图层锁定阻止内容编辑、删除和合并，仍可更名、调整显示属性和层序。锁定状态写入工程格式 v2，旧 v1 工程可读取，新保存的文件需要 podor 0.2.13 或更新版本。
+
 [OpenRaster](https://www.openraster.org/baseline/layer-stack-spec.html)（`.ora`）导出保留图层顺序、名称、可见性、不透明度和混合模式，保留原始透明度，不添加白底。各层裁到有数据的块范围，PNG 按行编码，合成预览只缓存一排画布块。暂不支持 ORA 导入。
 
 已用 GIMP 3.2.6 验证图层读取。GIMP 默认合成设置可能改变显示效果；将图层混合空间、合成空间设为 `RGB (from color profile)`，合成模式设为 `Union` 后，八种模式样本与 podor 的通道差值不超过 2/255，设置说明见 [GIMP 手册](https://docs.gimp.org/3.2/en/gimp-layer-new.html)。文件内的合成预览保持 podor 原貌。

@@ -59,6 +59,24 @@ fun LayerControls(controller: StudioController) {
                 fontSize = 11.sp,
                 color = StudioTheme.muted,
             )
+            if (active != null) {
+                ToolButton(
+                    Glyph.AlphaLock,
+                    if (active.alphaLocked) "解除透明度锁定" else "锁定透明度",
+                    selected = active.alphaLocked,
+                    enabled = enabled && !active.locked,
+                ) {
+                    controller.setLayerProtection(active.id, alphaLocked = !active.alphaLocked)
+                }
+                ToolButton(
+                    Glyph.Lock,
+                    if (active.locked) "解锁图层" else "锁定图层",
+                    selected = active.locked,
+                    enabled = enabled,
+                ) {
+                    controller.setLayerProtection(active.id, locked = !active.locked)
+                }
+            }
             ToolButton(
                 Glyph.Plus,
                 "新建图层",
@@ -135,11 +153,18 @@ fun LayerControls(controller: StudioController) {
                     ToolButton(
                         Glyph.Merge,
                         "合并可见图层",
-                        enabled = enabled && layers.count { it.visible } >= 2,
+                        enabled =
+                            enabled &&
+                                layers.count { it.visible } >= 2 &&
+                                layers.none { it.visible && it.locked },
                     ) {
                         controller.command("merge_visible")
                     }
-                    ToolButton(Glyph.Trash, "删除图层", enabled = enabled && layers.size > 1) {
+                    ToolButton(
+                        Glyph.Trash,
+                        "删除图层",
+                        enabled = enabled && layers.size > 1 && !active.locked,
+                    ) {
                         controller.command("remove_layer") { put("id", active.id) }
                     }
                 }
@@ -198,13 +223,31 @@ private fun LayerRow(
                 .padding(3.dp),
         )
         Column(Modifier.weight(1f).padding(start = 10.dp)) {
-            Text(
-                tr(layer.name),
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = if (selected) StudioTheme.accent else StudioTheme.text,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Text(
+                    tr(layer.name),
+                    modifier = Modifier.weight(1f),
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (selected) StudioTheme.accent else StudioTheme.text,
+                )
+                if (layer.alphaLocked)
+                    StudioIcon(
+                        Glyph.AlphaLock,
+                        StudioTheme.accent,
+                        Modifier.size(StudioTheme.layerStatusIconSize),
+                    )
+                if (layer.locked)
+                    StudioIcon(
+                        Glyph.Lock,
+                        StudioTheme.muted,
+                        Modifier.size(StudioTheme.layerStatusIconSize),
+                    )
+            }
             Text(
                 "${tr(layer.blend.label)} · ${(layer.opacity * 100).roundToInt()}%",
                 fontSize = 10.sp,

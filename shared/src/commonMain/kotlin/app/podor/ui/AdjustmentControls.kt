@@ -17,7 +17,10 @@ fun AdjustmentControls(controller: StudioController) {
     var contrast by remember { mutableStateOf(0f) }
     var saturation by remember { mutableStateOf(0f) }
     var radius by remember { mutableStateOf(4f) }
-    val enabled = controller.ready && !controller.busy
+    val locked =
+        controller.document.layers.firstOrNull { it.id == controller.document.active }?.locked ==
+            true
+    val enabled = controller.ready && !controller.busy && !locked
     Text(
         tr(if (controller.document.selection != null) "仅作用于当前图层的选区" else "作用于当前图层"),
         fontSize = 11.sp,

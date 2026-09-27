@@ -6,14 +6,33 @@ use std::time::Instant;
 
 fn main() {
     for stabilization in [0.0, 0.5, 1.0] {
-        painting(stabilization, false, false);
+        painting(stabilization, false, false, false);
     }
-    painting(0.5, true, false);
-    painting(0.5, true, true);
+    painting(0.5, true, false, false);
+    painting(0.5, true, true, false);
+    painting(0.5, false, false, true);
 }
 
-fn painting(stabilization: f32, flat: bool, follow_direction: bool) {
+fn painting(stabilization: f32, flat: bool, follow_direction: bool, alpha_locked: bool) {
     let mut engine = Engine::new(2048, 2048).unwrap();
+    if alpha_locked {
+        engine
+            .command(Command::Fill {
+                x: 0,
+                y: 0,
+                color: [139, 41, 66, 128],
+                tolerance: 0,
+            })
+            .unwrap();
+        engine
+            .command(Command::SetProtection {
+                id: 1,
+                alpha_locked: Some(alpha_locked),
+                locked: Some(false),
+            })
+            .unwrap();
+        engine.frame();
+    }
     let brush = Brush {
         size: 24.0,
         opacity: 1.0,
@@ -50,7 +69,7 @@ fn painting(stabilization: f32, flat: bool, follow_direction: bool) {
         bytes += engine.frame().len();
     }
     println!(
-        "stabilization={stabilization:.1}, flat={flat}, follow={follow_direction}, 100 strokes, 12000 samples, 1600 frames: {:.2} ms; {:.1} MiB transferred",
+        "stabilization={stabilization:.1}, flat={flat}, follow={follow_direction}, alpha_lock={alpha_locked}, 100 strokes, 12000 samples, 1600 frames: {:.2} ms; {:.1} MiB transferred",
         start.elapsed().as_secs_f64() * 1000.0,
         bytes as f64 / 1048576.0
     );

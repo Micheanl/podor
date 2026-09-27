@@ -1,6 +1,16 @@
 use crate::model::BlendMode;
 use std::sync::OnceLock;
 
+pub fn paint_preserving_alpha(pixel: &mut [u8], color: [u8; 3], opacity: u32) {
+    let alpha = u32::from(pixel[3]);
+    for (channel, value) in pixel[..3].iter_mut().enumerate() {
+        *value = ((u32::from(color[channel]) * opacity * alpha
+            + u32::from(*value) * (255 - opacity) * 255
+            + 32_512)
+            / 65_025) as u8;
+    }
+}
+
 pub fn composite(dst: &mut [u8], src: &[u8], opacity: u32, mode: BlendMode, opaque: bool) {
     match mode {
         BlendMode::Normal if opaque => normal::<true>(dst, src, opacity),

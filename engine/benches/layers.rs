@@ -27,5 +27,21 @@ fn main() {
             start.elapsed().as_secs_f64() * 1000.0,
             thumbnail.len()
         );
+        engine.frame();
+        let start = Instant::now();
+        for index in 0..100 {
+            engine
+                .command(Command::SetProtection {
+                    id: engine.document.active,
+                    alpha_locked: Some(index % 2 == 0),
+                    locked: Some(false),
+                })
+                .unwrap();
+            assert_eq!(engine.frame().len(), 16);
+        }
+        println!(
+            "{edge}x{edge}: 100 alpha-lock switches {:.2} ms, no canvas pixels transferred",
+            start.elapsed().as_secs_f64() * 1000.0
+        );
     }
 }

@@ -9,6 +9,8 @@ data class LayerInfo(
     val visible: Boolean,
     val opacity: Float,
     val blend: LayerBlendMode = LayerBlendMode.Normal,
+    val alphaLocked: Boolean = false,
+    val locked: Boolean = false,
 )
 
 @Serializable

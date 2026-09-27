@@ -5,7 +5,52 @@ use image::{ImageDecoder, ImageFormat};
 use std::io::{Cursor, Read, Write};
 
 pub const MAX_FILE_BYTES: usize = 256 * 1024 * 1024;
-const MAGIC: &[u8] = b"PODOR\x01";
+const MAGIC: &[u8] = b"PODOR\x02";
+const LEGACY_MAGIC: &[u8] = b"PODOR\x01";
+
+#[derive(serde::Deserialize)]
+struct LegacyLayer {
+    id: u32,
+    name: String,
+    visible: bool,
+    opacity: f32,
+    tiles: std::collections::BTreeMap<TileKey, Tile>,
+    blend: BlendMode,
+}
+
+#[derive(serde::Deserialize)]
+struct LegacyDocument {
+    width: u32,
+    height: u32,
+    layers: Vec<LegacyLayer>,
+    active: u32,
+    next_id: u32,
+}
+
+impl From<LegacyDocument> for Document {
+    fn from(old: LegacyDocument) -> Self {
+        Self {
+            width: old.width,
+            height: old.height,
+            active: old.active,
+            next_id: old.next_id,
+            layers: old
+                .layers
+                .into_iter()
+                .map(|layer| Layer {
+                    id: layer.id,
+                    name: layer.name,
+                    visible: layer.visible,
+                    opacity: layer.opacity,
+                    tiles: layer.tiles,
+                    blend: layer.blend,
+                    alpha_locked: false,
+                    locked: false,
+                })
+                .collect(),
+        }
+    }
+}
 
 pub fn save(doc: &Document) -> Result<Vec<u8>, String> {
     let bytes = bincode::DefaultOptions::new()
@@ -38,7 +83,10 @@ pub fn load(bytes: &[u8]) -> Result<Document, String> {
         }
         _ => {}
     }
-    if !bytes.starts_with(MAGIC) {
+    if !bytes.starts_with(MAGIC) && !bytes.starts_with(LEGACY_MAGIC) {
+        if bytes.starts_with(b"PODOR") {
+            return Err("工程版本不受支持，请更新 podor".into());
+        }
         return Err("请选择 podor 工程或 PNG、JPEG、WebP 图片".into());
     }
     let mut decoded = Vec::new();
@@ -52,9 +100,16 @@ pub fn load(bytes: &[u8]) -> Result<Document, String> {
     let options = bincode::DefaultOptions::new()
         .with_limit(MAX_FILE_BYTES as u64)
         .reject_trailing_bytes();
-    let doc: Document = options
-        .deserialize(&decoded)
-        .map_err(|_| "工程文件已损坏")?;
+    let doc: Document = if bytes.starts_with(LEGACY_MAGIC) {
+        options
+            .deserialize::<LegacyDocument>(&decoded)
+            .map(Document::from)
+            .map_err(|_| "工程文件已损坏")?
+    } else {
+        options
+            .deserialize(&decoded)
+            .map_err(|_| "工程文件已损坏")?
+    };
     doc.validate()?;
     Ok(doc)
 }

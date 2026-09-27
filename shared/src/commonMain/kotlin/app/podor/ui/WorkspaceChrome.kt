@@ -103,6 +103,10 @@ fun StudioHeader(
                         onDialog(StudioDialog.Clear)
                         menu = false
                     },
+                    enabled =
+                        controller.document.layers.none {
+                            it.id == controller.document.active && (it.locked || it.alphaLocked)
+                        },
                 )
                 DropdownMenuItem(
                     { Text(tr("设置")) },
@@ -312,14 +316,25 @@ fun BrushDock(controller: StudioController, modifier: Modifier = Modifier, onCli
 
 @Composable
 fun CanvasFooter(controller: StudioController, compact: Boolean, modifier: Modifier = Modifier) {
+    val active = controller.document.layers.firstOrNull { it.id == controller.document.active }
     Row(
         modifier.fillMaxWidth().height(46.dp).padding(horizontal = 22.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (active?.locked == true || active?.alphaLocked == true) {
+            StudioIcon(
+                if (active.locked) Glyph.Lock else Glyph.AlphaLock,
+                StudioTheme.accent,
+                Modifier.size(StudioTheme.layerStatusIconSize),
+            )
+            Spacer(Modifier.width(8.dp))
+        }
         Text(
             if (compact) "${controller.document.width} × ${controller.document.height}"
-            else "${controller.document.layers.size} · ${tr(controller.tool.label)}",
+            else "${tr(active?.name ?: "图层")} · ${tr(controller.tool.label)}",
             fontSize = 10.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             color = StudioTheme.muted.copy(alpha = 0.8f),
             modifier = Modifier.weight(1f),
         )
