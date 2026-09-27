@@ -40,6 +40,9 @@ object StudioTheme {
     val workspaceWidth = 1200.dp
     val projectCardWidth = 240.dp
     val projectPreviewHeight = 174.dp
+    val launchFieldSize = 420.dp
+    val launchGlow = Color(0x2478354A)
+    val launchHighlight = Color(0x99FFE8EE)
     const val colorRingRadius = 0.455f
     const val colorRingWidth = 0.075f
     const val colorPlaneFraction = 0.54f
@@ -60,9 +63,11 @@ object StudioMotion {
     const val iconSelectAngle = -10f
     const val panelMillis = 280
     const val dismissMillis = 180
-    const val launchMillis = 1000
+    const val launchMillis = 1300
     const val launchHoldMillis = 800
-    const val revealMillis = 1600
+    const val revealMillis = 1800
+    const val launchFieldScale = 0.86f
+    const val launchLightAngle = 115f
     const val dissolveTextureSize = 96
     const val dissolveSoftness = 0.12f
     val launchEasing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)

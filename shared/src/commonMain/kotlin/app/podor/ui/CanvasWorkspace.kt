@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -15,6 +16,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.*
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.layout.onSizeChanged
 import app.podor.domain.Tool
@@ -36,7 +38,8 @@ fun CanvasWorkspace(controller: StudioController, modifier: Modifier = Modifier)
             filterQuality = FilterQuality.Low
         }
     }
-    Canvas(
+    val selectionDash = remember { PathEffect.dashPathEffect(floatArrayOf(5f, 5f)) }
+    Box(
         modifier
             .clipToBounds()
             .onSizeChanged { viewSize = Size(it.width.toFloat(), it.height.toFloat()) }
@@ -239,65 +242,93 @@ fun CanvasWorkspace(controller: StudioController, modifier: Modifier = Modifier)
                 }
             }
     ) {
-        val document = controller.document
-        val scale = controller.viewport.scale(size, document)
-        if (scale <= 0f) return@Canvas
-        val origin = controller.viewport.origin(size, document)
-        val width = document.width * scale
-        val height = document.height * scale
-        drawRect(Color.Black.copy(alpha = 0.2f), origin + Offset(0f, 10f), Size(width, height))
-        translate(origin.x, origin.y) {
-            scale(scale, scale, Offset.Zero) {
-                clipRect(0f, 0f, document.width.toFloat(), document.height.toFloat()) {
-                    drawRect(
-                        Color.White,
-                        size = Size(document.width.toFloat(), document.height.toFloat()),
-                    )
-                    controller.frame.tiles.values.forEach { tile ->
-                        drawContext.canvas.drawImage(
-                            tile.image,
-                            Offset((tile.x * tile.size).toFloat(), (tile.y * tile.size).toFloat()),
-                            tilePaint,
+        Canvas(Modifier.matchParentSize().graphicsLayer()) {
+            val document = controller.document
+            val scale = controller.viewport.scale(size, document)
+            if (scale <= 0f) return@Canvas
+            val origin = controller.viewport.origin(size, document)
+            val width = document.width * scale
+            val height = document.height * scale
+            drawRect(Color.Black.copy(alpha = 0.2f), origin + Offset(0f, 10f), Size(width, height))
+            translate(origin.x, origin.y) {
+                scale(scale, scale, Offset.Zero) {
+                    clipRect(0f, 0f, document.width.toFloat(), document.height.toFloat()) {
+                        drawRect(
+                            Color.White,
+                            size = Size(document.width.toFloat(), document.height.toFloat()),
                         )
+                        val left = (-origin.x / scale).coerceAtLeast(0f)
+                        val top = (-origin.y / scale).coerceAtLeast(0f)
+                        val right =
+                            ((size.width - origin.x) / scale).coerceAtMost(document.width.toFloat())
+                        val bottom =
+                            ((size.height - origin.y) / scale).coerceAtMost(
+                                document.height.toFloat()
+                            )
+                        controller.frame.tiles.values.forEach { tile ->
+                            val x = tile.x * tile.size
+                            val y = tile.y * tile.size
+                            if (
+                                x >= right ||
+                                    y >= bottom ||
+                                    x + tile.size <= left ||
+                                    y + tile.size <= top
+                            )
+                                return@forEach
+                            drawContext.canvas.drawImage(
+                                tile.image,
+                                Offset(
+                                    (tile.x * tile.size).toFloat(),
+                                    (tile.y * tile.size).toFloat(),
+                                ),
+                                tilePaint,
+                            )
+                        }
                     }
                 }
             }
         }
-        val selected =
-            if (selectionStart != null && selectionEnd != null) {
-                val a = selectionStart!!
-                val b = selectionEnd!!
-                Rect(minOf(a.x, b.x), minOf(a.y, b.y), maxOf(a.x, b.x), maxOf(a.y, b.y))
-            } else
-                controller.document.selection?.let {
-                    Rect(
-                        it.left.toFloat(),
-                        it.top.toFloat(),
-                        it.right.toFloat(),
-                        it.bottom.toFloat(),
-                    )
-                }
-        selected?.let { rect ->
-            val topLeft = origin + Offset(rect.left, rect.top) * scale
-            val selectedSize = Size(rect.width * scale, rect.height * scale)
-            drawRect(Color.Black, topLeft, selectedSize, style = Stroke(2f))
-            drawRect(
-                Color.White,
-                topLeft,
-                selectedSize,
-                style = Stroke(1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f))),
-            )
-        }
-        cursor?.let { position ->
-            if (controller.tool == Tool.Brush || controller.tool == Tool.Eraser) {
-                val radius = (controller.brush.size * scale * 0.5f).coerceAtLeast(2f)
-                drawCircle(
-                    Color.Black.copy(alpha = 0.55f),
-                    radius + 1f,
-                    position,
-                    style = Stroke(1f),
+        Canvas(Modifier.matchParentSize().graphicsLayer()) {
+            val document = controller.document
+            val scale = controller.viewport.scale(size, document)
+            if (scale <= 0f) return@Canvas
+            val origin = controller.viewport.origin(size, document)
+            val selected =
+                if (selectionStart != null && selectionEnd != null) {
+                    val a = selectionStart!!
+                    val b = selectionEnd!!
+                    Rect(minOf(a.x, b.x), minOf(a.y, b.y), maxOf(a.x, b.x), maxOf(a.y, b.y))
+                } else
+                    controller.document.selection?.let {
+                        Rect(
+                            it.left.toFloat(),
+                            it.top.toFloat(),
+                            it.right.toFloat(),
+                            it.bottom.toFloat(),
+                        )
+                    }
+            selected?.let { rect ->
+                val topLeft = origin + Offset(rect.left, rect.top) * scale
+                val selectedSize = Size(rect.width * scale, rect.height * scale)
+                drawRect(Color.Black, topLeft, selectedSize, style = Stroke(2f))
+                drawRect(
+                    Color.White,
+                    topLeft,
+                    selectedSize,
+                    style = Stroke(1.5f, pathEffect = selectionDash),
                 )
-                drawCircle(Color.White.copy(alpha = 0.9f), radius, position, style = Stroke(1f))
+            }
+            cursor?.let { position ->
+                if (controller.tool == Tool.Brush || controller.tool == Tool.Eraser) {
+                    val radius = (controller.brush.size * scale * 0.5f).coerceAtLeast(2f)
+                    drawCircle(
+                        Color.Black.copy(alpha = 0.55f),
+                        radius + 1f,
+                        position,
+                        style = Stroke(1f),
+                    )
+                    drawCircle(Color.White.copy(alpha = 0.9f), radius, position, style = Stroke(1f))
+                }
             }
         }
     }

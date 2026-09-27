@@ -69,7 +69,7 @@ fun ToolButton(
             if (filled) 1f else 0f,
             tween(StudioMotion.feedbackMillis, easing = StudioMotion.easing),
         )
-    val tint by
+    val tint =
         animateColorAsState(
             when {
                 !enabled -> StudioTheme.muted.copy(alpha = 0.3f)
@@ -112,7 +112,7 @@ fun ToolButton(
                 },
             contentAlignment = Alignment.Center,
         ) {
-            StudioIcon(glyph, tint, Modifier.graphicsLayer { rotationZ = iconTurn.value })
+            StudioIcon(glyph, tint.value, Modifier.graphicsLayer { rotationZ = iconTurn.value })
         }
     }
 }

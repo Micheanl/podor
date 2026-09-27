@@ -22,6 +22,8 @@ MSI 在 `desktopApp/build/release/<版本>/main/msi/`。`:desktopApp:createDistr
 
 工具默认值在 `StudioDefaults`，视觉参数在 `StudioTheme`，引擎上限在 `engine/src/model.rs`。
 
+作品画面和光标、选区分别录制到显示层，移动光标不重新录制作品图块，视口外的图块不提交绘制。选中颜色在绘制阶段读取动画值，启动流光和溶解结束后卸载。界面由 Compose / Skia 合成，Rust 像素算法仍在 CPU 后台执行。
+
 ## 引擎
 
 像素按 128 × 128 分块，按需分配。输入批量送入 Rust，界面只接收脏块。笔刷与合成在 CPU 执行，文件读写、压缩和光栅化放在后台线程。
@@ -55,6 +57,8 @@ cargo bench --bench layers
 ```
 
 基准测量引擎负载，不包含设备输入、GPU 上传和屏幕延迟。
+
+Windows 可设置 `PODOR_GPU_TEST=1` 后运行 `scripts/check.ps1`，额外检查原生窗口的硬件渲染通道，结果写入 `desktopApp/build/reports/gpu-renderer.txt`。离屏动画耗时包含图像读回，不能作为整机帧率承诺。
 
 ## 其他平台
 

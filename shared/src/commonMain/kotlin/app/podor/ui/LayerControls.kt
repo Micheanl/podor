@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -165,7 +166,7 @@ private fun LayerRow(
     enabled: Boolean,
     modifier: Modifier,
 ) {
-    val background by
+    val background =
         animateColorAsState(
             if (selected) StudioTheme.accent.copy(alpha = 0.12f)
             else StudioTheme.elevated.copy(alpha = 0.5f),
@@ -175,7 +176,7 @@ private fun LayerRow(
         modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(background)
+            .drawBehind { drawRect(background.value) }
             .border(
                 1.dp,
                 if (selected) StudioTheme.accent.copy(alpha = 0.3f) else Color.Transparent,

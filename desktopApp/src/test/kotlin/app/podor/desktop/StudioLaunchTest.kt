@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import app.podor.ui.StudioLaunch
+import app.podor.ui.StudioMotion
 import app.podor.ui.StudioTheme
 import java.nio.file.Files
 import java.nio.file.Path
@@ -31,14 +32,16 @@ class StudioLaunchTest {
                         StudioLaunch(true) { Box(Modifier.fillMaxSize().background(Color.White)) }
                     }
                 try {
-                    for (frame in 0..230) {
+                    val middle = (StudioMotion.launchMillis + StudioMotion.launchHoldMillis + StudioMotion.revealMillis * 0.7f).toInt() * 60 / 1000
+                    val end = (StudioMotion.launchMillis + StudioMotion.launchHoldMillis + StudioMotion.revealMillis) * 60 / 1000 + 12
+                    for (frame in 0..end) {
                         scene.render(frame * 16_666_667L).use { image ->
-                            if (frame == 100 || frame == 180 || frame == 230) {
+                            if (frame == 100 || frame == middle || frame == end) {
                                 val red = image.toComposeImageBitmap().toPixelMap()[8, 8].red
                                 when (frame) {
                                     100 -> assertEquals(StudioTheme.background.red, red, 0.03f)
-                                    180 -> assertTrue(red > 0.2f && red < 0.99f, "red=$red")
-                                    230 -> assertEquals(1f, red, 0.005f)
+                                    middle -> assertTrue(red > 0.2f && red < 0.99f, "red=$red")
+                                    end -> assertEquals(1f, red, 0.005f)
                                 }
                             }
                         }

@@ -14,9 +14,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
@@ -113,21 +110,7 @@ fun StudioLaunch(ready: Boolean, content: @Composable () -> Unit) {
                         }
                         .background(StudioTheme.background)
                 )
-                Box(
-                    Modifier.size(320.dp)
-                        .graphicsLayer { alpha = 1f - reveal.value }
-                        .drawWithCache {
-                            val glow =
-                                Brush.radialGradient(
-                                    listOf(
-                                        StudioTheme.selection.copy(alpha = 0.13f),
-                                        Color.Transparent,
-                                    ),
-                                    radius = size.minDimension / 2,
-                                )
-                            onDrawBehind { drawRect(glow) }
-                        }
-                )
+                LaunchLight({ intro.value }, { reveal.value })
                 val mask = texture
                 Column(
                     Modifier.width(220.dp)
@@ -141,7 +124,7 @@ fun StudioLaunch(ready: Boolean, content: @Composable () -> Unit) {
                     Image(
                         painterResource(Res.drawable.brand),
                         AppIdentity.name,
-                        Modifier.size(88.dp).graphicsLayer {
+                        Modifier.size(88.dp).logoLight { intro.value }.graphicsLayer {
                             alpha = intro.value
                             scaleX = 0.92f + intro.value * 0.08f
                             scaleY = scaleX
