@@ -1,8 +1,8 @@
 {
-  "version": "0.2.15",
-  "notes": "- 接入 Windows Ink，读取触控笔压力，支持笔尾橡皮和逐点历史采样。\n- 修复连续落笔丢失，失去焦点或系统取消时撤回当前笔画，避免留下半截笔迹。\n- 修复 Windows 下 Shift + 滚轮无法旋转画布。\n- 面板右上角可直接收起，顶部图标重新展开，保留颜色页面和画笔设置。\n- 压感与笔尾擦除通过 Windows 系统指针注入验证，实体数位板仍需测试。\n",
+  "version": "0.2.16",
+  "notes": "- 新增移动图层工具，按 V 拖动画面，Esc 取消，底部显示移动距离。\n- 拖动时复用图层图像，松手后在后台处理像素，一次拖动可一步撤销。\n- 预览保留图层混合效果，支持旋转和镜像视图下操作。\n- 移动前需取消选区、解除图层和透明度锁定，超出画布的部分会裁切，可撤销恢复。\n- 保留原有自定义快捷键，V 已占用时为新工具分配空闲按键。\n",
   "platform": "windows-x64",
-  "url": "https://gitee.com/Micheanl/podor/releases/download/v0.2.15/podor-0.2.15.msi",
-  "sha256": "bace85684b4471c138213919f48dbf05a8a33d5a5cf5eac97a7ef48973e94ce9",
-  "size": 70393856
+  "url": "https://gitee.com/Micheanl/podor/releases/download/v0.2.16/podor-0.2.16.msi",
+  "sha256": "274124259f74c1762e390ee28987a11788509342216b967c9602ef1bd9170f07",
+  "size": 70451200
 }
