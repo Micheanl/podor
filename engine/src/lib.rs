@@ -1,5 +1,6 @@
 mod adjustments;
 mod blending;
+mod canvas;
 mod ffi;
 mod history;
 mod import_layer;
@@ -95,6 +96,12 @@ pub enum Command {
     New {
         width: u32,
         height: u32,
+    },
+    ResizeCanvas {
+        width: u32,
+        height: u32,
+        anchor: u8,
+        revision: u64,
     },
     State,
 }
@@ -305,6 +312,11 @@ impl Engine {
                     }
                     Command::Undo => {
                         if let Some(previous) = self.history.undo.pop_back() {
+                            if (previous.document.width, previous.document.height)
+                                != (self.document.width, self.document.height)
+                            {
+                                self.selection = None;
+                            }
                             if previous.pixels_changed {
                                 self.mark_all();
                             }
@@ -322,6 +334,11 @@ impl Engine {
                     }
                     Command::Redo => {
                         if let Some(next) = self.history.redo.pop() {
+                            if (next.document.width, next.document.height)
+                                != (self.document.width, self.document.height)
+                            {
+                                self.selection = None;
+                            }
                             if next.pixels_changed {
                                 self.mark_all();
                             }
@@ -342,6 +359,30 @@ impl Engine {
                             return Err("图层不存在".into());
                         }
                         self.document.active = id;
+                    }
+                    Command::ResizeCanvas {
+                        width,
+                        height,
+                        anchor,
+                        revision,
+                    } => {
+                        if revision != self.revision {
+                            return Err("画布已变化，请重新调整尺寸".into());
+                        }
+                        if anchor >= 9 {
+                            return Err("画布定位无效".into());
+                        }
+                        if (width, height) != (self.document.width, self.document.height) {
+                            let resized = canvas::resize(&self.document, width, height, anchor)?;
+                            let before = std::mem::replace(&mut self.document, resized);
+                            self.dirty.clear();
+                            self.mark_all();
+                            self.selection = None;
+                            self.history
+                                .push(before, self.content_id, &self.document, true);
+                            self.revision += 1;
+                            self.content_id = self.revision;
+                        }
                     }
                     Command::TranslateLayer { id, dx, dy } => {
                         if self.selection.is_some() {
@@ -569,7 +610,11 @@ impl Engine {
     }
 
     pub fn frame(&mut self) -> Vec<u8> {
-        let dirty = std::mem::take(&mut self.dirty);
+        let mut dirty = std::mem::take(&mut self.dirty);
+        dirty.retain(|&(x, y)| {
+            x < self.document.width.div_ceil(TILE_SIZE)
+                && y < self.document.height.div_ceil(TILE_SIZE)
+        });
         let mut output = Vec::with_capacity(16 + dirty.len() * (8 + TILE_BYTES));
         for value in [
             self.document.width,

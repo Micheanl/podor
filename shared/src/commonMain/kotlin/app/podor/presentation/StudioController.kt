@@ -148,6 +148,8 @@ class StudioController(
                 var savedContentId = 0L
                 var currentReference: ProjectReference? = null
                 val tiles = mutableMapOf<Long, TileImage>()
+                var frameWidth = 0
+                var frameHeight = 0
                 val pending = ArrayList<Triple<Float, Float, Float>>(StudioDefaults.maxBatchSamples)
                 fun command(value: JsonObject): DocumentInfo {
                     val result =
@@ -178,6 +180,14 @@ class StudioController(
                 }
                 suspend fun publishFrame() {
                     val bytes = engine!!.call(EngineOperation.FRAME)
+                    val width = bytes.intAt(0)
+                    val height = bytes.intAt(4)
+                    val resized = frameWidth != width || frameHeight != height
+                    if (resized) {
+                        tiles.clear()
+                        frameWidth = width
+                        frameHeight = height
+                    }
                     val size = bytes.intAt(8)
                     val count = bytes.intAt(12)
                     var offset = 16
@@ -188,8 +198,12 @@ class StudioController(
                         tiles[(x.toLong() shl 32) or y.toLong()] = TileImage(x, y, size, bitmap)
                         offset += 8 + size * size * 4
                     }
-                    val updated = if (count > 0) RenderFrame(tiles.toMap()) else null
+                    val updated = if (count > 0 || resized) RenderFrame(tiles.toMap()) else null
                     withContext(Dispatchers.Main) {
+                        if (resized) {
+                            viewport = Viewport()
+                            previews = RenderPreviews()
+                        }
                         document = info
                         hasUnsavedChanges = info.contentId != savedContentId
                         if (updated != null) frame = updated
@@ -452,7 +466,16 @@ class StudioController(
                                             tool = Tool.Brush
                                         }
                                     } else {
-                                        if (type in setOf("fill", "tone", "blur", "merge_visible"))
+                                        if (
+                                            type in
+                                                setOf(
+                                                    "fill",
+                                                    "tone",
+                                                    "blur",
+                                                    "merge_visible",
+                                                    "resize_canvas",
+                                                )
+                                        )
                                             withContext(Dispatchers.Main) { busy = true }
                                         info = command(action.json)
                                         if (type == "begin") drawing = true
@@ -746,6 +769,14 @@ class StudioController(
             put("name", layer.name)
             put("visible", layer.visible)
             put("opacity", layer.opacity)
+        }
+
+    fun resizeCanvas(width: Int, height: Int, anchor: CanvasAnchor, revision: Long) =
+        command("resize_canvas") {
+            put("width", width)
+            put("height", height)
+            put("anchor", anchor.ordinal)
+            put("revision", revision)
         }
 
     fun setLayerProtection(id: Int, alphaLocked: Boolean? = null, locked: Boolean? = null) =

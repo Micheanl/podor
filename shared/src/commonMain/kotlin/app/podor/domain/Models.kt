@@ -157,6 +157,7 @@ data class BrushSettings(
 data class CanvasPreset(val label: String, val width: Int, val height: Int)
 
 object StudioDefaults {
+    val canvasAnchor = CanvasAnchor.Center
     const val brushColor = 0xFF000000L
     const val stabilization = 0f
     const val lineStabilization = 0.5f

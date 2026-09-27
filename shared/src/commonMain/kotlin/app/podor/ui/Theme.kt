@@ -44,6 +44,22 @@ object StudioTheme {
     val moveDockTitleSize = 11.sp
     val moveDockValueSize = 10.sp
     val controlSize = 44.dp
+    val canvasSizePreviewHeight = 190.dp
+    val canvasSizePreviewPadding = 22.dp
+    val canvasAnchorSize = 32.dp
+    val canvasAnchorGap = 4.dp
+    val canvasPreviewLine = 1.5.dp
+    val canvasCropShade = Color(0xFFDF798F).copy(alpha = 0.22f)
+    val canvasSettingsGap = 18.dp
+    val canvasFieldsGap = 12.dp
+    val canvasLabelGap = 6.dp
+    val canvasLabelSize = 12.sp
+    val canvasCaptionSize = 11.sp
+    val canvasAnchorDot = 4.dp
+    val canvasAnchorIcon = 16.dp
+    val canvasPreviewShape = RoundedCornerShape(18.dp)
+    val canvasCheckerCell = 7.dp
+    val canvasOutlineDash = floatArrayOf(5f, 4f)
     val iconSize = 21.dp
     val layerStatusIconSize = 12.dp
     val layerPreviewSize = 42.dp

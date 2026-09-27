@@ -53,3 +53,7 @@ harness = false
 [[bench]]
 name = "ora_import"
 harness = false
+
+[[bench]]
+name = "canvas_size"
+harness = false
