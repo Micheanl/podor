@@ -58,10 +58,14 @@ function Push-Repository($Service, $Ref) {
         $env:GIT_CONFIG_COUNT = '1'
         $env:GIT_CONFIG_KEY_0 = "http.https://$Service.com/.extraheader"
         $env:GIT_CONFIG_VALUE_0 = "Authorization: Basic $encoded"
-        git push "https://$Service.com/$($config.$Service).git" $Ref
+        git push "https://$Service.com/$($config.$Service).git" $Ref *> $null
         if ($LASTEXITCODE) { throw "$Service 代码同步失败" }
+        Write-Output "$Service 代码同步完成"
     } finally {
-        foreach ($name in $previous.Keys) { [Environment]::SetEnvironmentVariable($name, $previous[$name], 'Process') }
+        foreach ($name in $previous.Keys) {
+            if ($null -eq $previous[$name]) { Remove-Item -LiteralPath "Env:$name" -ErrorAction SilentlyContinue }
+            else { [Environment]::SetEnvironmentVariable($name, $previous[$name], 'Process') }
+        }
     }
 }
 
