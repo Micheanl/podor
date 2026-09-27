@@ -130,6 +130,8 @@ private val english =
         "关闭" to "Close",
         "收起面板" to "Hide panel",
         "展开面板" to "Show panel",
+        "拖动缩略图排序" to "Drag thumbnail to reorder",
+        "图层已变化，请重新排序" to "The layers changed. Drag again",
         "移动图层" to "Move layer",
         "平移画布" to "Pan canvas",
         "超出画布的部分会裁切" to "Content outside the canvas is clipped",

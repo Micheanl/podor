@@ -76,6 +76,11 @@ pub enum Command {
         id: u32,
         direction: i32,
     },
+    ReorderLayer {
+        id: u32,
+        index: usize,
+        revision: u64,
+    },
     TranslateLayer {
         id: u32,
         dx: i32,
@@ -348,6 +353,31 @@ impl Engine {
                             self.dirty.extend(self.document.layers[index].tiles.keys());
                             self.dirty.extend(tiles.keys());
                             self.document.layers[index].tiles = tiles;
+                            self.history
+                                .push(before, self.content_id, &self.document, true);
+                            self.revision += 1;
+                            self.content_id = self.revision;
+                        }
+                    }
+                    Command::ReorderLayer {
+                        id,
+                        index,
+                        revision,
+                    } => {
+                        if revision != self.revision || index >= self.document.layers.len() {
+                            return Err("图层已变化，请重新排序".into());
+                        }
+                        let source = self.layer_index(id)?;
+                        if source != index {
+                            let before = self.document.clone();
+                            for layer in
+                                &self.document.layers[source.min(index)..=source.max(index)]
+                            {
+                                self.dirty.extend(layer.tiles.keys());
+                            }
+                            let layer = self.document.layers.remove(source);
+                            self.document.layers.insert(index, layer);
+                            self.document.active = id;
                             self.history
                                 .push(before, self.content_id, &self.document, true);
                             self.revision += 1;

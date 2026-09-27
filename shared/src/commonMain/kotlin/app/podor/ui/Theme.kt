@@ -46,6 +46,15 @@ object StudioTheme {
     val controlSize = 44.dp
     val iconSize = 21.dp
     val layerStatusIconSize = 12.dp
+    val layerPreviewSize = 42.dp
+    val layerRowPadding = 8.dp
+    val layerPreviewInset = 10.dp
+    val layerDragEdge = 48.dp
+    val layerDragSpeed = 480.dp
+    val layerDropLineWidth = 2.dp
+    val layerDragShadow = 8.dp
+    val layerShape = RoundedCornerShape(16.dp)
+    const val layerDragSourceAlpha = 0.35f
     val sliderThumbSize = 18.dp
     val colorWheelSize = 240.dp
     val workspaceWidth = 1200.dp

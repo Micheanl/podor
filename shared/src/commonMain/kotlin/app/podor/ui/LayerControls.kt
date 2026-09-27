@@ -5,9 +5,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -17,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,27 +29,9 @@ fun LayerControls(controller: StudioController) {
     val layers = controller.document.layers
     val active = layers.firstOrNull { it.id == controller.document.active }
     val enabled = controller.ready && !controller.busy
-    val list = rememberLazyListState()
     val ordered = remember(layers) { layers.asReversed() }
-    val ids = remember(ordered) { ordered.map { it.id } }
     var settings by remember { mutableStateOf(false) }
     var blending by remember { mutableStateOf(false) }
-    LaunchedEffect(active?.id, ids) {
-        val index = ids.indexOf(active?.id)
-        if (index >= 0) {
-            val layout = list.layoutInfo
-            val visible =
-                layout.visibleItemsInfo.any {
-                    it.index == index &&
-                        it.offset >= layout.viewportStartOffset &&
-                        it.offset + it.size <= layout.viewportEndOffset
-                }
-            if (!visible) {
-                if (layout.visibleItemsInfo.isEmpty()) list.scrollToItem(index)
-                else list.animateScrollToItem(index)
-            }
-        }
-    }
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -85,26 +66,7 @@ fun LayerControls(controller: StudioController) {
                 controller.command("add_layer")
             }
         }
-        LazyColumn(
-            Modifier.weight(1f).fillMaxWidth(),
-            state = list,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(ordered, key = { it.id }) { layer ->
-                LayerRow(
-                    controller,
-                    layer,
-                    layer.id == active?.id,
-                    enabled,
-                    Modifier.animateItem(
-                        fadeInSpec = tween(StudioMotion.feedbackMillis),
-                        placementSpec =
-                            tween(StudioMotion.panelMillis, easing = StudioMotion.easing),
-                        fadeOutSpec = tween(StudioMotion.dismissMillis),
-                    ),
-                )
-            }
-        }
+        LayerList(controller, ordered, enabled, Modifier.weight(1f).fillMaxWidth())
         if (active != null) {
             Column(
                 Modifier.fillMaxWidth()
@@ -183,8 +145,9 @@ fun LayerControls(controller: StudioController) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LayerRow(
+internal fun LayerRow(
     controller: StudioController,
     layer: LayerInfo,
     selected: Boolean,
@@ -200,28 +163,49 @@ private fun LayerRow(
     Row(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(StudioTheme.layerShape)
             .drawBehind { drawRect(background.value) }
             .border(
                 1.dp,
                 if (selected) StudioTheme.accent.copy(alpha = 0.3f) else Color.Transparent,
-                RoundedCornerShape(16.dp),
+                StudioTheme.layerShape,
             )
             .selectable(selected, enabled = enabled) {
                 controller.command("select_layer") { put("id", layer.id) }
             }
-            .padding(start = 10.dp, top = 8.dp, bottom = 8.dp),
+            .padding(
+                start = StudioTheme.layerPreviewInset,
+                top = StudioTheme.layerRowPadding,
+                bottom = StudioTheme.layerRowPadding,
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ArtworkPreview(
-            controller.previews.images[layer.id],
-            controller.document.width,
-            controller.document.height,
-            Modifier.size(42.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(StudioTheme.background)
-                .padding(3.dp),
-        )
+        val dragLabel = "${tr(layer.name)} · ${tr("拖动缩略图排序")}"
+        TooltipBox(
+            positionProvider =
+                TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+            tooltip = {
+                PlainTooltip(
+                    containerColor = StudioTheme.elevated,
+                    contentColor = StudioTheme.text,
+                ) {
+                    Text(dragLabel)
+                }
+            },
+            state = rememberTooltipState(),
+            enableUserInput = enabled,
+        ) {
+            ArtworkPreview(
+                controller.previews.images[layer.id],
+                controller.document.width,
+                controller.document.height,
+                Modifier.size(StudioTheme.layerPreviewSize)
+                    .semantics { contentDescription = dragLabel }
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(StudioTheme.background)
+                    .padding(3.dp),
+            )
+        }
         Column(Modifier.weight(1f).padding(start = 10.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
