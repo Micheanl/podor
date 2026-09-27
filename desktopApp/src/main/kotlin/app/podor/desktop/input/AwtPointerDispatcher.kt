@@ -20,14 +20,25 @@ internal class PenMouseEvent(
     override val penInput: PenInput,
 ) : MouseEvent(component, id, time, modifiers, x, y, 1, false, button), PenEvent
 
-internal class AwtPenDispatcher(private val window: Window) : AutoCloseable {
-    private val queue = PenEventQueue()
+internal class TouchMouseEvent(
+    component: Component,
+    id: Int,
+    time: Long,
+    modifiers: Int,
+    x: Int,
+    y: Int,
+    button: Int,
+    override val touchInput: TouchInput,
+) : MouseEvent(component, id, time, modifiers, x, y, 1, false, button), TouchEvent
+
+internal class AwtPointerDispatcher(private val window: Window) : AutoCloseable {
+    private val queue = PointerEventQueue()
     private var scheduled = false
     private var closed = false
     private var captured: Component? = null
     private var hovered: Component? = null
 
-    fun offer(frame: WindowPenFrame) =
+    fun offer(frame: WindowPointerFrame) =
         synchronized(queue) {
             if (closed) return@synchronized
             queue.offer(frame)
@@ -47,23 +58,26 @@ internal class AwtPenDispatcher(private val window: Window) : AutoCloseable {
         }
     }
 
-    private fun dispatch(frame: WindowPenFrame) {
+    private fun dispatch(frame: WindowPointerFrame) {
         if (!window.isDisplayable) return
         val current = frame.points.last()
         val x = current.x.roundToInt()
         val y = current.y.roundToInt()
         val target =
             captured
-                ?: (if (frame.phase == PenPhase.Leave || frame.phase == PenPhase.Cancel) hovered
+                ?: (if (frame.phase == PointerPhase.Leave || frame.phase == PointerPhase.Cancel)
+                    hovered
                 else SwingUtilities.getDeepestComponentAt(window, x, y))
                 ?: return
         val point = SwingUtilities.convertPoint(window, x, y, target)
         val pen =
-            PenInput(
-                frame.points.map { PenSample(Offset(it.x - x, it.y - y), it.pressure) },
-                frame.eraser,
-                frame.phase == PenPhase.Cancel,
-            )
+            if (frame.touch == null)
+                PenInput(
+                    frame.points.map { PenSample(Offset(it.x - x, it.y - y), it.pressure) },
+                    frame.eraser,
+                    frame.phase == PointerPhase.Cancel,
+                )
+            else null
         fun send(
             component: Component,
             id: Int,
@@ -74,44 +88,83 @@ internal class AwtPenDispatcher(private val window: Window) : AutoCloseable {
             val local =
                 if (component == target) point
                 else SwingUtilities.convertPoint(window, x, y, component)
+            val eventX = if (outside) -1 else local.x
+            val eventY = if (outside) -1 else local.y
+            val modifiers = frame.modifiers or if (contact) MouseEvent.BUTTON1_DOWN_MASK else 0
             component.dispatchEvent(
-                PenMouseEvent(
-                    component,
-                    id,
-                    frame.time,
-                    frame.modifiers or if (contact) MouseEvent.BUTTON1_DOWN_MASK else 0,
-                    if (outside) -1 else local.x,
-                    if (outside) -1 else local.y,
-                    button,
-                    if (id == MouseEvent.MOUSE_RELEASED && frame.phase == PenPhase.Up)
-                        pen.copy(samples = listOf(pen.samples.last()))
-                    else pen,
-                )
+                if (frame.touch != null)
+                    TouchMouseEvent(
+                        component,
+                        id,
+                        frame.time,
+                        modifiers,
+                        eventX,
+                        eventY,
+                        button,
+                        TouchInput(
+                            frame.touch.contacts.map {
+                                it.copy(
+                                    offset =
+                                        it.offset - Offset(x.toFloat(), y.toFloat()) +
+                                            Offset(
+                                                (local.x - eventX).toFloat(),
+                                                (local.y - eventY).toFloat(),
+                                            )
+                                )
+                            },
+                            frame.touch.gesturing,
+                            frame.phase == PointerPhase.Cancel,
+                            frame.points.map {
+                                Offset(it.x - x, it.y - y) +
+                                    Offset(
+                                        (local.x - eventX).toFloat(),
+                                        (local.y - eventY).toFloat(),
+                                    )
+                            },
+                        ),
+                    )
+                else
+                    PenMouseEvent(
+                        component,
+                        id,
+                        frame.time,
+                        modifiers,
+                        eventX,
+                        eventY,
+                        button,
+                        if (id == MouseEvent.MOUSE_RELEASED && frame.phase == PointerPhase.Up)
+                            checkNotNull(pen).copy(samples = listOf(pen.samples.last()))
+                        else checkNotNull(pen),
+                    )
             )
         }
-        if (hovered != target && frame.phase != PenPhase.Cancel && frame.phase != PenPhase.Leave) {
+        if (
+            hovered != target &&
+                frame.phase != PointerPhase.Cancel &&
+                frame.phase != PointerPhase.Leave
+        ) {
             hovered?.let { send(it, MouseEvent.MOUSE_EXITED) }
             send(target, MouseEvent.MOUSE_ENTERED)
             hovered = target
         }
         // Compose 会先合成位置变化事件，提前派发移动可避免后续落笔和抬笔丢失。
         when (frame.phase) {
-            PenPhase.Down -> {
+            PointerPhase.Down -> {
                 captured = target
                 target.requestFocusInWindow()
                 send(target, MouseEvent.MOUSE_MOVED)
                 send(target, MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1, true)
             }
-            PenPhase.Move ->
+            PointerPhase.Move ->
                 if (captured != null) send(target, MouseEvent.MOUSE_DRAGGED, contact = true)
-            PenPhase.Up -> {
+            PointerPhase.Up -> {
                 if (captured != null) {
                     send(target, MouseEvent.MOUSE_DRAGGED, contact = true)
                     send(target, MouseEvent.MOUSE_RELEASED, MouseEvent.BUTTON1)
                 }
                 captured = null
             }
-            PenPhase.Cancel -> {
+            PointerPhase.Cancel -> {
                 if (captured != null) {
                     send(target, MouseEvent.MOUSE_DRAGGED, contact = true)
                     send(target, MouseEvent.MOUSE_DRAGGED, contact = true, outside = true)
@@ -120,8 +173,8 @@ internal class AwtPenDispatcher(private val window: Window) : AutoCloseable {
                 captured = null
                 hovered = null
             }
-            PenPhase.Hover -> send(target, MouseEvent.MOUSE_MOVED)
-            PenPhase.Leave -> {
+            PointerPhase.Hover -> send(target, MouseEvent.MOUSE_MOVED)
+            PointerPhase.Leave -> {
                 hovered?.let { send(it, MouseEvent.MOUSE_EXITED) }
                 hovered = null
             }

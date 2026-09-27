@@ -188,6 +188,7 @@ object StudioDefaults {
     const val frameMillis = 16L
     const val inputQueueCapacity = 64
     const val nativeInputDispatchLimit = 8
+    const val nativeTouchContacts = 32
     const val maxBatchSamples = 256
     const val minZoom = 0.1f
     const val maxZoom = 8f

@@ -28,9 +28,11 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.podor.domain.StudioDefaults
 import app.podor.domain.Tool
+import app.podor.domain.TouchGesture
 import app.podor.presentation.LayerMovePreview
 import app.podor.presentation.StudioController
 import app.podor.ui.input.platformPenInput
+import app.podor.ui.input.platformTouchInput
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlinx.coroutines.currentCoroutineContext
@@ -79,11 +81,13 @@ fun CanvasWorkspace(
                 var gesture = false
                 var moveAnchor: Offset? = null
                 var movePreview: LayerMovePreview? = null
+                val touchGesture = TouchGesture()
                 try {
                     while (currentCoroutineContext().isActive) {
                         val event = awaitPointerEventScope { awaitPointerEvent() }
                         val pen = event.platformPenInput()
-                        if (pen?.cancelled == true) {
+                        val touch = event.platformTouchInput()
+                        if (pen?.cancelled == true || touch?.cancelled == true) {
                             if (drawing) controller.end(cancel = true)
                             drawing = false
                             activePointer = null
@@ -92,6 +96,7 @@ fun CanvasWorkspace(
                             selectionEnd = null
                             moveAnchor = null
                             controller.cancelLayerMove()
+                            touchGesture.reset()
                             continue
                         }
                         val pressed = event.changes.filter { it.pressed }
@@ -104,16 +109,59 @@ fun CanvasWorkspace(
                             stylus
                                 ?: event.changes.firstOrNull { it.id == activePointer }
                                 ?: event.changes.first()
-                        val mouse = primary.type == PointerType.Mouse && pen == null
+                        val mouse =
+                            primary.type == PointerType.Mouse && pen == null && touch == null
+                        if (touch != null) {
+                            val transform =
+                                touchGesture.update(
+                                    touch.contacts.map {
+                                        it.copy(offset = primary.position + it.offset * density)
+                                    }
+                                )
+                            if (touch.gesturing) {
+                                if (drawing) controller.end(cancel = true)
+                                drawing = false
+                                activePointer = null
+                                selectionStart = null
+                                selectionEnd = null
+                                if (moveAnchor != null) controller.cancelLayerMove()
+                                moveAnchor = null
+                                cursor = null
+                                if (transform != null)
+                                    controller.viewport =
+                                        controller.viewport.transform(
+                                            transform.center,
+                                            transform.pan,
+                                            transform.zoom,
+                                            viewSize,
+                                            controller.document,
+                                            transform.rotation,
+                                        )
+                                event.changes.forEach { it.consume() }
+                                continue
+                            }
+                        }
                         val position =
                             primary.position +
-                                (pen?.samples?.lastOrNull()?.offset ?: Offset.Zero) * density
+                                (pen?.samples?.lastOrNull()?.offset
+                                    ?: touch?.samples?.lastOrNull()
+                                    ?: Offset.Zero) * density
                         val pressure =
                             (pen?.samples?.lastOrNull()?.pressure
                                     ?: if (mouse) 1f else primary.pressure)
                                 .coerceIn(0.05f, 1f)
                         fun samples(): List<Triple<Float, Float, Float>> = buildList {
-                            if (pen != null) {
+                            if (touch != null) {
+                                for (sample in touch.samples) {
+                                    val point =
+                                        controller.viewport.toDocument(
+                                            primary.position + sample * density,
+                                            viewSize,
+                                            controller.document,
+                                        )
+                                    add(Triple(point.x, point.y, 1f))
+                                }
+                            } else if (pen != null) {
                                 for (sample in pen.samples) {
                                     val point =
                                         controller.viewport.toDocument(
@@ -244,7 +292,7 @@ fun CanvasWorkspace(
                             if (drawing) {
                                 if (
                                     position != primary.previousPosition ||
-                                        (pen?.samples?.size ?: 0) > 1
+                                        (pen?.samples?.size ?: touch?.samples?.size ?: 0) > 1
                                 ) {
                                     controller.points(samples())
                                 }
@@ -257,7 +305,10 @@ fun CanvasWorkspace(
                         }
                         if (gesture) continue
                         if (controller.tool == Tool.MoveLayer) {
-                            if (primary.type == PointerType.Touch && !controller.fingerDrawing)
+                            if (
+                                (primary.type == PointerType.Touch || touch != null) &&
+                                    !controller.fingerDrawing
+                            )
                                 continue
                             val preview = controller.layerMove
                             val point =
@@ -301,7 +352,11 @@ fun CanvasWorkspace(
                             primary.consume()
                             continue
                         }
-                        if (primary.type == PointerType.Touch && !controller.fingerDrawing) continue
+                        if (
+                            (primary.type == PointerType.Touch || touch != null) &&
+                                !controller.fingerDrawing
+                        )
+                            continue
                         val point =
                             controller.viewport.toDocument(
                                 position,
@@ -352,7 +407,7 @@ fun CanvasWorkspace(
                             drawing &&
                                 primary.id == activePointer &&
                                 (position != primary.previousPosition ||
-                                    (pen?.samples?.size ?: 0) > 1)
+                                    (pen?.samples?.size ?: touch?.samples?.size ?: 0) > 1)
                         ) {
                             controller.points(samples())
                         }

@@ -20,6 +20,7 @@ import app.podor.resources.Res
 import app.podor.resources.brand
 import app.podor.ui.PodorApp
 import app.podor.ui.StudioTheme
+import app.podor.ui.input.nativeTouchGuard
 import java.awt.Dimension
 import org.jetbrains.compose.resources.painterResource
 
@@ -64,7 +65,7 @@ fun main() {
                         StudioTheme.minimumWindowHeight.value.toInt(),
                     )
             }
-            Column(Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize().nativeTouchGuard()) {
                 if (customChrome)
                     WindowTitleBar(
                         language = controller.preferences.language,

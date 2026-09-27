@@ -5,8 +5,10 @@ import com.sun.jna.Structure
 import com.sun.jna.ptr.IntByReference
 import com.sun.jna.win32.StdCallLibrary
 
-internal interface WindowsPenApi : StdCallLibrary {
+internal interface WindowsPointerApi : StdCallLibrary {
     fun GetPointerType(id: Int, type: IntByReference): Boolean
+
+    fun GetPointerInfo(id: Int, info: Pointer): Boolean
 
     fun GetPointerPenInfo(id: Int, info: Pointer): Boolean
 
