@@ -199,6 +199,7 @@ pub enum ExportFormat {
     Ora,
     Tiff,
     Bmp,
+    Psd,
 }
 
 #[derive(Clone, Copy, serde::Deserialize)]
@@ -228,6 +229,9 @@ pub fn export_image(doc: &Document, options: ExportOptions) -> Result<Vec<u8>, S
     }
     if options.format == ExportFormat::Ora {
         return crate::openraster::export(doc);
+    }
+    if options.format == ExportFormat::Psd {
+        return crate::psd::export(doc);
     }
     let mut rgba = vec![255; doc.width as usize * doc.height as usize * 4];
     for ty in 0..doc.height.div_ceil(TILE_SIZE) {
@@ -293,7 +297,7 @@ pub fn export_image(doc: &Document, options: ExportOptions) -> Result<Vec<u8>, S
                 image::ExtendedColorType::Rgba8,
             )
             .map_err(|error| error.to_string())?,
-        ExportFormat::Ora => unreachable!(),
+        ExportFormat::Ora | ExportFormat::Psd => unreachable!(),
     }
     Ok(output)
 }

@@ -113,6 +113,8 @@ private val english =
         "ORA 已导出" to "ORA exported",
         "TIFF 已导出" to "TIFF exported",
         "BMP 已导出" to "BMP exported",
+        "PSD 已导出" to "PSD exported",
+        "PSD 文件超过大小限制" to "PSD file exceeds the size limit",
         "保留图层" to "Layers",
         "保留图层与透明度" to "Layers and transparency",
         "图层名称包含不支持的字符" to "Layer name contains unsupported characters",

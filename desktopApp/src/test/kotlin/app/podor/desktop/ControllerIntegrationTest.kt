@@ -294,6 +294,17 @@ class ControllerIntegrationTest {
                     files.exports[1].second.copyOfRange(0, 2),
                 )
                 assertEquals("WEBP", files.exports[2].second.copyOfRange(8, 12).decodeToString())
+                val psd = files.exports.single { it.first == ExportFormat.Psd }.second
+                java.io.DataInputStream(psd.inputStream()).use { input ->
+                    assertEquals("8BPS", input.readNBytes(4).decodeToString())
+                    assertEquals(1, input.readUnsignedShort())
+                    input.skipNBytes(6)
+                    assertEquals(4, input.readUnsignedShort())
+                    assertEquals(64, input.readInt())
+                    assertEquals(64, input.readInt())
+                    assertEquals(8, input.readUnsignedShort())
+                    assertEquals(3, input.readUnsignedShort())
+                }
                 for (format in listOf(ExportFormat.Tiff, ExportFormat.Bmp)) {
                     val bytes = files.exports.single { it.first == format }.second
                     val decoded = assertNotNull(javax.imageio.ImageIO.read(bytes.inputStream()))

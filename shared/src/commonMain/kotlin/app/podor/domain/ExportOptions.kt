@@ -16,6 +16,7 @@ enum class ExportFormat(
     @SerialName("ora") Ora("ORA", "ora", true, true),
     @SerialName("tiff") Tiff("TIFF", "tiff", true),
     @SerialName("bmp") Bmp("BMP", "bmp", true),
+    @SerialName("psd") Psd("PSD", "psd", true, true),
 }
 
 @Serializable

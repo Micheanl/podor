@@ -431,7 +431,7 @@ class StudioRenderingTest {
                     }
                     for (format in ExportFormat.entries) {
                         val scene =
-                            ImageComposeScene(432, 620) {
+                            ImageComposeScene(432, 720) {
                                 PodorTheme {
                                     Surface(color = StudioTheme.panel) {
                                         Box(Modifier.padding(16.dp)) {
@@ -491,7 +491,7 @@ class StudioRenderingTest {
             }
             withContext(Dispatchers.Main) {
                 val options = mutableStateOf(ExportOptions())
-                val scene = ImageComposeScene(432, 620) {
+                val scene = ImageComposeScene(432, 720) {
                     PodorTheme(Language.English) {
                         Surface(color = StudioTheme.panel) {
                             Box(Modifier.padding(16.dp)) {
@@ -511,7 +511,7 @@ class StudioRenderingTest {
                     render()
                     click(80f, 400f)
                     assertEquals(ExportFormat.Ora, options.value.format)
-                    click(380f, 485f)
+                    click(380f, 565f)
                     assertFalse(options.value.transparent)
                     repeat(30) { render() }
                     scene.render(frame++ * 16_666_667L).use { image ->
@@ -525,13 +525,18 @@ class StudioRenderingTest {
                     click(100f, 320f)
                     assertEquals(ExportFormat.Png, options.value.format)
                     repeat(30) { render() }
-                    click(380f, 485f)
+                    click(380f, 565f)
                     assertTrue(options.value.transparent)
                     click(215f, 400f)
                     assertEquals(ExportFormat.Tiff, options.value.format)
                     assertTrue(options.value.transparent)
                     click(350f, 400f)
                     assertEquals(ExportFormat.Bmp, options.value.format)
+                    assertTrue(options.value.transparent)
+                    click(80f, 480f)
+                    assertEquals(ExportFormat.Psd, options.value.format)
+                    repeat(30) { render() }
+                    click(380f, 565f)
                     assertTrue(options.value.transparent)
                     repeat(30) { render() }
                     assertFalse(scene.hasInvalidations())

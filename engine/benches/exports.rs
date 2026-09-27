@@ -42,7 +42,12 @@ fn main() {
                 engine.command(Command::End).unwrap();
             }
         }
-        for format in [ExportFormat::Ora, ExportFormat::Tiff, ExportFormat::Bmp] {
+        for format in [
+            ExportFormat::Ora,
+            ExportFormat::Tiff,
+            ExportFormat::Bmp,
+            ExportFormat::Psd,
+        ] {
             let start = Instant::now();
             let output = engine
                 .export_image(ExportOptions {

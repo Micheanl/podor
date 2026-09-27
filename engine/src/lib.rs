@@ -10,6 +10,7 @@ mod layers;
 pub mod model;
 mod openraster;
 mod previews;
+mod psd;
 mod raster;
 mod stabilizer;
 mod storage;
