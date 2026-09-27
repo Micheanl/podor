@@ -28,6 +28,7 @@ fun Inspector(
     panel: StudioPanel,
     onPanelChange: (StudioPanel) -> Unit,
     modifier: Modifier = Modifier,
+    onCollapse: (() -> Unit)? = null,
 ) {
     Column(modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -37,16 +38,20 @@ fun Inspector(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
             )
-            StudioIcon(
-                when (panel) {
-                    StudioPanel.Brushes -> Glyph.Brush
-                    StudioPanel.Colors -> Glyph.Palette
-                    StudioPanel.Layers -> Glyph.Layers
-                    StudioPanel.Adjustments -> Glyph.Adjustments
-                },
-                StudioTheme.muted.copy(alpha = 0.5f),
-                Modifier.size(16.dp),
-            )
+            if (onCollapse != null) {
+                ToolButton(Glyph.Sidebar, "收起面板", onClick = onCollapse)
+            } else {
+                StudioIcon(
+                    when (panel) {
+                        StudioPanel.Brushes -> Glyph.Brush
+                        StudioPanel.Colors -> Glyph.Palette
+                        StudioPanel.Layers -> Glyph.Layers
+                        StudioPanel.Adjustments -> Glyph.Adjustments
+                    },
+                    StudioTheme.muted.copy(alpha = 0.5f),
+                    Modifier.size(16.dp),
+                )
+            }
         }
         Row(
             Modifier.fillMaxWidth()

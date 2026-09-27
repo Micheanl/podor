@@ -172,7 +172,13 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                                     )
                                     .pointerInput(Unit) { detectTapGestures {} }
                             ) {
-                                Inspector(controller, panel, { panel = it }, Modifier.fillMaxSize())
+                                Inspector(
+                                    controller,
+                                    panel,
+                                    { panel = it },
+                                    Modifier.fillMaxSize(),
+                                    onCollapse = { inspectorExpanded = false },
+                                )
                             }
                         }
                     }

@@ -206,10 +206,12 @@ class StudioRenderingTest {
                             assertTrue(colorful > 500, "Palette selection was not retained")
                         }
                     }
-                    click(1158f, 172f)
+                    click(1158f, 184f)
                     assertPaletteVisible()
                     val brush = controller.brush
-                    click(1314f, 32f)
+                    val pixels = controller.frame
+                    val viewport = controller.viewport
+                    click(1300f, 124f)
                     scene.render(frame++ * 16_666_667L).use { image ->
                         assertEquals(
                             1f,
@@ -226,7 +228,15 @@ class StudioRenderingTest {
                     }
                     click(1314f, 32f)
                     assertPaletteVisible()
+                    repeat(3) {
+                        click(1314f, 32f)
+                        click(1314f, 32f)
+                    }
+                    assertPaletteVisible()
                     assertEquals(brush, controller.brush)
+                    assertEquals(viewport, controller.viewport)
+                    assertSame(pixels, controller.frame)
+                    assertEquals(revision, controller.document.revision)
                     scene.sendPointerEvent(PointerEventType.Press, Offset(1200f, 70f))
                     scene.sendPointerEvent(PointerEventType.Release, Offset(1200f, 70f))
                 }
