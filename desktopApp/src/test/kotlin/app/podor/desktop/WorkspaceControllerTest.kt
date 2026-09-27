@@ -71,6 +71,47 @@ class WorkspaceControllerTest {
         }
 
     @Test
+    fun windowCanCloseDuringStartupAndAfterInitializationFailure() =
+        runBlocking<Unit> {
+            NativeLoader.load()
+            for (fail in listOf(false, true)) {
+                val entered = CompletableDeferred<Unit>()
+                val proceed = CompletableDeferred<Unit>()
+                val files =
+                    object : ProjectFiles {
+                        override suspend fun open(): ByteArray? = null
+
+                        override suspend fun save(bytes: ByteArray, png: Boolean) = false
+
+                        override suspend fun readPreferences(): ByteArray? {
+                            entered.complete(Unit)
+                            proceed.await()
+                            if (fail) error("设置文件读取失败")
+                            return null
+                        }
+                    }
+                val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+                val controller = withContext(Dispatchers.Main) { StudioController(files, scope) }
+                try {
+                    withTimeout(5000) { entered.await() }
+                    if (fail) {
+                        proceed.complete(Unit)
+                        awaitState { controller.error != null }
+                    }
+                    withContext(Dispatchers.Main) {
+                        assertFalse(controller.ready)
+                        controller.navigate(WorkspaceDestination.Exit)
+                        assertTrue(controller.exitRequested)
+                    }
+                } finally {
+                    proceed.complete(Unit)
+                    withContext(Dispatchers.Main) { controller.close() }
+                    scope.cancel()
+                }
+            }
+        }
+
+    @Test
     fun startupDefaultsToWorkspaceAndBlackWithoutAutomaticSaving() =
         runBlocking<Unit> {
             NativeLoader.load()

@@ -680,6 +680,10 @@ class StudioController(
     }
 
     fun navigate(destination: WorkspaceDestination) {
+        if (destination == WorkspaceDestination.Exit && !ready) {
+            exitRequested = true
+            return
+        }
         if (ready && !busy && pendingNavigation == null)
             scope.launch { actions.send(Action.Navigate(destination)) }
     }
