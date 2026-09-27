@@ -122,7 +122,7 @@ class DesktopFiles(
             dialog.file =
                 if (save) "$suggestedName.$extension"
                 else if (brushes) "*.json"
-                else "*.${AppIdentity.projectExtension};*.png;*.jpg;*.jpeg;*.webp"
+                else "*.${AppIdentity.projectExtension};*.ora;*.png;*.jpg;*.jpeg;*.webp"
             try {
                 dialog.isVisible = true
                 dialog.file?.let { name ->

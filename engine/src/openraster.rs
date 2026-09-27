@@ -2,6 +2,9 @@ use crate::{model::*, raster::composite_tile_background, storage::unpremultiply}
 use std::io::{Cursor, Write};
 use zip::{write::SimpleFileOptions, CompressionMethod, ZipWriter};
 
+mod import;
+pub use import::load;
+
 pub fn export(doc: &Document) -> Result<Vec<u8>, String> {
     let options = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
     let mut archive = ZipWriter::new(Cursor::new(Vec::new()));

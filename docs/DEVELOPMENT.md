@@ -50,7 +50,9 @@ Windows 指针消息在接收线程读取，再通过 AWT 交给 Compose 命中�
 
 锁定透明度保留原像素的 Alpha，画笔、填充和滤镜只改颜色，橡皮和清空需先解除锁定。图层锁定阻止内容编辑、删除和合并，仍可更名、调整显示属性和层序。锁定状态写入工程格式 v2，旧 v1 工程可读取，新保存的文件需要 podor 0.2.13 或更新版本。
 
-[OpenRaster](https://www.openraster.org/baseline/layer-stack-spec.html)（`.ora`）导出保留图层顺序、名称、可见性、不透明度和混合模式，保留原始透明度，不添加白底。各层裁到有数据的块范围，PNG 按行编码，合成预览只缓存一排画布块。暂不支持 ORA 导入。
+[OpenRaster](https://www.openraster.org/baseline/layer-stack-spec.html)（`.ora`）导入导出保留平面图层的顺序、名称、可见性、不透明度和当前支持的八种混合模式。导出保留原始透明度，不添加白底；各层裁到有数据的块范围，PNG 按行编码，合成预览只缓存一排画布块。
+
+导入在后台解码，按图层偏移写入画布内的稀疏图块，画布外像素会裁切。普通 PNG 按行读取，交错 PNG 使用受尺寸限制的缓冲区，16 位通道转换为 8 位；图层组和其他混合模式会明确报错。文件目录、XML 和像素分别限制大小，解析失败保留当前作品。手动保存默认另存为 `.podor`，不覆盖来源 ORA。测试包含 GIMP 导出的多图层、交错 PNG、越界偏移和损坏文件。
 
 已用 GIMP 3.2.6 验证图层读取。GIMP 默认合成设置可能改变显示效果；将图层混合空间、合成空间设为 `RGB (from color profile)`，合成模式设为 `Union` 后，八种模式样本与 podor 的通道差值不超过 2/255，设置说明见 [GIMP 手册](https://docs.gimp.org/3.2/en/gimp-layer-new.html)。文件内的合成预览保持 podor 原貌。
 
@@ -66,6 +68,7 @@ cargo bench --bench editing
 cargo bench --bench blending --bench previews --bench imports
 cargo bench --bench exports
 cargo bench --bench layers
+cargo bench --bench ora_import
 ```
 
 基准测量引擎负载，不包含设备输入、GPU 上传和屏幕延迟。

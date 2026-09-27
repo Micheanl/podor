@@ -66,6 +66,9 @@ pub fn load(bytes: &[u8]) -> Result<Document, String> {
     if bytes.len() > MAX_FILE_BYTES {
         return Err("文件过大".into());
     }
+    if bytes.starts_with(b"PK\x03\x04") {
+        return crate::openraster::load(bytes);
+    }
     match image::guess_format(bytes) {
         Ok(ImageFormat::Png) => return load_png(bytes),
         Ok(ImageFormat::Jpeg) => {
@@ -87,7 +90,7 @@ pub fn load(bytes: &[u8]) -> Result<Document, String> {
         if bytes.starts_with(b"PODOR") {
             return Err("工程版本不受支持，请更新 podor".into());
         }
-        return Err("请选择 podor 工程或 PNG、JPEG、WebP 图片".into());
+        return Err("请选择 podor、ORA 工程或 PNG、JPEG、WebP 图片".into());
     }
     let mut decoded = Vec::new();
     GzDecoder::new(&bytes[MAGIC.len()..])
