@@ -6,6 +6,7 @@ pub const TILE_BYTES: usize = (TILE_SIZE * TILE_SIZE * 4) as usize;
 pub const MAX_DIMENSION: u32 = 8192;
 pub const MAX_PIXELS: u64 = 16_777_216;
 pub const MAX_LAYERS: usize = 32;
+pub const MAX_LAYER_NAME_BYTES: usize = 256;
 pub const MAX_HISTORY_BYTES: usize = 64 * 1024 * 1024;
 pub const MAX_DOCUMENT_BYTES: usize = 128 * 1024 * 1024;
 pub const MAX_HISTORY_ENTRIES: usize = 60;
@@ -132,7 +133,7 @@ impl Document {
             if layer.id == 0
                 || !ids.insert(layer.id)
                 || layer.id >= self.next_id
-                || layer.name.len() > 256
+                || layer.name.len() > MAX_LAYER_NAME_BYTES
                 || !layer.opacity.is_finite()
                 || !(0.0..=1.0).contains(&layer.opacity)
             {
@@ -204,7 +205,7 @@ impl Default for Brush {
             size: 12.0,
             opacity: 1.0,
             hardness: 0.9,
-            color: [139, 41, 66],
+            color: [0, 0, 0],
             eraser: false,
             tip: BrushTip::Round,
             aspect: 1.0,

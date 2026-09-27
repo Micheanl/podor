@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.podor.domain.*
@@ -85,6 +86,14 @@ fun StudioHeader(
                     },
                     leadingIcon = { StudioIcon(Glyph.Export) },
                 )
+                DropdownMenuItem(
+                    { Text(tr("另存为")) },
+                    {
+                        controller.file(StudioController.FileAction.SaveAs)
+                        menu = false
+                    },
+                    leadingIcon = { StudioIcon(Glyph.Copy) },
+                )
                 HorizontalDivider(color = StudioTheme.border)
                 DropdownMenuItem(
                     { Text(tr("清空当前图层")) },
@@ -110,6 +119,7 @@ fun StudioHeader(
                 )
             }
         }
+        ToolButton(Glyph.Home, "作品首页") { controller.home() }
         ToolButton(Glyph.Settings, "设置") { onDialog(StudioDialog.Settings) }
         if (showDocument) {
             Spacer(Modifier.weight(1f))
@@ -120,7 +130,14 @@ fun StudioHeader(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 StudioIcon(Glyph.Selection, StudioTheme.muted, Modifier.size(15.dp))
-                Text(tr("自由创作"), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    (controller.projectReference?.name ?: tr("未命名")) + if (controller.hasUnsavedChanges) " ·" else "",
+                    Modifier.widthIn(max = 160.dp),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text(
                     "${controller.document.width} × ${controller.document.height} px",
                     fontSize = 10.sp,

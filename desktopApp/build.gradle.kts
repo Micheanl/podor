@@ -64,6 +64,7 @@ compose.desktop {
                 iconFile.set(project.file("icons/podor.ico"))
                 upgradeUuid = "b96b48f7-6fe7-3d0b-9c36-0f9c2d8c9eac"
                 dirChooser = true
+                shortcut = true
                 menuGroup = "podor"
             }
             vendor = "podor"
@@ -75,3 +76,34 @@ compose.desktop {
 }
 
 tasks.test { jvmArgs("--enable-native-access=ALL-UNNAMED") }
+
+tasks
+    .matching { it.name == "packageMsi" }
+    .configureEach {
+        inputs.file(rootProject.file("scripts/configure-msi.ps1"))
+        doLast {
+            val installer =
+                layout.buildDirectory
+                    .file(
+                        "release/${libs.versions.podor.get()}/main/msi/podor-${libs.versions.podor.get()}.msi"
+                    )
+                    .get()
+                    .asFile
+            val result =
+                ProcessBuilder(
+                        "powershell.exe",
+                        "-NoProfile",
+                        "-NonInteractive",
+                        "-ExecutionPolicy",
+                        "Bypass",
+                        "-File",
+                        rootProject.file("scripts/configure-msi.ps1").absolutePath,
+                        "-Path",
+                        installer.absolutePath,
+                    )
+                    .inheritIO()
+                    .start()
+                    .waitFor()
+            check(result == 0) { "MSI configuration failed" }
+        }
+    }

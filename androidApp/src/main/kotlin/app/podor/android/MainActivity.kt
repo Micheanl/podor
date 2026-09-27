@@ -49,11 +49,6 @@ class MainActivity : ComponentActivity() {
         setContent { PodorApp(controller) }
     }
 
-    override fun onStop() {
-        controller.recover()
-        super.onStop()
-    }
-
     override fun onDestroy() {
         controller.close()
         super.onDestroy()
@@ -72,8 +67,6 @@ class MainActivity : ComponentActivity() {
         override suspend fun writePreferences(bytes: ByteArray) = writeAtomic(preferences, bytes)
 
         override suspend fun saveBrushPack(bytes: ByteArray) = saveDocument(bytes, false, true)
-
-        private val recovery = AtomicFile(File(filesDir, "recovery.podor"))
 
         override suspend fun open(): ByteArray? {
             val uri =
@@ -121,13 +114,6 @@ class MainActivity : ComponentActivity() {
             return true
         }
 
-        override suspend fun readRecovery(): ByteArray? =
-            withContext(Dispatchers.IO) {
-                if (recovery.baseFile.exists()) recovery.readFully() else null
-            }
-
-        override suspend fun writeRecovery(bytes: ByteArray) = writeAtomic(recovery, bytes)
-
         private suspend fun writeAtomic(file: AtomicFile, bytes: ByteArray) =
             withContext(Dispatchers.IO) {
                 val stream = file.startWrite()
@@ -140,11 +126,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-        override suspend fun preserveRecovery(bytes: ByteArray) =
-            withContext(Dispatchers.IO) {
-                File(filesDir, "recovery-damaged-${System.currentTimeMillis()}.podor")
-                    .writeBytes(bytes)
-            }
     }
 
     companion object {

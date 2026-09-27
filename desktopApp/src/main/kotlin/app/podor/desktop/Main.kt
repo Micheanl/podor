@@ -10,13 +10,13 @@ import app.podor.desktop.data.DesktopUpdates
 import app.podor.desktop.engine.NativeLoader
 import app.podor.domain.AppBuildInfo
 import app.podor.domain.AppIdentity
+import app.podor.domain.WorkspaceDestination
 import app.podor.presentation.StudioController
 import app.podor.presentation.UpdateController
 import app.podor.resources.Res
 import app.podor.resources.brand
 import app.podor.ui.PodorApp
 import java.awt.Dimension
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 
 fun main() {
@@ -24,11 +24,15 @@ fun main() {
     application {
         val scope = rememberCoroutineScope()
         var windowRef by remember { mutableStateOf<java.awt.Frame?>(null) }
-        val controller = remember { StudioController(DesktopFiles { windowRef }, scope) }
+        val updateSource = remember { DesktopUpdates() }
+        val controller = remember { StudioController(DesktopFiles { windowRef }, scope, updateSource::install) }
         val updates = remember {
             if (System.getProperty("os.name").startsWith("Windows"))
-                UpdateController(DesktopUpdates(), scope, AppBuildInfo.version)
+                UpdateController(updateSource, scope, AppBuildInfo.version)
             else null
+        }
+        LaunchedEffect(controller.exitRequested) {
+            if (controller.exitRequested) exitApplication()
         }
         DisposableEffect(Unit) {
             onDispose {
@@ -37,11 +41,7 @@ fun main() {
             }
         }
         Window(
-            onCloseRequest = {
-                scope.launch {
-                    if (controller.shutdown()) exitApplication()
-                }
-            },
+            onCloseRequest = { controller.navigate(WorkspaceDestination.Exit) },
             title = AppIdentity.name,
             icon = painterResource(Res.drawable.brand),
             state = rememberWindowState(width = 1360.dp, height = 900.dp),

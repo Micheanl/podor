@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.podor.domain.*
 import app.podor.presentation.StudioController
-import kotlinx.serialization.json.put
 
 @Composable
 fun NewCanvasDialog(controller: StudioController, onDismiss: () -> Unit) {
@@ -38,10 +37,7 @@ fun NewCanvasDialog(controller: StudioController, onDismiss: () -> Unit) {
         enabled = valid && !controller.busy,
         onConfirm = {
             if (valid)
-                controller.command("new") {
-                    put("width", canvasWidth)
-                    put("height", canvasHeight)
-                }
+                controller.navigate(WorkspaceDestination.New(requireNotNull(canvasWidth), requireNotNull(canvasHeight)))
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -159,7 +155,6 @@ fun NewCanvasDialog(controller: StudioController, onDismiss: () -> Unit) {
                     fontSize = 11.sp,
                     color = StudioTheme.muted,
                 )
-                Text(tr("请先保存当前工程，新画布会替换当前内容。"), fontSize = 11.sp, color = StudioTheme.muted)
             }
         },
     )

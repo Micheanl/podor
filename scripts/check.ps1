@@ -13,5 +13,10 @@ if ($LASTEXITCODE) { exit $LASTEXITCODE }
 cargo test --locked
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
 ./gradlew.bat :shared:jvmTest :desktopApp:test --console plain
-exit $LASTEXITCODE
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
+if ($env:OS -eq 'Windows_NT') {
+    & "$env:SystemRoot/System32/WindowsPowerShell/v1.0/powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PSScriptRoot/test-update-handoff.ps1"
+    if ($LASTEXITCODE) { exit $LASTEXITCODE }
+}
+exit 0
 

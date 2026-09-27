@@ -9,21 +9,9 @@ import java.nio.file.StandardCopyOption
 class DesktopStorage(
     val root: Path = Path.of(System.getProperty("user.home"), AppIdentity.dataDirectory)
 ) {
-    private val recoveryName = "recovery.${AppIdentity.projectExtension}"
-
     fun readPreferences(): ByteArray? = readLimited(root.resolve("preferences.json"), 1024 * 1024)
 
     fun writePreferences(bytes: ByteArray) = write("preferences.json", bytes)
-
-    fun readRecovery(): ByteArray? = readLimited(root.resolve(recoveryName), maxFileBytes)
-
-    fun writeRecovery(bytes: ByteArray) = write(recoveryName, bytes)
-
-    fun preserveRecovery(bytes: ByteArray) =
-        write(
-            "recovery-damaged-${System.currentTimeMillis()}.${AppIdentity.projectExtension}",
-            bytes,
-        )
 
     private fun readLimited(path: Path, limit: Long): ByteArray? =
         if (Files.exists(path) && Files.size(path) <= limit) Files.readAllBytes(path) else null

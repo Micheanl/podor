@@ -17,8 +17,10 @@ data class DocumentInfo(
     val height: Int = 1200,
     val active: Int = 1,
     val revision: Long = 0,
+    val contentId: Long = 0,
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
+    val maxLayers: Int = 0,
     val layers: List<LayerInfo> = emptyList(),
     val selection: Selection? = null,
 )
@@ -107,12 +109,13 @@ data class BrushSettings(
     val preset: BrushPreset = BrushPreset.Ink,
     val size: Float = BrushPreset.Ink.size,
     val opacity: Float = BrushPreset.Ink.opacity,
-    val color: Long = 0xFF8B2942,
+    val color: Long = StudioDefaults.brushColor,
 )
 
 data class CanvasPreset(val label: String, val width: Int, val height: Int)
 
 object StudioDefaults {
+    const val brushColor = 0xFF000000L
     const val stabilization = 0f
     const val lineStabilization = 0.5f
     const val exportQuality = 90

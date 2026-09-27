@@ -35,7 +35,11 @@ import org.jetbrains.compose.resources.painterResource
 @Composable
 fun PodorApp(controller: StudioController, updates: UpdateController? = null) {
     CompositionLocalProvider(LocalLanguage provides controller.preferences.language) {
-        StudioLaunch(controller.ready) { StudioApp(controller, updates) }
+        StudioLaunch(controller.ready) {
+            if (controller.showWorkspace) WorkspaceHome(controller, updates)
+            else StudioApp(controller, updates)
+        }
+        UnsavedChangesDialog(controller)
     }
 }
 

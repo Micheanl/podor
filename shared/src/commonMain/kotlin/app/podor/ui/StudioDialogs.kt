@@ -26,7 +26,7 @@ fun StudioDialogs(controller: StudioController, dialog: StudioDialog, updates: U
                 title = "打开工程或图片",
                 glyph = Glyph.Folder,
                 confirmLabel = "选择文件",
-                text = { Text(tr("打开后会替换当前画布，重要改动请先保存。")) },
+                text = { Text(tr("支持 podor、PNG、JPEG 和 WebP。")) },
                 onConfirm = { controller.file(StudioController.FileAction.Open) },
             )
         StudioDialog.Clear ->
@@ -41,7 +41,7 @@ fun StudioDialogs(controller: StudioController, dialog: StudioDialog, updates: U
         StudioDialog.Settings -> SettingsDialog(controller, onDismiss, updates)
         StudioDialog.Export -> ExportDialog(controller, onDismiss)
     }
-    controller.error?.let { error ->
+    controller.error?.takeIf { controller.pendingNavigation == null }?.let { error ->
         StudioAlertDialog(
             onDismissRequest = controller::dismissError,
             title = "暂时无法完成",

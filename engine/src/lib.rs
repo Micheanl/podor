@@ -4,6 +4,7 @@ mod ffi;
 mod history;
 #[cfg(not(target_os = "ios"))]
 mod jni_bridge;
+mod layers;
 pub mod model;
 mod openraster;
 mod previews;
@@ -12,7 +13,7 @@ mod stabilizer;
 mod storage;
 pub use storage::{ExportFormat, ExportOptions};
 
-use history::History;
+use history::{History, Snapshot};
 use model::*;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -45,6 +46,10 @@ pub enum Command {
     Undo,
     Redo,
     AddLayer,
+    DuplicateLayer {
+        id: u32,
+    },
+    MergeVisible,
     RemoveLayer {
         id: u32,
     },
@@ -139,6 +144,7 @@ pub struct Engine {
     dirty: BTreeSet<TileKey>,
     stroke: Option<Stroke>,
     revision: u64,
+    content_id: u64,
     selection: Option<Rect>,
     preview_revision: Option<u64>,
     preview_job: Option<std::thread::JoinHandle<(u64, Vec<u8>)>>,
@@ -152,6 +158,7 @@ impl Engine {
             dirty: BTreeSet::new(),
             stroke: None,
             revision: 0,
+            content_id: 0,
             selection: None,
             preview_revision: None,
             preview_job: None,
@@ -204,8 +211,10 @@ impl Engine {
                 }
                 if let Some(stroke) = self.stroke.take() {
                     if stroke.changed {
-                        self.history.push(stroke.before, &self.document);
+                        self.history
+                            .push(stroke.before, self.content_id, &self.document);
                         self.revision += 1;
+                        self.content_id = self.revision;
                     }
                 }
             }
@@ -245,13 +254,16 @@ impl Engine {
                         self.history = History::default();
                         self.selection = None;
                         self.revision += 1;
+                        self.content_id = self.revision;
                     }
                     Command::Undo => {
                         if let Some(previous) = self.history.undo.pop_back() {
                             self.mark_all();
-                            self.history
-                                .redo
-                                .push(std::mem::replace(&mut self.document, previous));
+                            self.history.redo.push(Snapshot {
+                                document: std::mem::replace(&mut self.document, previous.document),
+                                content_id: self.content_id,
+                            });
+                            self.content_id = previous.content_id;
                             self.mark_all();
                             self.revision += 1;
                         }
@@ -259,9 +271,11 @@ impl Engine {
                     Command::Redo => {
                         if let Some(next) = self.history.redo.pop() {
                             self.mark_all();
-                            self.history
-                                .undo
-                                .push_back(std::mem::replace(&mut self.document, next));
+                            self.history.undo.push_back(Snapshot {
+                                document: std::mem::replace(&mut self.document, next.document),
+                                content_id: self.content_id,
+                            });
+                            self.content_id = next.content_id;
                             self.mark_all();
                             self.revision += 1;
                         }
@@ -285,8 +299,9 @@ impl Engine {
                             self.dirty.extend(layer.tiles.keys());
                         }
                         self.mark_all();
-                        self.history.push(before, &self.document);
+                        self.history.push(before, self.content_id, &self.document);
                         self.revision += 1;
+                        self.content_id = self.revision;
                     }
                 }
             }
@@ -328,6 +343,8 @@ impl Engine {
                     .insert(index, Layer::new(id, format!("图层 {id}")));
                 self.document.active = id;
             }
+            Command::DuplicateLayer { id } => layers::duplicate(&mut self.document, id)?,
+            Command::MergeVisible => layers::merge_visible(&mut self.document)?,
             Command::RemoveLayer { id } => {
                 if self.document.layers.len() <= 1 {
                     return Err("至少保留一个图层".into());
@@ -347,7 +364,7 @@ impl Engine {
                 if !opacity.is_finite()
                     || !(0.0..=1.0).contains(&opacity)
                     || name.is_empty()
-                    || name.len() > 256
+                    || name.len() > MAX_LAYER_NAME_BYTES
                 {
                     return Err("图层属性无效".into());
                 }
@@ -415,7 +432,7 @@ impl Engine {
 
     pub fn state(&self) -> Value {
         json!({ "width": self.document.width, "height": self.document.height, "active": self.document.active,
-            "revision": self.revision, "canUndo": !self.history.undo.is_empty(), "canRedo": !self.history.redo.is_empty(), "selection": self.selection,
+            "revision": self.revision, "contentId": self.content_id, "canUndo": !self.history.undo.is_empty(), "canRedo": !self.history.redo.is_empty(), "selection": self.selection, "maxLayers": MAX_LAYERS,
             "layers": self.document.layers.iter().map(|l| json!({"id": l.id, "name": l.name, "visible": l.visible, "opacity": l.opacity, "blend": l.blend})).collect::<Vec<_>>() })
     }
 
@@ -446,6 +463,9 @@ impl Engine {
     }
     pub fn export_image(&self, options: ExportOptions) -> Result<Vec<u8>, String> {
         storage::export_image(&self.document, options)
+    }
+    pub fn thumbnail(&self) -> Vec<u8> {
+        previews::thumbnail(&self.document)
     }
     pub fn previews(&mut self) -> Result<Vec<u8>, String> {
         if self
@@ -485,6 +505,7 @@ impl Engine {
         self.history = History::default();
         self.selection = None;
         self.revision += 1;
+        self.content_id = self.revision;
         Ok(())
     }
 }

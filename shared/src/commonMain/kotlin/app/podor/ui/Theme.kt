@@ -37,6 +37,9 @@ object StudioTheme {
     val iconSize = 21.dp
     val sliderThumbSize = 18.dp
     val colorWheelSize = 240.dp
+    val workspaceWidth = 1200.dp
+    val projectCardWidth = 240.dp
+    val projectPreviewHeight = 174.dp
     const val colorRingRadius = 0.455f
     const val colorRingWidth = 0.075f
     const val colorPlaneFraction = 0.54f

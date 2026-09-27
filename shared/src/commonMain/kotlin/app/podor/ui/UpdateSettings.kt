@@ -18,7 +18,7 @@ import app.podor.resources.brand
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
-fun UpdateSettings(controller: UpdateController?) {
+fun UpdateSettings(controller: UpdateController?, onInstall: (AppRelease, String) -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -69,12 +69,19 @@ fun UpdateSettings(controller: UpdateController?) {
             }
             state.problem?.let { Text(tr(it.label), color = StudioTheme.accent, fontSize = 12.sp) }
             if (state.phase == UpdatePhase.Downloaded)
-                Text(tr("保存作品并退出应用，再打开安装包完成更新。"), color = StudioTheme.muted, fontSize = 12.sp)
+                Text(tr("安装前会退出 podor，完成后重新打开，不会自动重启电脑。"), color = StudioTheme.muted, fontSize = 12.sp)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 when (state.phase) {
                     UpdatePhase.Checking,
                     UpdatePhase.Downloading -> TextButton(controller::cancel) { Text(tr("取消")) }
-                    UpdatePhase.Downloaded -> Button(controller::reveal) { Text(tr("打开下载文件夹")) }
+                    UpdatePhase.Downloaded -> {
+                        TextButton(controller::reveal) { Text(tr("下载文件夹")) }
+                        Button({
+                            val release = state.release
+                            val installer = state.installer
+                            if (release != null && installer != null) onInstall(release, installer)
+                        }) { Text(tr("安装并打开")) }
+                    }
                     UpdatePhase.Available -> Button(controller::download) { Text(tr("下载更新")) }
                     UpdatePhase.Failed -> {
                         if (state.release != null)

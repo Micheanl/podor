@@ -1,6 +1,9 @@
 package app.podor.data
 
 import app.podor.domain.ExportFormat
+import app.podor.domain.OpenedProject
+import app.podor.domain.ProjectReference
+import app.podor.domain.RecentProject
 
 interface ProjectFiles {
     val exportFormats: List<ExportFormat>
@@ -23,9 +26,28 @@ interface ProjectFiles {
 
     suspend fun save(bytes: ByteArray, png: Boolean): Boolean
 
-    suspend fun readRecovery(): ByteArray?
+    suspend fun openDocument(reference: ProjectReference? = null): OpenedProject? {
+        require(reference == null) { "无法打开这份作品，请重新选择文件" }
+        return open()?.let { OpenedProject(it, null) }
+    }
 
-    suspend fun writeRecovery(bytes: ByteArray)
+    suspend fun saveDocument(
+        bytes: ByteArray,
+        reference: ProjectReference?,
+        saveAs: Boolean = false,
+    ): ProjectReference? =
+        if (save(bytes, png = false)) reference ?: ProjectReference("", "未命名") else null
 
-    suspend fun preserveRecovery(bytes: ByteArray)
+    suspend fun recentProjects(): List<RecentProject> = emptyList()
+
+    suspend fun rememberProject(
+        reference: ProjectReference,
+        width: Int,
+        height: Int,
+        thumbnail: ByteArray,
+    ) {}
+
+    suspend fun forgetProject(reference: ProjectReference) {}
+
+    suspend fun readThumbnail(reference: ProjectReference): ByteArray? = null
 }

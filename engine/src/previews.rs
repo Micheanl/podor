@@ -3,11 +3,12 @@ use std::collections::BTreeSet;
 
 fn preview_pixels<T: AsRef<[u8]>>(
     doc: &Document,
+    edge: u32,
     tiles: impl IntoIterator<Item = (TileKey, T)>,
 ) -> Vec<u8> {
     let longest = doc.width.max(doc.height);
-    let width = (doc.width * PREVIEW_EDGE / longest).max(1);
-    let height = (doc.height * PREVIEW_EDGE / longest).max(1);
+    let width = (doc.width * edge / longest).max(1);
+    let height = (doc.height * edge / longest).max(1);
     let work_width = width.min(doc.width);
     let work_height = height.min(doc.height);
     let mut sums = vec![[0u64; 4]; (work_width * work_height) as usize];
@@ -50,11 +51,11 @@ fn preview_pixels<T: AsRef<[u8]>>(
     } else {
         image::imageops::resize(&image, width, height, image::imageops::FilterType::Triangle)
     };
-    let mut result = vec![0; (PREVIEW_EDGE * PREVIEW_EDGE * 4) as usize];
-    let left = (PREVIEW_EDGE - width) / 2;
-    let top = (PREVIEW_EDGE - height) / 2;
+    let mut result = vec![0; (edge * edge * 4) as usize];
+    let left = (edge - width) / 2;
+    let top = (edge - height) / 2;
     for y in 0..height {
-        let destination = (((top + y) * PREVIEW_EDGE + left) * 4) as usize;
+        let destination = (((top + y) * edge + left) * 4) as usize;
         let source = (y * width * 4) as usize;
         result[destination..destination + (width * 4) as usize]
             .copy_from_slice(&resized.as_raw()[source..source + (width * 4) as usize]);
@@ -67,6 +68,7 @@ pub fn render(doc: &Document, revision: u64) -> Vec<u8> {
     for layer in &doc.layers {
         let pixels = preview_pixels(
             doc,
+            PREVIEW_EDGE,
             layer
                 .tiles
                 .iter()
@@ -89,6 +91,7 @@ pub fn render(doc: &Document, revision: u64) -> Vec<u8> {
             .collect();
         preview_pixels(
             doc,
+            PREVIEW_EDGE,
             keys.into_iter()
                 .map(|key| (key, composite_tile_background(doc, key, true))),
         )
@@ -101,5 +104,23 @@ pub fn render(doc: &Document, revision: u64) -> Vec<u8> {
         output.extend_from_slice(&id.to_le_bytes());
         output.extend_from_slice(&pixels);
     }
+    output
+}
+
+pub fn thumbnail(doc: &Document) -> Vec<u8> {
+    let keys: BTreeSet<_> = doc
+        .layers
+        .iter()
+        .filter(|layer| layer.visible && layer.opacity > 0.0)
+        .flat_map(|layer| layer.tiles.keys().copied())
+        .collect();
+    let pixels = preview_pixels(
+        doc,
+        EXPORT_THUMBNAIL_EDGE,
+        keys.into_iter()
+            .map(|key| (key, composite_tile_background(doc, key, true))),
+    );
+    let mut output = EXPORT_THUMBNAIL_EDGE.to_le_bytes().to_vec();
+    output.extend(pixels);
     output
 }

@@ -111,7 +111,7 @@ class UpdateControllerTest {
                                 PodorTheme(language) {
                                     androidx.compose.material3.Surface {
                                         Box(Modifier.fillMaxSize().padding(24.dp)) {
-                                            UpdateSettings(controller)
+                                            UpdateSettings(controller) { _, _ -> }
                                         }
                                     }
                                 }

@@ -78,6 +78,7 @@ enum class ShortcutAction(val label: String, val default: Shortcut) {
 @Serializable
 data class Preferences(
     val language: Language = Language.Chinese,
+    val startupScreen: StartupScreen = StartupScreen.Workspace,
     val shortcuts: Map<ShortcutAction, Shortcut> = emptyMap(),
     val plugins: List<BrushPack> = emptyList(),
     val brushes: List<BrushPreset> = emptyList(),

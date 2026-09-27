@@ -86,8 +86,12 @@ fun SettingsDialog(controller: StudioController, onDismiss: () -> Unit, updates:
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     when (activeTab) {
-                        3 -> UpdateSettings(updates)
-                        0 ->
+                        3 -> UpdateSettings(updates) { release, installer ->
+                            onDismiss()
+                            controller.navigate(WorkspaceDestination.InstallUpdate(release, installer))
+                        }
+                        0 -> {
+                            SectionLabel("语言")
                             Language.entries.forEach { language ->
                                 ChoiceSurface(
                                     controller.preferences.language == language,
@@ -111,6 +115,20 @@ fun SettingsDialog(controller: StudioController, onDismiss: () -> Unit, updates:
                                     }
                                 }
                             }
+                            SectionLabel("启动时")
+                            StartupScreen.entries.forEach { screen ->
+                                ChoiceSurface(
+                                    controller.preferences.startupScreen == screen,
+                                    { controller.updatePreferences(controller.preferences.copy(startupScreen = screen)) },
+                                    Modifier.fillMaxWidth(),
+                                ) {
+                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(tr(screen.label), Modifier.weight(1f), fontSize = 13.sp)
+                                        if (controller.preferences.startupScreen == screen) StudioIcon(Glyph.Check, StudioTheme.accent)
+                                    }
+                                }
+                            }
+                        }
                         1 -> {
                             ShortcutAction.entries.forEach { action ->
                                 Row(

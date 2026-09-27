@@ -15,7 +15,6 @@ class IosFiles(private val host: () -> UIViewController) : ProjectFiles {
     private val directory =
         NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true).first()
             as String
-    private val recovery = "$directory/recovery.podor"
 
     override suspend fun readPreferences(): ByteArray? =
         withContext(Dispatchers.Default) {
@@ -29,14 +28,6 @@ class IosFiles(private val host: () -> UIViewController) : ProjectFiles {
         share(bytes, "brushes.podor-brushes.json")
 
     private var delegate: UIDocumentPickerDelegateProtocol? = null
-
-    override suspend fun preserveRecovery(bytes: ByteArray) =
-        withContext(Dispatchers.Default) {
-            write(
-                "$directory/recovery-damaged-${NSDate().timeIntervalSince1970.toLong()}.podor",
-                bytes,
-            )
-        }
 
     override suspend fun open(): ByteArray? =
         withContext(Dispatchers.Main) {
@@ -86,12 +77,6 @@ class IosFiles(private val host: () -> UIViewController) : ProjectFiles {
             result.await()
         }
     }
-
-    override suspend fun readRecovery(): ByteArray? =
-        withContext(Dispatchers.Default) { NSData.dataWithContentsOfFile(recovery)?.toBytes() }
-
-    override suspend fun writeRecovery(bytes: ByteArray) =
-        withContext(Dispatchers.Default) { write(recovery, bytes) }
 
     private fun write(path: String, bytes: ByteArray) {
         val data = bytes.usePinned {

@@ -43,3 +43,7 @@ harness = false
 [[bench]]
 name = "exports"
 harness = false
+
+[[bench]]
+name = "layers"
+harness = false

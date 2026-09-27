@@ -172,11 +172,11 @@ fn cropped_layer_keeps_offsets_partial_tiles_and_transparent_gaps() {
     assert_eq!((width, height), (385, 257));
     assert_eq!(
         &pixels[((2 * width + 2) * 4) as usize..][..4],
-        &[139, 41, 66, 255]
+        &[0, 0, 0, 255]
     );
     assert_eq!(
         &pixels[((256 * width + 384) * 4) as usize..][..4],
-        &[139, 41, 66, 255]
+        &[0, 0, 0, 255]
     );
     assert_eq!(
         &pixels[((150 * width + 200) * 4) as usize..][..4],

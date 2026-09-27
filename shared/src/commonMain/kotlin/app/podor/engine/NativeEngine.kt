@@ -20,4 +20,5 @@ object EngineOperation {
     const val LOAD = 4
     const val EXPORT_IMAGE = 5
     const val PREVIEWS = 6
+    const val THUMBNAIL = 7
 }

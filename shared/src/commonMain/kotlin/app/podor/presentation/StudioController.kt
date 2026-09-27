@@ -19,7 +19,13 @@ data class RenderFrame(val tiles: Map<Long, TileImage> = emptyMap())
 
 data class RenderPreviews(val revision: Long = -1, val images: Map<Int, ImageBitmap> = emptyMap())
 
-class StudioController(private val files: ProjectFiles, parentScope: CoroutineScope) {
+class StudioController(
+    private val files: ProjectFiles,
+    parentScope: CoroutineScope,
+    private val installUpdate: suspend (AppRelease, String) -> Unit = { _, _ ->
+        error("当前平台不支持安装更新")
+    },
+) {
     private val scope =
         CoroutineScope(
             parentScope.coroutineContext + SupervisorJob(parentScope.coroutineContext[Job])
@@ -65,7 +71,27 @@ class StudioController(private val files: ProjectFiles, parentScope: CoroutineSc
     var error by mutableStateOf<String?>(null)
         private set
 
-    private var lastRecoveredRevision = -1L
+    var showWorkspace by mutableStateOf(true)
+        private set
+
+    var hasCanvas by mutableStateOf(false)
+        private set
+
+    var hasUnsavedChanges by mutableStateOf(false)
+        private set
+
+    var projectReference by mutableStateOf<ProjectReference?>(null)
+        private set
+
+    var recentProjects by mutableStateOf<List<RecentProject>>(emptyList())
+        private set
+
+    var pendingNavigation by mutableStateOf<WorkspaceDestination?>(null)
+        private set
+
+    var exitRequested by mutableStateOf(false)
+        private set
+
     private var worker: Job? = null
     private val producers = mutableListOf<Job>()
 
@@ -80,7 +106,12 @@ class StudioController(private val files: ProjectFiles, parentScope: CoroutineSc
 
         data object Frame : Action
 
-        data object Recover : Action
+        data class Navigate(
+            val destination: WorkspaceDestination,
+            val choice: UnsavedChoice? = null,
+        ) : Action
+
+        data class Forget(val reference: ProjectReference) : Action
 
         data class Settings(val value: Preferences) : Action
 
@@ -90,6 +121,7 @@ class StudioController(private val files: ProjectFiles, parentScope: CoroutineSc
     enum class FileAction {
         Open,
         Save,
+        SaveAs,
         ImportBrushes,
         ExportBrushes,
     }
@@ -102,8 +134,8 @@ class StudioController(private val files: ProjectFiles, parentScope: CoroutineSc
                 var drawing = false
                 var frameDirty = false
                 var previewRevision = -1L
-                var savedOnShutdown = false
-                var initialized = false
+                var savedContentId = 0L
+                var currentReference: ProjectReference? = null
                 val tiles = mutableMapOf<Long, TileImage>()
                 val pending = ArrayList<Triple<Float, Float, Float>>(StudioDefaults.maxBatchSamples)
                 fun command(value: JsonObject): DocumentInfo {
@@ -148,9 +180,79 @@ class StudioController(private val files: ProjectFiles, parentScope: CoroutineSc
                     val updated = if (count > 0) RenderFrame(tiles.toMap()) else null
                     withContext(Dispatchers.Main) {
                         document = info
+                        hasUnsavedChanges = info.contentId != savedContentId
                         if (updated != null) frame = updated
                     }
                     frameDirty = false
+                }
+                suspend fun finishDrawing() {
+                    flushPoints()
+                    if (drawing) {
+                        info = command(jsonCommand("end"))
+                        drawing = false
+                    }
+                    publishFrame()
+                }
+                suspend fun refreshRecent() {
+                    val entries = files.recentProjects()
+                    withContext(Dispatchers.Main) { recentProjects = entries }
+                }
+                suspend fun rememberCurrent() {
+                    val reference = currentReference?.takeIf { it.id.isNotEmpty() } ?: return
+                    try {
+                        files.rememberProject(
+                            reference,
+                            info.width,
+                            info.height,
+                            engine!!.call(EngineOperation.THUMBNAIL),
+                        )
+                        refreshRecent()
+                    } catch (cancel: CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        withContext(Dispatchers.Main) { error = "作品已打开或保存，但作品列表更新失败" }
+                    }
+                }
+                suspend fun saveCurrent(saveAs: Boolean = false): Boolean {
+                    val reference =
+                        files.saveDocument(
+                            engine!!.call(EngineOperation.SAVE),
+                            currentReference,
+                            saveAs,
+                        ) ?: return false
+                    currentReference = reference
+                    savedContentId = info.contentId
+                    withContext(Dispatchers.Main) {
+                        projectReference = reference
+                        hasUnsavedChanges = false
+                        status = "工程已保存"
+                    }
+                    rememberCurrent()
+                    return true
+                }
+                suspend fun resetCanvas(reference: ProjectReference?) {
+                    currentReference = reference
+                    savedContentId = info.contentId
+                    tiles.clear()
+                    withContext(Dispatchers.Main) {
+                        frame = RenderFrame()
+                        previews = RenderPreviews()
+                        viewport = Viewport()
+                        projectReference = reference
+                        hasCanvas = true
+                        showWorkspace = false
+                        status = if (reference == null) "画布已就绪" else "工程已打开"
+                    }
+                    publishFrame()
+                }
+                suspend fun openProject(reference: ProjectReference?) {
+                    val opened = files.openDocument(reference) ?: return
+                    info =
+                        parser.decodeFromString(
+                            engine!!.call(EngineOperation.LOAD, opened.bytes).decodeToString()
+                        )
+                    resetCanvas(opened.reference)
+                    rememberCurrent()
                 }
                 try {
                     engine = createNativeEngine(info.width, info.height)
@@ -167,18 +269,16 @@ class StudioController(private val files: ProjectFiles, parentScope: CoroutineSc
                                 withContext(Dispatchers.Main) { error = "设置文件无法读取，已使用默认设置" }
                             }
                     }
-                    val recovery = files.readRecovery()
-                    if (recovery != null) {
-                        runCatching { engine.call(EngineOperation.LOAD, recovery) }
-                            .onFailure {
-                                files.preserveRecovery(recovery)
-                                withContext(Dispatchers.Main) { error = "自动恢复文件无法读取，已保留原文件" }
-                            }
-                    }
                     info = command(jsonCommand("state"))
-                    initialized = true
+                    try {
+                        refreshRecent()
+                    } catch (_: Exception) {
+                        withContext(Dispatchers.Main) { error = "作品列表无法读取" }
+                    }
                     publishFrame()
                     withContext(Dispatchers.Main) {
+                        showWorkspace = preferences.startupScreen == StartupScreen.Workspace
+                        hasCanvas = !showWorkspace
                         ready = true
                         status = "画布已就绪"
                     }
@@ -190,15 +290,61 @@ class StudioController(private val files: ProjectFiles, parentScope: CoroutineSc
                                         parser.encodeToString(action.value).encodeToByteArray()
                                     )
                                 is Action.Shutdown -> {
-                                    flushPoints()
-                                    if (drawing) {
-                                        info = command(jsonCommand("end"))
-                                        drawing = false
-                                    }
-                                    files.writeRecovery(engine.call(EngineOperation.SAVE))
-                                    savedOnShutdown = true
                                     action.finished.complete(true)
                                     break
+                                }
+                                is Action.Forget -> {
+                                    files.forgetProject(action.reference)
+                                    refreshRecent()
+                                }
+                                is Action.Navigate -> {
+                                    finishDrawing()
+                                    if (action.choice == UnsavedChoice.Cancel) {
+                                        withContext(Dispatchers.Main) { pendingNavigation = null }
+                                    } else if (
+                                        info.contentId != savedContentId && action.choice == null
+                                    ) {
+                                        withContext(Dispatchers.Main) {
+                                            pendingNavigation = action.destination
+                                        }
+                                    } else {
+                                        withContext(Dispatchers.Main) { busy = true }
+                                        if (action.choice == UnsavedChoice.Save && !saveCurrent())
+                                            continue
+                                        withContext(Dispatchers.Main) { pendingNavigation = null }
+                                        when (val destination = action.destination) {
+                                            is WorkspaceDestination.New -> {
+                                                info =
+                                                    command(
+                                                        jsonCommand("new") {
+                                                            put("width", destination.width)
+                                                            put("height", destination.height)
+                                                        }
+                                                    )
+                                                resetCanvas(null)
+                                            }
+                                            is WorkspaceDestination.Open ->
+                                                openProject(destination.reference)
+                                            WorkspaceDestination.Exit -> {
+                                                withContext(Dispatchers.Main) {
+                                                    ready = false
+                                                    exitRequested = true
+                                                }
+                                                break
+                                            }
+                                            is WorkspaceDestination.InstallUpdate -> {
+                                                installUpdate(
+                                                    destination.release,
+                                                    destination.installer,
+                                                )
+                                                withContext(Dispatchers.Main) {
+                                                    ready = false
+                                                    exitRequested = true
+                                                }
+                                                break
+                                            }
+                                        }
+                                    }
                                 }
                                 is Action.Points -> {
                                     if (drawing) {
@@ -235,18 +381,13 @@ class StudioController(private val files: ProjectFiles, parentScope: CoroutineSc
                                             tool = Tool.Brush
                                         }
                                     } else {
-                                        if (type in setOf("fill", "tone", "blur"))
+                                        if (type in setOf("fill", "tone", "blur", "merge_visible"))
                                             withContext(Dispatchers.Main) { busy = true }
                                         info = command(action.json)
                                         if (type == "begin") drawing = true
                                         if (type == "end" || type == "cancel") drawing = false
                                         if (type == "new") {
-                                            tiles.clear()
-                                            withContext(Dispatchers.Main) {
-                                                frame = RenderFrame()
-                                                previews = RenderPreviews()
-                                                viewport = Viewport()
-                                            }
+                                            resetCanvas(null)
                                         }
                                         if (type != "begin") publishFrame()
                                     }
@@ -355,38 +496,11 @@ class StudioController(private val files: ProjectFiles, parentScope: CoroutineSc
                                                 parser.encodeToString(pack).encodeToByteArray()
                                             )
                                         }
-                                        FileAction.Open ->
-                                            files.open()?.let { bytes ->
-                                                info =
-                                                    parser.decodeFromString(
-                                                        engine
-                                                            .call(EngineOperation.LOAD, bytes)
-                                                            .decodeToString()
-                                                    )
-                                                tiles.clear()
-                                                withContext(Dispatchers.Main) {
-                                                    frame = RenderFrame()
-                                                    previews = RenderPreviews()
-                                                    viewport = Viewport()
-                                                    status = "工程已打开"
-                                                }
-                                                publishFrame()
-                                            }
-                                        FileAction.Save -> {
-                                            val bytes = engine.call(EngineOperation.SAVE)
-                                            if (files.save(bytes, png = false))
-                                                withContext(Dispatchers.Main) {
-                                                    status = "工程已保存"
-                                                }
-                                        }
+                                        FileAction.Open -> openProject(null)
+                                        FileAction.Save -> saveCurrent()
+                                        FileAction.SaveAs -> saveCurrent(saveAs = true)
                                     }
                                 }
-                                Action.Recover ->
-                                    if (!drawing && info.revision != lastRecoveredRevision) {
-                                        files.writeRecovery(engine.call(EngineOperation.SAVE))
-                                        lastRecoveredRevision = info.revision
-                                        withContext(Dispatchers.Main) { status = "已自动保存到本机" }
-                                    }
                             }
                         } catch (cancel: CancellationException) {
                             throw cancel
@@ -412,16 +526,6 @@ class StudioController(private val files: ProjectFiles, parentScope: CoroutineSc
                 } finally {
                     withContext(NonCancellable) {
                         engine?.let {
-                            runCatching {
-                                flushPoints()
-                                if (drawing)
-                                    it.call(
-                                        EngineOperation.COMMAND,
-                                        jsonCommand("end").toString().encodeToByteArray(),
-                                    )
-                                if (initialized && !savedOnShutdown)
-                                    files.writeRecovery(it.call(EngineOperation.SAVE))
-                            }
                             it.close()
                         }
                     }
@@ -431,12 +535,6 @@ class StudioController(private val files: ProjectFiles, parentScope: CoroutineSc
             while (isActive) {
                 delay(StudioDefaults.frameMillis)
                 actions.trySend(Action.Frame)
-            }
-        }
-        producers += scope.launch {
-            while (isActive) {
-                delay(15_000)
-                actions.send(Action.Recover)
             }
         }
     }
@@ -483,6 +581,10 @@ class StudioController(private val files: ProjectFiles, parentScope: CoroutineSc
     }
 
     fun file(action: FileAction) {
+        if (action == FileAction.Open) {
+            navigate(WorkspaceDestination.Open())
+            return
+        }
         if (ready && !busy) scope.launch { actions.send(Action.File(action)) }
     }
 
@@ -577,9 +679,41 @@ class StudioController(private val files: ProjectFiles, parentScope: CoroutineSc
         error = null
     }
 
-    fun recover() {
-        actions.trySend(Action.Recover)
+    fun navigate(destination: WorkspaceDestination) {
+        if (ready && !busy && pendingNavigation == null)
+            scope.launch { actions.send(Action.Navigate(destination)) }
     }
+
+    fun resolveUnsaved(choice: UnsavedChoice) {
+        val destination = pendingNavigation ?: return
+        if (!busy) {
+            error = null
+            scope.launch { actions.send(Action.Navigate(destination, choice)) }
+        }
+    }
+
+    fun home() {
+        if (ready && !busy) showWorkspace = true
+    }
+
+    fun resumeCanvas() {
+        if (hasCanvas) showWorkspace = false
+    }
+
+    fun forgetProject(reference: ProjectReference) {
+        scope.launch { actions.send(Action.Forget(reference)) }
+    }
+
+    suspend fun projectThumbnail(reference: ProjectReference): ImageBitmap? =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val bytes = files.readThumbnail(reference) ?: return@withContext null
+                val edge = bytes.intAt(0)
+                require(edge in 1..512 && bytes.size == 4 + edge * edge * 4)
+                rgbaBitmap(bytes, 4, edge)
+            }
+                .getOrNull()
+        }
 
     suspend fun shutdown(): Boolean {
         ready = false

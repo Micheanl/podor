@@ -23,6 +23,9 @@ class DesktopUpdates(
 ) : UpdateSource {
     private val json = Json { ignoreUnknownKeys = true }
 
+    suspend fun install(release: AppRelease, installer: String) =
+        DesktopInstaller(directory).install(release, installer)
+
     override suspend fun latest(): AppRelease =
         withContext(Dispatchers.IO) {
             if (manifestUrl.isBlank()) throw UpdateException(UpdateProblem.Unconfigured)

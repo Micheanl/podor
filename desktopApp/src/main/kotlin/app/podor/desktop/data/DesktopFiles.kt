@@ -4,6 +4,8 @@ import app.podor.data.ProjectFiles
 import app.podor.desktop.data.DesktopStorage.Companion.atomicWrite
 import app.podor.domain.AppIdentity
 import app.podor.domain.ExportFormat
+import app.podor.domain.OpenedProject
+import app.podor.domain.ProjectReference
 import java.awt.FileDialog
 import java.awt.Frame
 import java.nio.file.Files
@@ -15,7 +17,54 @@ class DesktopFiles(
     private val storage: DesktopStorage = DesktopStorage(),
     private val owner: () -> Frame?,
 ) : ProjectFiles {
+    private val workspace = DesktopWorkspace(storage.root)
     override val exportFormats = ExportFormat.entries
+
+    override suspend fun openDocument(reference: ProjectReference?): OpenedProject? {
+        val path = reference?.let { Path.of(it.id) } ?: choose(false) ?: return null
+        return withContext(Dispatchers.IO) {
+            require(Files.isRegularFile(path)) { "找不到这份作品，请重新选择文件" }
+            require(Files.size(path) <= DesktopStorage.maxFileBytes) { "文件过大" }
+            OpenedProject(Files.readAllBytes(path), reference(path))
+        }
+    }
+
+    override suspend fun saveDocument(
+        bytes: ByteArray,
+        reference: ProjectReference?,
+        saveAs: Boolean,
+    ): ProjectReference? {
+        val existing = reference?.takeIf {
+            it.editable && it.id.endsWith(".${AppIdentity.projectExtension}", true)
+        }
+        val path =
+            if (!saveAs && existing != null) Path.of(existing.id)
+            else choose(true, suggestedName = reference?.name ?: AppIdentity.name) ?: return null
+        withContext(Dispatchers.IO) { atomicWrite(path, bytes) }
+        return reference(path)
+    }
+
+    override suspend fun recentProjects() = withContext(Dispatchers.IO) { workspace.recent() }
+
+    override suspend fun rememberProject(
+        reference: ProjectReference,
+        width: Int,
+        height: Int,
+        thumbnail: ByteArray,
+    ) = withContext(Dispatchers.IO) { workspace.remember(reference, width, height, thumbnail) }
+
+    override suspend fun forgetProject(reference: ProjectReference) =
+        withContext(Dispatchers.IO) { workspace.forget(reference) }
+
+    override suspend fun readThumbnail(reference: ProjectReference) =
+        withContext(Dispatchers.IO) { workspace.thumbnail(reference) }
+
+    private fun reference(path: Path) =
+        ProjectReference(
+            path.toAbsolutePath().normalize().toString(),
+            path.fileName.toString().substringBeforeLast('.'),
+            path.fileName.toString().endsWith(".${AppIdentity.projectExtension}", true),
+        )
 
     override suspend fun export(bytes: ByteArray, format: ExportFormat): Boolean {
         val path = choose(true, format.extension) ?: return false
@@ -57,19 +106,11 @@ class DesktopFiles(
         return true
     }
 
-    override suspend fun readRecovery(): ByteArray? =
-        withContext(Dispatchers.IO) { storage.readRecovery() }
-
-    override suspend fun writeRecovery(bytes: ByteArray) =
-        withContext(Dispatchers.IO) { storage.writeRecovery(bytes) }
-
-    override suspend fun preserveRecovery(bytes: ByteArray) =
-        withContext(Dispatchers.IO) { storage.preserveRecovery(bytes) }
-
     private suspend fun choose(
         save: Boolean,
         extension: String = AppIdentity.projectExtension,
         brushes: Boolean = false,
+        suggestedName: String = AppIdentity.name,
     ): Path? =
         withContext(Dispatchers.Main) {
             val dialog =
@@ -79,10 +120,9 @@ class DesktopFiles(
                     if (save) FileDialog.SAVE else FileDialog.LOAD,
                 )
             dialog.file =
-                if (save) "${AppIdentity.name}.$extension"
+                if (save) "$suggestedName.$extension"
                 else if (brushes) "*.json"
-                else
-                    "*.${AppIdentity.projectExtension};*.png;*.jpg;*.jpeg;*.webp"
+                else "*.${AppIdentity.projectExtension};*.png;*.jpg;*.jpeg;*.webp"
             try {
                 dialog.isVisible = true
                 dialog.file?.let { name ->

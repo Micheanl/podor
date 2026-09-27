@@ -45,13 +45,7 @@ class StudioRenderingTest {
     private class MemoryFiles(private val project: ByteArray) : ProjectFiles {
         override val exportFormats = ExportFormat.entries
 
-        override suspend fun readRecovery() = project
-
-        override suspend fun writeRecovery(bytes: ByteArray) {}
-
-        override suspend fun preserveRecovery(bytes: ByteArray) {}
-
-        override suspend fun open(): ByteArray? = null
+        override suspend fun open(): ByteArray? = project
 
         override suspend fun save(bytes: ByteArray, png: Boolean) = true
     }
@@ -69,7 +63,7 @@ class StudioRenderingTest {
                 }
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
             val controller =
-                withContext(Dispatchers.Main) { StudioController(MemoryFiles(project), scope) }
+                openController(project, scope)
             try {
                 withTimeout(10_000) {
                     while (
@@ -160,7 +154,7 @@ class StudioRenderingTest {
                 }
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
             val controller =
-                withContext(Dispatchers.Main) { StudioController(MemoryFiles(project), scope) }
+                openController(project, scope)
             try {
                 withTimeout(10_000) {
                     while (
@@ -360,7 +354,7 @@ class StudioRenderingTest {
         val engine = createNativeEngine(64, 32)
         val project = try { engine.call(EngineOperation.SAVE) } finally { engine.close() }
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-        val controller = withContext(Dispatchers.Main) { StudioController(MemoryFiles(project), scope) }
+        val controller = openController(project, scope)
         try {
             withTimeout(10_000) {
                 while (!withContext(Dispatchers.Main) { controller.ready }) delay(10)
@@ -413,5 +407,13 @@ class StudioRenderingTest {
             withContext(Dispatchers.Main) { controller.shutdown() }
             scope.cancel()
         }
+    }
+
+    private suspend fun openController(project: ByteArray, scope: CoroutineScope): StudioController {
+        val controller = withContext(Dispatchers.Main) { StudioController(MemoryFiles(project), scope) }
+        withTimeout(10_000) { while (!withContext(Dispatchers.Main) { controller.ready }) delay(10) }
+        withContext(Dispatchers.Main) { controller.file(StudioController.FileAction.Open) }
+        withTimeout(10_000) { while (!withContext(Dispatchers.Main) { controller.document.revision > 0 && !controller.busy }) delay(10) }
+        return controller
     }
 }

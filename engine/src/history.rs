@@ -4,14 +4,22 @@ use std::sync::Arc;
 
 #[derive(Default)]
 pub struct History {
-    pub undo: VecDeque<Document>,
-    pub redo: Vec<Document>,
+    pub undo: VecDeque<Snapshot>,
+    pub redo: Vec<Snapshot>,
+}
+
+pub struct Snapshot {
+    pub document: Document,
+    pub content_id: u64,
 }
 
 impl History {
-    pub fn push(&mut self, before: Document, current: &Document) {
+    pub fn push(&mut self, before: Document, content_id: u64, current: &Document) {
         self.redo.clear();
-        self.undo.push_back(before);
+        self.undo.push_back(Snapshot {
+            document: before,
+            content_id,
+        });
         while self.undo.len() > MAX_HISTORY_ENTRIES
             || (!self.undo.is_empty() && self.retained_bytes(current) > MAX_HISTORY_BYTES)
         {
@@ -30,7 +38,7 @@ impl History {
             .undo
             .iter()
             .chain(self.redo.iter())
-            .flat_map(|doc| &doc.layers)
+            .flat_map(|snapshot| &snapshot.document.layers)
             .flat_map(|layer| layer.tiles.values())
             .map(Arc::as_ptr)
             .filter(|ptr| !live.contains(ptr))

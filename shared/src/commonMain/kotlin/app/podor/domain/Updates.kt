@@ -66,6 +66,7 @@ enum class UpdateProblem(val label: String) {
     Manifest("更新信息无效"),
     Integrity("安装包校验失败，请重新下载"),
     Storage("无法保存安装包，请检查磁盘空间"),
+    Installation("无法启动安装程序，请打开下载文件夹重试"),
     Unconfigured("更新通道尚未配置"),
 }
 

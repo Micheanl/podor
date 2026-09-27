@@ -78,6 +78,7 @@ pub fn dispatch(handle: u64, operation: u32, bytes: &[u8]) -> Result<Vec<u8>, St
             engine.export_image(options)
         }
         6 => engine.previews(),
+        7 => Ok(engine.thumbnail()),
         _ => Err("未知引擎操作".into()),
     }
 }

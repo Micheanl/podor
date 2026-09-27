@@ -32,6 +32,8 @@ MSI 在 `desktopApp/build/release/<版本>/main/msi/`。`:desktopApp:createDistr
 
 当前为 8 位预乘 RGBA，最多 32 层。单边不超过 8192，总像素不超过 16,777,216；文档像素预算 128 MiB，历史额外预算 64 MiB，最多 60 步。这些预算不包含显示、导出和运行时占用。
 
+复制图层共享像素块，修改时才复制。合并可见图层保持当前合成结果，保留隐藏层，并记录一次撤销；超过撤销预算时不执行合并。作品列表只记录手动打开、保存的文件和缩略图，不保存画布草稿。退出或切换作品时处理未保存改动，撤销回保存位置后恢复为已保存状态。
+
 工程保留图层，普通图片不保留图层。PNG、WebP 支持透明，WebP 导出为无损编码。JPEG 叠加白底，可调整质量。导入会处理 EXIF 方向，不保留元数据，不转换 ICC 配置。
 
 [OpenRaster](https://www.openraster.org/baseline/layer-stack-spec.html)（`.ora`）导出保留图层顺序、名称、可见性、不透明度和混合模式，保留原始透明度，不添加白底。各层裁到有数据的块范围，PNG 按行编码，合成预览只缓存一排画布块。暂不支持 ORA 导入。
@@ -42,13 +44,14 @@ MSI 在 `desktopApp/build/release/<版本>/main/msi/`。`:desktopApp:createDistr
 
 ## 验证
 
-`scripts/check.ps1` 运行 Rust 格式、Clippy、引擎测试和 Kotlin 测试。桌面测试包含 JNI 调用、文件恢复、更新下载、画布裁切、分块接缝和动效收尾。渲染截图在 `desktopApp/build/reports/screenshots/`。
+`scripts/check.ps1` 运行 Rust 格式、Clippy、引擎测试和 Kotlin 测试。桌面测试包含 JNI 调用、手动保存、作品列表、更新下载与安装交接、画布裁切、分块接缝和动效收尾。渲染截图在 `desktopApp/build/reports/screenshots/`。
 
 ```powershell
 cargo bench --bench painting
 cargo bench --bench editing
 cargo bench --bench blending --bench previews --bench imports
 cargo bench --bench exports
+cargo bench --bench layers
 ```
 
 基准测量引擎负载，不包含设备输入、GPU 上传和屏幕延迟。
@@ -70,5 +73,7 @@ iOS 需要 Apple Silicon Mac、Xcode、Rust 和 XcodeGen。运行 `bash scripts/
 脚本检查、打包并同步 GitHub 和 Gitee，匿名下载校验安装包与清单后发布稳定版。构建已完成时可用 `-SkipBuild` 重试，已有附件不会被覆盖。
 
 仓库地址在 `release/publishing.json`，应用更新入口在 `release/channel.properties`。应用从 Gitee 发行接口读取清单，下载完成后校验大小和 SHA-256，再保留 MSI 文件。
+
+安装前再次校验文件，后台安装助手就绪后应用才退出。助手等待旧进程结束，再运行带 `/norestart REBOOT=ReallySuppress` 的安装程序。MSI 构建最后执行 `scripts/configure-msi.ps1`，检查桌面快捷方式、禁止自动重启，添加完成后的启动选项。用户取消安装时不会重启应用；遇到文件占用仍需手动处理，不自动重启 Windows。
 
 本机通过 `scripts/configure-publishing.ps1` 设置 `GITEE_TOKEN`，GitHub 使用 Git 凭据或 `GITHUB_TOKEN`。凭据只保存在本机。

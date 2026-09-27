@@ -11,6 +11,7 @@ $icons = [ordered]@{
     Save='save'; Export='share'; Settings='settings-2'; Adjustments='sliders-horizontal'
     Close='x'; Check='check'; Chevron='chevron-down'; Selection='square-dashed'; Fill='paint-bucket'
     Globe='globe'; Keyboard='keyboard'; Plugin='puzzle'; Palette='palette'; Swap='arrow-right-left'
+    Copy='copy'; Merge='layers-2'; Home='layout-grid'; Search='search'
 }
 $drawable = Join-Path $root 'shared/src/commonMain/composeResources/drawable'
 $entries = foreach ($icon in $icons.GetEnumerator()) {

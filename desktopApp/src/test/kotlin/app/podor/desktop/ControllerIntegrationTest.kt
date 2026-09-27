@@ -86,6 +86,8 @@ class ControllerIntegrationTest {
                 val frame = withContext(Dispatchers.Main) { controller.frame }
                 files.opened = byteArrayOf(255.toByte(), 216.toByte(), 255.toByte(), 0)
                 withContext(Dispatchers.Main) { controller.file(StudioController.FileAction.Open) }
+                awaitState { controller.pendingNavigation != null }
+                withContext(Dispatchers.Main) { controller.resolveUnsaved(UnsavedChoice.Discard) }
                 awaitState { controller.error != null && !controller.busy }
                 withContext(Dispatchers.Main) {
                     assertEquals(before, controller.document)
@@ -95,7 +97,6 @@ class ControllerIntegrationTest {
                 }
                 awaitState { !controller.document.canUndo }
                 assertTrue(withContext(Dispatchers.Main) { controller.shutdown() })
-                assertNotNull(files.recovery)
             } finally {
                 withContext(Dispatchers.Main) { controller.close() }
                 scope.cancel()
@@ -103,7 +104,7 @@ class ControllerIntegrationTest {
         }
 
     @Test
-    fun layerBlendChangesReachCanvasPreviewsHistoryAndRecovery() =
+    fun layerBlendChangesReachCanvasPreviewsHistoryAndSavedFile() =
         runBlocking<Unit> {
             NativeLoader.load()
             val engine = createNativeEngine(32, 32)
@@ -119,7 +120,7 @@ class ControllerIntegrationTest {
                 } finally {
                     engine.close()
                 }
-            val files = Files().apply { recovery = project }
+            val files = Files().apply { opened = project }
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
             val controller = withContext(Dispatchers.Main) { StudioController(files, scope) }
             suspend fun awaitState(predicate: () -> Boolean) =
@@ -143,6 +144,9 @@ class ControllerIntegrationTest {
                     }
                 }
             try {
+                awaitState { controller.ready }
+                withContext(Dispatchers.Main) { controller.file(StudioController.FileAction.Open) }
+                awaitState { controller.document.width == 32 && !controller.busy }
                 awaitState { controller.ready }
                 val expected =
                     listOf(
@@ -178,10 +182,11 @@ class ControllerIntegrationTest {
                 }
                 assertColor(expected[7])
                 assertNull(withContext(Dispatchers.Main) { controller.error })
+                saveManually(controller, files)
                 assertTrue(withContext(Dispatchers.Main) { controller.shutdown() })
                 val restored = createNativeEngine(1, 1)
                 try {
-                    restored.call(EngineOperation.LOAD, assertNotNull(files.recovery))
+                    restored.call(EngineOperation.LOAD, assertNotNull(files.saved))
                     val color =
                         restored
                             .call(
@@ -225,7 +230,7 @@ class ControllerIntegrationTest {
                         controller.previews.revision == controller.document.revision
                 }
                 val image = withContext(Dispatchers.Main) { controller.previews.images.getValue(1) }
-                assertEquals(139f / 255, image.toPixelMap()[48, 48].red, 0.01f)
+                assertEquals(0f, image.toPixelMap()[48, 48].red, 0.01f)
                 for (format in ExportFormat.entries) {
                     withContext(Dispatchers.Main) {
                         controller.export(
@@ -258,7 +263,7 @@ class ControllerIntegrationTest {
                 assertEquals("64", stack.documentElement.getAttribute("h"))
                 assertEquals(1, stack.getElementsByTagName("layer").length)
                 val merged = javax.imageio.ImageIO.read(entries.getValue("mergedimage.png").inputStream())
-                assertEquals(0xFF8B2942.toInt(), merged.getRGB(32, 32))
+                assertEquals(0xFF000000.toInt(), merged.getRGB(32, 32))
                 withContext(Dispatchers.Main) { controller.command("undo") }
                 awaitState {
                     !controller.document.canUndo &&
@@ -302,10 +307,11 @@ class ControllerIntegrationTest {
             withContext(Dispatchers.Main) { controller.command("undo") }
             awaitState { controller.document.revision == 3L }
             assertNull(withContext(Dispatchers.Main) { controller.error })
-            assertTrue(withContext(Dispatchers.Main) { controller.shutdown() })
+            saveManually(controller, files)
+                assertTrue(withContext(Dispatchers.Main) { controller.shutdown() })
             val engine = createNativeEngine(1, 1)
             try {
-                engine.call(EngineOperation.LOAD, assertNotNull(files.recovery))
+                engine.call(EngineOperation.LOAD, assertNotNull(files.saved))
                 fun pick(x: Int) =
                     engine
                         .call(
@@ -313,7 +319,7 @@ class ControllerIntegrationTest {
                             """{"type":"pick","x":$x,"y":15}""".encodeToByteArray(),
                         )
                         .decodeToString()
-                assertEquals("""{"color":[139,41,66]}""", pick(15))
+                assertEquals("""{"color":[0,0,0]}""", pick(15))
                 assertEquals("""{"color":[255,255,255]}""", pick(35))
             } finally {
                 engine.close()
@@ -351,8 +357,7 @@ class ControllerIntegrationTest {
             return true
         }
 
-        var recovery: ByteArray? = null
-        var preserved: ByteArray? = null
+        var saved: ByteArray? = null
         var failWrites = false
 
         var opened: ByteArray? = null
@@ -362,18 +367,12 @@ class ControllerIntegrationTest {
             return opened
         }
 
-        override suspend fun save(bytes: ByteArray, png: Boolean) = true
-
-        override suspend fun readRecovery() = recovery
-
-        override suspend fun preserveRecovery(bytes: ByteArray) {
-            preserved = bytes
-        }
-
-        override suspend fun writeRecovery(bytes: ByteArray) {
+        override suspend fun save(bytes: ByteArray, png: Boolean): Boolean {
             check(!failWrites) { "模拟磁盘写入失败" }
-            recovery = bytes
+            saved = bytes
+            return true
         }
+
     }
 
     @Test
@@ -443,7 +442,7 @@ class ControllerIntegrationTest {
     }
 
     @Test
-    fun stabilizationReachesTheNativeEngineAndShutdownFinishesItsTail() =
+    fun stabilizationReachesTheNativeEngineAndManualSaveFinishesItsTail() =
         runBlocking<Unit> {
             NativeLoader.load()
             val files = Files()
@@ -471,12 +470,13 @@ class ControllerIntegrationTest {
                     assertEquals(1f, pixels[210 - 128, 64].green)
                     assertTrue(pixels[160 - 128, 64].green < 0.3f)
                 }
+                saveManually(controller, files)
                 assertTrue(withContext(Dispatchers.Main) { controller.shutdown() })
                 val restored = createNativeEngine(1, 1)
                 try {
-                    restored.call(EngineOperation.LOAD, assertNotNull(files.recovery))
+                    restored.call(EngineOperation.LOAD, assertNotNull(files.saved))
                     assertEquals(
-                        """{"color":[139,41,66]}""",
+                        """{"color":[0,0,0]}""",
                         restored
                             .call(
                                 EngineOperation.COMMAND,
@@ -493,63 +493,11 @@ class ControllerIntegrationTest {
             }
         }
 
-    @Test
-    fun shutdownFlushesQueuedInputAndAllowsRetryWhenStorageFails() = runBlocking<Unit> {
-        NativeLoader.load()
-        val files = Files()
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-        val controller = withContext(Dispatchers.Main) { StudioController(files, scope) }
-        try {
-            withTimeout(10_000) {
-                while (!withContext(Dispatchers.Main) { controller.ready }) delay(10)
-            }
-            withContext(Dispatchers.Main) {
-                controller.begin(Offset(64f, 64f), 1f)
-                controller.points(listOf(Triple(128f, 64f, 1f)))
-                controller.end()
-            }
-            files.failWrites = true
-            assertFalse(withContext(Dispatchers.Main) { controller.shutdown() })
-            assertTrue(withContext(Dispatchers.Main) { controller.ready })
-            files.failWrites = false
-            assertTrue(withContext(Dispatchers.Main) { controller.shutdown() })
-            val engine = createNativeEngine(1, 1)
-            try {
-                engine.call(EngineOperation.LOAD, assertNotNull(files.recovery))
-                val color =
-                    engine
-                        .call(
-                            EngineOperation.COMMAND,
-                            """{"type":"pick","x":100,"y":64}""".encodeToByteArray(),
-                        )
-                        .decodeToString()
-                assertEquals("""{"color":[139,41,66]}""", color)
-            } finally {
-                engine.close()
-            }
-        } finally {
-            withContext(Dispatchers.Main) { controller.close() }
-            scope.cancel()
-        }
-    }
-
-    @Test
-    fun brokenRecoveryIsPreservedBeforeNewRecoveryIsWritten() = runBlocking<Unit> {
-        NativeLoader.load()
-        val damaged = "invalid project".encodeToByteArray()
-        val files = Files().apply { recovery = damaged }
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-        val controller = withContext(Dispatchers.Main) { StudioController(files, scope) }
-        try {
-            withTimeout(10_000) {
-                while (!withContext(Dispatchers.Main) { controller.ready }) delay(10)
-            }
-            assertContentEquals(damaged, files.preserved)
-            assertTrue(withContext(Dispatchers.Main) { controller.shutdown() })
-            assertFalse(files.recovery!!.contentEquals(damaged))
-        } finally {
-            withContext(Dispatchers.Main) { controller.close() }
-            scope.cancel()
+    private suspend fun saveManually(controller: StudioController, files: Files) {
+        val previous = files.saved
+        withContext(Dispatchers.Main) { controller.file(StudioController.FileAction.Save) }
+        withTimeout(10_000) {
+            while (!withContext(Dispatchers.Main) { files.saved !== previous && !controller.busy }) delay(10)
         }
     }
 }
