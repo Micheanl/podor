@@ -26,7 +26,7 @@ import org.jetbrains.skia.EncodedImageFormat
 @OptIn(ExperimentalComposeUiApi::class)
 class MotionRenderingTest {
     @Test
-    fun colorFlowTravelsDownLeftBeforeTheLogoAppears() =
+    fun rainbowKeepsFlowingUntilLogoAppears() =
         runBlocking<Unit> {
             withContext(Dispatchers.Main) {
                 val intro = mutableFloatStateOf(0f)
@@ -37,37 +37,50 @@ class MotionRenderingTest {
                         }
                     }
                 try {
-                    fun center(phase: Float, time: Long): Offset {
-                        intro.floatValue = phase * StudioMotion.launchFlowEnd
+                    fun sample(
+                        progress: Float,
+                        time: Long,
+                    ): List<androidx.compose.ui.graphics.Color> {
+                        intro.floatValue = progress
                         return scene.render(time).use { image ->
                             val pixels = image.toComposeImageBitmap().toPixelMap()
-                            var xTotal = 0f
-                            var yTotal = 0f
-                            var weight = 0f
-                            for (y in 0 until pixels.height step 4) {
-                                for (x in 0 until pixels.width step 4) {
-                                    val color = pixels[x, y]
-                                    val intensity =
-                                        (maxOf(color.red, color.green, color.blue) - 0.15f)
-                                            .coerceAtLeast(0f)
-                                    xTotal += x * intensity
-                                    yTotal += y * intensity
-                                    weight += intensity
-                                }
+                            buildList {
+                                for (y in 0 until pixels.height step 4) for (x in
+                                    0 until pixels.width step 4) add(pixels[x, y])
                             }
-                            assertTrue(weight > 10f, "Color flow should be visible")
-                            Offset(xTotal / weight, yTotal / weight)
                         }
                     }
-                    val entry = center(0.3f, 0L)
-                    val exit = center(0.7f, 100_000_000L)
-                    assertTrue(entry.x > 640 * 0.6f && entry.y < 420 * 0.4f, "entry=$entry")
-                    assertTrue(exit.x < 640 * 0.4f && exit.y > 420 * 0.6f, "exit=$exit")
-                    assertEquals(0f, launchLogoProgress(StudioMotion.launchFlowEnd))
-                    assertEquals(1f, launchLogoProgress(1f))
+                    val first = sample(0.2f, 0L)
+                    val later = sample(0.6f, 100_000_000L)
+                    val coverage = first.count { maxOf(it.red, it.green, it.blue) > 0.2f }
+                    val laterCoverage = later.count { maxOf(it.red, it.green, it.blue) > 0.2f }
+                    assertTrue(coverage > 1000, "Rainbow should fill the diagonal")
                     assertTrue(
-                        launchLogoProgress((1f + StudioMotion.launchFlowEnd) / 2f) in 0.1f..0.99f
+                        laterCoverage.toFloat() / coverage in 0.9f..1.1f,
+                        "The rainbow must stay on screen while it flows",
                     )
+                    val changed =
+                        first.indices.count { index ->
+                            val a = first[index]
+                            val b = later[index]
+                            kotlin.math.abs(a.red - b.red) +
+                                kotlin.math.abs(a.green - b.green) +
+                                kotlin.math.abs(a.blue - b.blue) > 0.025f
+                        }
+                    assertTrue(
+                        changed > coverage / 5,
+                        "Color should keep flowing inside the rainbow",
+                    )
+                    val handoff = sample(StudioMotion.launchFlowEnd, 200_000_000L)
+                    assertTrue(handoff.count { maxOf(it.red, it.green, it.blue) > 0.2f } > 500)
+                    assertTrue(launchLogoProgress(StudioMotion.launchFlowEnd) > 0.3f)
+                    assertEquals(
+                        0f,
+                        launchLogoProgress(
+                            StudioMotion.launchFlowEnd - StudioMotion.launchHandoffOverlap
+                        ),
+                    )
+                    assertEquals(1f, launchLogoProgress(1f))
                 } finally {
                     scene.close()
                 }

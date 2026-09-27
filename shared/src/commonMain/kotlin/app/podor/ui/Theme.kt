@@ -43,13 +43,13 @@ object StudioTheme {
     val launchHighlight = Color(0x99FFE8EE)
     val launchSpectrum =
         listOf(
-            Color(0xFFE7818D),
-            Color(0xFFDEAD70),
-            Color(0xFFEACB78),
-            Color(0xFF9CC391),
-            Color(0xFF70BEC5),
-            Color(0xFF7D99D4),
-            Color(0xFFB593D3),
+            Color(0xFFD8A275),
+            Color(0xFFE0CA97),
+            Color(0xFF98C4A5),
+            Color(0xFF79B8CD),
+            Color(0xFF8C9FCF),
+            Color(0xFFB18ECB),
+            Color(0xFFD196B3),
         )
     val surfaceRim = Color(0xFF62616B)
     const val colorRingRadius = 0.455f
@@ -74,10 +74,12 @@ object StudioMotion {
     const val panelMillis = 280
     const val dismissMillis = 180
     const val launchMillis = 3400
-    const val launchHoldMillis = 600
+    const val launchHoldMillis = 500
     const val revealMillis = 1500
-    const val launchFlowEnd = 0.72f
-    const val launchBandWidth = 0.28f
+    const val launchFlowEnd = 0.8f
+    const val launchHandoffOverlap = 0.035f
+    const val launchRibbonWidth = 0.28f
+    const val launchFlowTravel = 1.1f
     const val dissolveTextureSize = 96
     const val dissolveSoftness = 0.12f
     val launchEasing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)

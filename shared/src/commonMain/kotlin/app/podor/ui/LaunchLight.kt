@@ -5,38 +5,80 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun LaunchLight(intro: () -> Float) {
     Canvas(
         Modifier.fillMaxSize().drawWithCache {
-            val width = size.minDimension * StudioMotion.launchBandWidth
-            val length = kotlin.math.hypot(size.width, size.height) * 0.9f
-            val angle = kotlin.math.atan2(size.width, size.height) * 180f / kotlin.math.PI.toFloat()
-            val rainbow =
-                Brush.linearGradient(
-                    StudioTheme.launchSpectrum,
-                    start = Offset(-width / 2f, 0f),
-                    end = Offset(width / 2f, 0f),
-                )
-            val origin = Offset(-width / 2f, -length / 2f)
-            val bounds = Size(width, length)
-            val corners = CornerRadius(width / 2f)
+            val band = size.minDimension * StudioMotion.launchRibbonWidth
+            val count = StudioTheme.launchSpectrum.size
+            val strands =
+                StudioTheme.launchSpectrum.mapIndexed { index, color ->
+                    val shift = (index - (count - 1) / 2f) * band / count
+                    val path =
+                        Path().apply {
+                            moveTo(size.width * 1.04f + shift, -size.height * 0.2f + shift)
+                            cubicTo(
+                                size.width * 0.66f + shift,
+                                size.height * 0.13f + shift,
+                                size.width * 0.88f + shift,
+                                size.height * 0.33f + shift,
+                                size.width * 0.55f + shift,
+                                size.height * 0.47f + shift,
+                            )
+                            cubicTo(
+                                size.width * 0.22f + shift,
+                                size.height * 0.61f + shift,
+                                size.width * 0.36f + shift,
+                                size.height * 0.83f + shift,
+                                -size.width * 0.04f + shift,
+                                size.height * 1.06f + shift,
+                            )
+                        }
+                    val shade = lerp(color, StudioTheme.background, 0.2f)
+                    val brush =
+                        Brush.linearGradient(
+                            listOf(shade, color, lerp(color, Color.White, 0.22f), color, shade),
+                            start = Offset(size.width, 0f),
+                            end = Offset(size.width * 0.7f, size.height * 0.3f),
+                            tileMode = TileMode.Repeated,
+                        ) as ShaderBrush
+                    path to brush
+                }
+            val core = Stroke(band / count * 1.25f, cap = StrokeCap.Butt)
+            val halo = Stroke(band / count * 2.8f, cap = StrokeCap.Butt)
+            val edge = Stroke(0.7.dp.toPx(), cap = StrokeCap.Butt)
+            val transforms = List(count) { Matrix() }
             onDrawBehind {
-                val phase = (intro() / StudioMotion.launchFlowEnd).coerceIn(0f, 1f)
-                if (phase > 0f && phase < 1f) {
-                    val travel = -0.8f + phase * 2.6f
-                    withTransform({
-                        translate(size.width * (1f - travel), size.height * travel)
-                        rotate(angle, pivot = Offset.Zero)
-                    }) {
-                        drawRoundRect(rainbow, origin, bounds, corners)
+                val progress = intro().coerceIn(0f, 1f)
+                val light =
+                    (progress / 0.08f).coerceIn(0f, 1f) * (1f - launchLogoProgress(progress))
+                if (light > 0f) {
+                    strands.forEachIndexed { index, (path, brush) ->
+                        val travel = progress * StudioMotion.launchFlowTravel + index * 0.018f
+                        val transform = transforms[index]
+                        transform.reset()
+                        transform.translate(-size.width * travel, size.height * travel)
+                        brush.transform = transform
+                        drawPath(
+                            path,
+                            StudioTheme.launchSpectrum[index],
+                            alpha = light * 0.06f,
+                            style = halo,
+                        )
+                        drawPath(path, brush, alpha = light * 0.82f, style = core)
+                        drawPath(
+                            path,
+                            StudioTheme.launchHighlight,
+                            alpha = light * 0.18f,
+                            style = edge,
+                        )
                     }
                 }
             }
@@ -44,10 +86,10 @@ fun LaunchLight(intro: () -> Float) {
     ) {}
 }
 
-fun launchLogoProgress(intro: Float): Float =
-    StudioMotion.easing.transform(
-        ((intro - StudioMotion.launchFlowEnd) / (1f - StudioMotion.launchFlowEnd)).coerceIn(0f, 1f)
-    )
+fun launchLogoProgress(intro: Float): Float {
+    val start = StudioMotion.launchFlowEnd - StudioMotion.launchHandoffOverlap
+    return StudioMotion.easing.transform(((intro - start) / (1f - start)).coerceIn(0f, 1f))
+}
 
 fun Modifier.logoLight(progress: () -> Float): Modifier = graphicsLayer {
     compositingStrategy = CompositingStrategy.Offscreen
