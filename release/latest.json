@@ -1,8 +1,8 @@
 {
-  "version": "0.2.3",
-  "notes": "# podor 0.2.3\n\n画笔面板新增稳笔强度，描线更平顺，抬笔时补齐线尾。新增勾线笔，内置笔刷增至 11 支。\n\n稳笔参数可随自定义笔刷保存，也可通过笔刷包分享。\n\nWindows x64，安装前请保存作品并退出应用。\n",
+  "version": "0.2.4",
+  "notes": "# podor 0.2.4\n\n新增 OpenRaster（ORA）分层导出，保留图层顺序、名称、隐藏状态、不透明度和混合模式，可交给 GIMP 等软件继续编辑。\n\n导出面板改为两列选项，切换格式时平滑显示对应设置。分层文件在后台按行编码，减少导出过程的临时内存。\n\n暂不支持 ORA 导入。其他软件的默认混合设置可能让显示效果有所不同。\n\nWindows x64，安装前请保存作品并退出应用。\n",
   "platform": "windows-x64",
-  "url": "https://gitee.com/Micheanl/podor/releases/download/v0.2.3/podor-0.2.3.msi",
-  "sha256": "c370e8868fee8ce3d23c56de9fb742a34aaac43c54ab7902029b4bb013f9e9ff",
-  "size": 69821923
+  "url": "https://gitee.com/Micheanl/podor/releases/download/v0.2.4/podor-0.2.4.msi",
+  "sha256": "1c1cb18751ac421da6fd403daf40a2299c8628bbce8ab76b93721212f850b0d1",
+  "size": 69948893
 }
