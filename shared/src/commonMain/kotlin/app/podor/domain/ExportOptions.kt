@@ -14,6 +14,8 @@ enum class ExportFormat(
     @SerialName("jpeg") Jpeg("JPEG", "jpg", false),
     @SerialName("webp") Webp("WebP", "webp", true),
     @SerialName("ora") Ora("ORA", "ora", true, true),
+    @SerialName("tiff") Tiff("TIFF", "tiff", true),
+    @SerialName("bmp") Bmp("BMP", "bmp", true),
 }
 
 @Serializable

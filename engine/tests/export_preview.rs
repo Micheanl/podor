@@ -125,6 +125,80 @@ fn jpeg_and_webp_decode_with_correct_background_and_dimensions() {
 }
 
 #[test]
+fn tiff_and_bmp_preserve_straight_alpha_orientation_and_partial_edge_tiles() {
+    let mut engine = Engine::new(131, 129).unwrap();
+    engine
+        .command(Command::Select {
+            rect: Some(podor_engine::model::Rect {
+                left: 0,
+                top: 0,
+                right: 2,
+                bottom: 1,
+            }),
+        })
+        .unwrap();
+    fill(&mut engine, [200, 100, 50, 128]);
+    engine
+        .command(Command::Select {
+            rect: Some(podor_engine::model::Rect {
+                left: 130,
+                top: 128,
+                right: 131,
+                bottom: 129,
+            }),
+        })
+        .unwrap();
+    engine
+        .command(Command::Fill {
+            x: 130,
+            y: 128,
+            color: [20, 80, 240, 255],
+            tolerance: 0,
+        })
+        .unwrap();
+    let saved = engine.save().unwrap();
+    for format in [ExportFormat::Tiff, ExportFormat::Bmp] {
+        for transparent in [false, true] {
+            let bytes = engine
+                .export_image(ExportOptions {
+                    format,
+                    transparent,
+                    ..Default::default()
+                })
+                .unwrap();
+            let decoded = image::load_from_memory(&bytes).unwrap().to_rgba8();
+            if format == ExportFormat::Tiff {
+                let mut decoder =
+                    tiff::decoder::Decoder::new(std::io::Cursor::new(&bytes)).unwrap();
+                assert_eq!(
+                    decoder
+                        .get_tag_u16_vec(tiff::tags::Tag::ExtraSamples)
+                        .unwrap(),
+                    vec![2]
+                );
+            }
+            assert_eq!(decoded.dimensions(), (131, 129));
+            assert_eq!(
+                decoded.get_pixel(0, 0).0,
+                if transparent {
+                    [199, 100, 50, 128]
+                } else {
+                    [227, 177, 152, 255]
+                }
+            );
+            assert_eq!(decoded.get_pixel(130, 128).0, [20, 80, 240, 255]);
+            for (x, y) in [(2, 0), (0, 128), (128, 128), (130, 0)] {
+                assert_eq!(
+                    decoded.get_pixel(x, y).0,
+                    if transparent { [0; 4] } else { [255; 4] }
+                );
+            }
+            assert_eq!(saved, engine.save().unwrap());
+        }
+    }
+}
+
+#[test]
 fn hidden_layer_has_its_own_preview_without_affecting_composite() {
     let mut engine = Engine::new(200, 100).unwrap();
     fill(&mut engine, [255, 0, 0, 255]);

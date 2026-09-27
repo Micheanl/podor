@@ -17,6 +17,50 @@ import kotlinx.serialization.json.putJsonObject
 
 class ControllerIntegrationTest {
     @Test
+    fun directionalBrushReachesCanvasAndPersistsInCustomBrushPack() = runBlocking<Unit> {
+        NativeLoader.load()
+        val files = Files()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        val controller = withContext(Dispatchers.Main) { StudioController(files, scope) }
+        suspend fun awaitState(predicate: () -> Boolean) = withTimeout(10_000) {
+            while (!withContext(Dispatchers.Main) { predicate() }) delay(10)
+        }
+        try {
+            awaitState { controller.ready }
+            withContext(Dispatchers.Main) {
+                controller.command("new") { put("width", 128); put("height", 128) }
+            }
+            awaitState { controller.document.width == 128 && !controller.busy }
+            withContext(Dispatchers.Main) {
+                controller.selectPreset(BrushPreset.entries.first { it.id == "ribbon" }.copy(
+                    size = 24f, angle = 0f, stabilization = 0f,
+                ))
+                controller.begin(Offset(64f, 20f), 1f)
+                controller.points(listOf(Triple(64f, 96.7f, 1f)))
+                controller.end()
+            }
+            awaitState { controller.document.canUndo && controller.previews.revision == controller.document.revision }
+            withContext(Dispatchers.Main) {
+                val pixels = controller.frame.tiles.values.first().image.toPixelMap()
+                assertTrue(pixels[64, 60].red < 0.05f)
+                assertTrue(pixels[74, 60].red > 0.95f)
+                assertTrue(pixels[64, 108].red < 0.95f)
+                controller.saveBrush("Turn")
+            }
+            awaitState { controller.preferences.brushes.any { it.label == "Turn" } }
+            withContext(Dispatchers.Main) { controller.file(StudioController.FileAction.ExportBrushes) }
+            awaitState { files.exportedPack != null }
+            assertTrue(BrushPack.parse(assertNotNull(files.exportedPack)).brushes.single().followDirection)
+            withContext(Dispatchers.Main) { controller.command("undo") }
+            awaitState { !controller.document.canUndo }
+            assertNull(withContext(Dispatchers.Main) { controller.error })
+        } finally {
+            withContext(Dispatchers.Main) { controller.close() }
+            scope.cancel()
+        }
+    }
+
+    @Test
     fun imageOpeningRefreshesCanvasAndFailedDecodePreservesTheWork() =
         runBlocking<Unit> {
             NativeLoader.load()
@@ -224,6 +268,8 @@ class ControllerIntegrationTest {
                     }
                 }
                 awaitState { controller.document.width == 64 }
+                withContext(Dispatchers.Main) { controller.select(Offset(16f, 16f), Offset(48f, 48f)) }
+                awaitState { controller.document.selection?.left == 16 }
                 withContext(Dispatchers.Main) { controller.fill(Offset(32f, 32f)) }
                 awaitState {
                     controller.document.canUndo &&
@@ -248,6 +294,14 @@ class ControllerIntegrationTest {
                     files.exports[1].second.copyOfRange(0, 2),
                 )
                 assertEquals("WEBP", files.exports[2].second.copyOfRange(8, 12).decodeToString())
+                for (format in listOf(ExportFormat.Tiff, ExportFormat.Bmp)) {
+                    val bytes = files.exports.single { it.first == format }.second
+                    val decoded = assertNotNull(javax.imageio.ImageIO.read(bytes.inputStream()))
+                    assertEquals(64, decoded.width)
+                    assertEquals(64, decoded.height)
+                    assertEquals(0xFF000000.toInt(), decoded.getRGB(32, 32))
+                    assertEquals(0, decoded.getRGB(0, 0))
+                }
                 val ora = files.exports.single { it.first == ExportFormat.Ora }.second
                 val entries = mutableMapOf<String, ByteArray>()
                 java.util.zip.ZipInputStream(ora.inputStream()).use { archive ->

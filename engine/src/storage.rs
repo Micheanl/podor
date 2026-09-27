@@ -139,6 +139,8 @@ pub enum ExportFormat {
     Jpeg,
     Webp,
     Ora,
+    Tiff,
+    Bmp,
 }
 
 #[derive(Clone, Copy, serde::Deserialize)]
@@ -211,6 +213,28 @@ pub fn export_image(doc: &Document, options: ExportOptions) -> Result<Vec<u8>, S
             let mut writer = encoder.write_header().map_err(|e| e.to_string())?;
             writer.write_image_data(&rgba).map_err(|e| e.to_string())?;
         }
+        ExportFormat::Tiff => {
+            let mut encoder = tiff::encoder::TiffEncoder::new(Cursor::new(&mut output))
+                .map_err(|error| error.to_string())?
+                .with_compression(tiff::encoder::Compression::Deflate(
+                    tiff::encoder::DeflateLevel::Fast,
+                ));
+            let mut image = encoder
+                .new_image::<tiff::encoder::colortype::RGB8>(doc.width, doc.height)
+                .map_err(|error| error.to_string())?;
+            image
+                .extra_samples(&[tiff::tags::ExtraSamples::UnassociatedAlpha])
+                .map_err(|error| error.to_string())?;
+            image.write_data(&rgba).map_err(|error| error.to_string())?;
+        }
+        ExportFormat::Bmp => image::codecs::bmp::BmpEncoder::new(&mut output)
+            .encode(
+                &rgba,
+                doc.width,
+                doc.height,
+                image::ExtendedColorType::Rgba8,
+            )
+            .map_err(|error| error.to_string())?,
         ExportFormat::Ora => unreachable!(),
     }
     Ok(output)

@@ -49,6 +49,7 @@ data class BrushPreset(
     val grain: Float = 0f,
     val spacing: Float = 0.08f,
     val stabilization: Float = StudioDefaults.stabilization,
+    val followDirection: Boolean = false,
 ) {
     fun valid(): Boolean =
         id.matches(Regex("[a-zA-Z0-9._-]{1,64}")) &&
@@ -94,6 +95,44 @@ data class BrushPreset(
                 BrushPreset("watercolor", "水彩", 0.15f, 0.08f, 90f, grain = 0.45f, spacing = 0.06f),
                 BrushPreset("chisel", "斜头笔", 0.95f, 0.7f, 38f, BrushTip.Flat, 0.25f, -35f),
                 BrushPreset("flat", "平刷", 0.8f, 0.5f, 60f, BrushTip.Flat, 0.45f, grain = 0.3f),
+                BrushPreset(
+                    "ribbon",
+                    "缎带",
+                    0.95f,
+                    1f,
+                    42f,
+                    BrushTip.Flat,
+                    0.2f,
+                    90f,
+                    spacing = 0.04f,
+                    stabilization = StudioDefaults.lineStabilization,
+                    followDirection = true,
+                ),
+                BrushPreset(
+                    "dry-flat",
+                    "干刷",
+                    0.75f,
+                    0.55f,
+                    56f,
+                    BrushTip.Flat,
+                    0.25f,
+                    90f,
+                    grain = 0.9f,
+                    spacing = 0.06f,
+                    followDirection = true,
+                ),
+                BrushPreset(
+                    "rake",
+                    "排线笔",
+                    1f,
+                    1f,
+                    30f,
+                    BrushTip.Flat,
+                    0.1f,
+                    90f,
+                    spacing = 0.5f,
+                    followDirection = true,
+                ),
                 BrushPreset("stipple", "点描", 1f, 1f, 5f, spacing = 0.95f),
             )
     }

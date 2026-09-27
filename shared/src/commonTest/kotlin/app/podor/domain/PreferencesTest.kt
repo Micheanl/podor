@@ -48,7 +48,8 @@ class PreferencesTest {
 
     @Test
     fun stabilizationSurvivesBrushPackAndPreferencesRoundTrips() {
-        val brush = BrushPreset.Ink.copy(id = "custom-1", stabilization = 0.65f)
+        val brush =
+            BrushPreset.Ink.copy(id = "custom-1", stabilization = 0.65f, followDirection = true)
         val preferences = Preferences(brushes = listOf(brush))
         assertEquals(
             preferences,
@@ -58,6 +59,11 @@ class PreferencesTest {
         assertEquals(pack, BrushPack.parse(Json.encodeToString(pack).encodeToByteArray()))
         assertFalse(brush.copy(stabilization = Float.NaN).valid())
         assertFalse(brush.copy(stabilization = Float.POSITIVE_INFINITY).valid())
+        val legacy =
+            Json.decodeFromString<BrushPreset>(
+                """{"id":"old","label":"Old brush","hardness":1.0,"opacity":1.0,"size":12.0}"""
+            )
+        assertFalse(legacy.followDirection)
     }
 
     @Test
@@ -72,11 +78,12 @@ class PreferencesTest {
 
     @Test
     fun bundledBrushesHaveDistinctAndValidParameters() {
-        assertEquals(11, BrushPreset.entries.size)
+        assertEquals(14, BrushPreset.entries.size)
         assertTrue(BrushPreset.entries.all { it.valid() })
-        assertEquals(11, BrushPreset.entries.map { it.id }.distinct().size)
+        assertEquals(14, BrushPreset.entries.map { it.id }.distinct().size)
         assertTrue(BrushPreset.entries.any { it.tip == BrushTip.Flat })
         assertTrue(BrushPreset.entries.any { it.grain > 0f })
         assertTrue(BrushPreset.entries.any { it.stabilization > 0f })
+        assertEquals(3, BrushPreset.entries.count { it.followDirection })
     }
 }

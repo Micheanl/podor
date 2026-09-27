@@ -175,8 +175,15 @@ fun BrushStrokePreview(
                     thickness,
                     cap = if (preset.tip == BrushTip.Flat) StrokeCap.Butt else StrokeCap.Round,
                     pathEffect =
-                        if (preset.spacing > 0.5f)
-                            PathEffect.dashPathEffect(floatArrayOf(0.1f, thickness * 2.5f))
+                        if (preset.spacing >= 0.5f)
+                            PathEffect.dashPathEffect(
+                                if (preset.tip == BrushTip.Flat)
+                                    floatArrayOf(
+                                        thickness * preset.aspect,
+                                        thickness * preset.spacing,
+                                    )
+                                else floatArrayOf(0.1f, thickness * 2.5f)
+                            )
                         else null,
                 )
             val random = Random(17)
@@ -262,6 +269,10 @@ private fun BrushEditor(controller: StudioController, onDismiss: () -> Unit) {
                 }
                 LabeledSlider("角度", preset.angle, -180f..180f, "${preset.angle.roundToInt()}°") {
                     update(preset.copy(angle = it))
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("跟随笔画方向"), Modifier.weight(1f), fontSize = 13.sp)
+                    Switch(preset.followDirection, { update(preset.copy(followDirection = it)) })
                 }
                 LabeledSlider("颗粒", preset.grain, 0f..1f, "${(preset.grain*100).roundToInt()}%") {
                     update(preset.copy(grain = it))

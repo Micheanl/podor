@@ -85,7 +85,7 @@ fun ExportSettings(
             Modifier.fillMaxWidth().selectableGroup(),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            controller.exportFormats.chunked(2).forEach { formats ->
+            controller.exportFormats.chunked(StudioTheme.exportColumns).forEach { formats ->
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     formats.forEach { format ->
                         val selected = format == options.format
@@ -132,7 +132,7 @@ fun ExportSettings(
                             )
                         }
                     }
-                    if (formats.size == 1) Spacer(Modifier.weight(1f))
+                    repeat(StudioTheme.exportColumns - formats.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }

@@ -37,6 +37,7 @@
 | `tip` | `Round` 或 `Flat` |
 | `aspect` | 0.1–1 |
 | `angle` | -180–180 度 |
+| `followDirection` | 跟随笔画方向旋转，`angle` 为相对角度，省略时关闭 |
 | `spacing` | 0.02–1，笔尖尺寸的比例 |
 | `stabilization` | 0–1，稳笔强度，省略或为 0 时关闭 |
 

@@ -42,6 +42,7 @@ object StudioTheme {
     val workspaceWidth = 1200.dp
     val projectCardWidth = 240.dp
     val projectPreviewHeight = 174.dp
+    const val exportColumns = 3
     val launchIconSize = 88.dp
     val minimumWindowWidth = 400.dp
     val minimumWindowHeight = 600.dp

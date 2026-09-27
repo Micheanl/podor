@@ -42,20 +42,22 @@ fn main() {
                 engine.command(Command::End).unwrap();
             }
         }
-        let start = Instant::now();
-        let output = engine
-            .export_image(ExportOptions {
-                format: ExportFormat::Ora,
-                ..Default::default()
-            })
-            .unwrap();
-        println!(
-            "{}x{}, {layers} {} layers: {:.2} ms, {:.2} MiB archive",
-            engine.document.width,
-            engine.document.height,
-            if dense { "filled" } else { "sparse" },
-            start.elapsed().as_secs_f64() * 1000.0,
-            output.len() as f64 / 1048576.0
-        );
+        for format in [ExportFormat::Ora, ExportFormat::Tiff, ExportFormat::Bmp] {
+            let start = Instant::now();
+            let output = engine
+                .export_image(ExportOptions {
+                    format,
+                    ..Default::default()
+                })
+                .unwrap();
+            println!(
+                "{format:?}, {}x{}, {layers} {} layers: {:.2} ms, {:.2} MiB output",
+                engine.document.width,
+                engine.document.height,
+                if dense { "filled" } else { "sparse" },
+                start.elapsed().as_secs_f64() * 1000.0,
+                output.len() as f64 / 1048576.0
+            );
+        }
     }
 }

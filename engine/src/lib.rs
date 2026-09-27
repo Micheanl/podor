@@ -87,11 +87,19 @@ struct Stroke {
     brush: Brush,
     stabilizer: Stabilizer,
     last: Option<Sample>,
+    direction: f32,
     distance: f32,
     changed: bool,
 }
 
 impl Stroke {
+    fn stamp_brush(&self) -> Brush {
+        Brush {
+            angle: self.brush.angle + self.direction,
+            ..self.brush
+        }
+    }
+
     fn paint(
         &mut self,
         point: Sample,
@@ -105,6 +113,14 @@ impl Stroke {
             let dy = point.y - last.y;
             let length = dx.hypot(dy);
             if length > f32::EPSILON {
+                if self.brush.follow_direction {
+                    self.direction = dy.atan2(dx).to_degrees();
+                }
+                let brush = self.stamp_brush();
+                if !self.changed {
+                    raster::stamp(document, selection, brush, last, dirty, remaining)?;
+                    self.changed = true;
+                }
                 let spacing = (self.brush.size
                     * last.pressure.min(point.pressure).clamp(0.05, 1.0)
                     * self.brush.spacing)
@@ -115,7 +131,7 @@ impl Stroke {
                     raster::stamp(
                         document,
                         selection,
-                        self.brush,
+                        brush,
                         Sample {
                             x: last.x + dx * t,
                             y: last.y + dy * t,
@@ -129,7 +145,7 @@ impl Stroke {
                 }
                 self.distance = (self.distance + length) % spacing;
             }
-        } else {
+        } else if !self.brush.follow_direction {
             raster::stamp(document, selection, self.brush, point, dirty, remaining)?;
             self.changed = true;
         }
@@ -180,15 +196,17 @@ impl Engine {
                     brush,
                     stabilizer: Stabilizer::new(brush.stabilization),
                     last: None,
+                    direction: 0.0,
                     distance: 0.0,
                     changed: false,
                 });
             }
             Command::End => {
                 if let Some(stroke) = self.stroke.as_mut() {
-                    if let Some(point) = stroke.stabilizer.finish() {
-                        let mut remaining = (MAX_DOCUMENT_BYTES / TILE_BYTES)
-                            .saturating_sub(self.document.tile_count());
+                    let tail = stroke.stabilizer.finish();
+                    let mut remaining = (MAX_DOCUMENT_BYTES / TILE_BYTES)
+                        .saturating_sub(self.document.tile_count());
+                    if let Some(point) = tail {
                         stroke.paint(
                             point,
                             &mut self.document,
@@ -196,11 +214,16 @@ impl Engine {
                             &mut self.dirty,
                             &mut remaining,
                         )?;
-                        if stroke.distance > f32::EPSILON {
+                    }
+                    if let Some(point) = stroke.last {
+                        if !stroke.changed
+                            || ((tail.is_some() || stroke.brush.follow_direction)
+                                && stroke.distance > f32::EPSILON)
+                        {
                             raster::stamp(
                                 &mut self.document,
                                 self.selection,
-                                stroke.brush,
+                                stroke.stamp_brush(),
                                 point,
                                 &mut self.dirty,
                                 &mut remaining,

@@ -1,16 +1,18 @@
 use podor_engine::{
-    model::{Brush, Sample},
+    model::{Brush, BrushTip, Sample},
     Command, Engine,
 };
 use std::time::Instant;
 
 fn main() {
     for stabilization in [0.0, 0.5, 1.0] {
-        painting(stabilization);
+        painting(stabilization, false, false);
     }
+    painting(0.5, true, false);
+    painting(0.5, true, true);
 }
 
-fn painting(stabilization: f32) {
+fn painting(stabilization: f32, flat: bool, follow_direction: bool) {
     let mut engine = Engine::new(2048, 2048).unwrap();
     let brush = Brush {
         size: 24.0,
@@ -19,6 +21,14 @@ fn painting(stabilization: f32) {
         color: [30, 90, 240],
         eraser: false,
         stabilization,
+        tip: if flat {
+            BrushTip::Flat
+        } else {
+            BrushTip::Round
+        },
+        aspect: if flat { 0.25 } else { 1.0 },
+        angle: if flat { 90.0 } else { 0.0 },
+        follow_direction,
         ..Brush::default()
     };
     let start = Instant::now();
@@ -40,7 +50,7 @@ fn painting(stabilization: f32) {
         bytes += engine.frame().len();
     }
     println!(
-        "stabilization={stabilization:.1}, 100 strokes, 12000 samples, 1600 frames: {:.2} ms; {:.1} MiB transferred",
+        "stabilization={stabilization:.1}, flat={flat}, follow={follow_direction}, 100 strokes, 12000 samples, 1600 frames: {:.2} ms; {:.1} MiB transferred",
         start.elapsed().as_secs_f64() * 1000.0,
         bytes as f64 / 1048576.0
     );

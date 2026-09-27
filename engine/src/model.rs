@@ -177,6 +177,8 @@ pub struct Brush {
     #[serde(default)]
     pub angle: f32,
     #[serde(default)]
+    pub follow_direction: bool,
+    #[serde(default)]
     pub grain: f32,
     #[serde(default = "default_spacing")]
     pub spacing: f32,
@@ -210,6 +212,7 @@ impl Default for Brush {
             tip: BrushTip::Round,
             aspect: 1.0,
             angle: 0.0,
+            follow_direction: false,
             grain: 0.0,
             spacing: BRUSH_SPACING_RATIO,
             stabilization: 0.0,

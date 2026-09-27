@@ -556,6 +556,7 @@ class StudioController(
                         put("tip", settings.preset.tip.name.lowercase())
                         put("aspect", settings.preset.aspect)
                         put("angle", settings.preset.angle)
+                        put("follow_direction", settings.preset.followDirection)
                         put("grain", settings.preset.grain)
                         put("spacing", settings.preset.spacing)
                         put("stabilization", settings.preset.stabilization)

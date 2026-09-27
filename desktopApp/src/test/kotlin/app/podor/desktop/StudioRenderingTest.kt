@@ -495,7 +495,7 @@ class StudioRenderingTest {
                 }
                 try {
                     render()
-                    click(300f, 400f)
+                    click(80f, 400f)
                     assertEquals(ExportFormat.Ora, options.value.format)
                     click(380f, 485f)
                     assertFalse(options.value.transparent)
@@ -505,13 +505,19 @@ class StudioRenderingTest {
                             Files.write(Path.of("build/reports/screenshots/export-ora-en.png"), png.bytes)
                         }
                     }
-                    click(300f, 320f)
+                    click(215f, 320f)
                     assertEquals(ExportFormat.Jpeg, options.value.format)
                     repeat(30) { render() }
                     click(100f, 320f)
                     assertEquals(ExportFormat.Png, options.value.format)
                     repeat(30) { render() }
                     click(380f, 485f)
+                    assertTrue(options.value.transparent)
+                    click(215f, 400f)
+                    assertEquals(ExportFormat.Tiff, options.value.format)
+                    assertTrue(options.value.transparent)
+                    click(350f, 400f)
+                    assertEquals(ExportFormat.Bmp, options.value.format)
                     assertTrue(options.value.transparent)
                     repeat(30) { render() }
                     assertFalse(scene.hasInvalidations())
