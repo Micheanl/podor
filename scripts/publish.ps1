@@ -31,8 +31,22 @@ function Invoke-PublishApi($Service, $Method, $Url, $Body = $null, $File = $null
     } elseif ($null -ne $Body) { $request.Body = $Body | ConvertTo-Json -Depth 8 -Compress; $request.ContentType = 'application/json; charset=utf-8' }
     try { $response = Invoke-WebRequest @request } catch { throw "$Service 发布连接失败" }
     if ($AllowMissing -and $response.StatusCode -eq 404) { return $null }
-    if ($response.StatusCode -lt 200 -or $response.StatusCode -ge 300) { throw "$Service $Method 发布失败，HTTP $($response.StatusCode)，路径 $(([uri]$Url).AbsolutePath)" }
+    if ($response.StatusCode -lt 200 -or $response.StatusCode -ge 300) {
+        if ($Service -eq 'gitee' -and $response.StatusCode -eq 400 -and $response.Content -match '文件大小已超出仓库附件配额') { throw 'Gitee 仓库附件配额已满，需要整理旧安装包或更换下载仓库' }
+        throw "$Service $Method 发布失败，HTTP $($response.StatusCode)，路径 $(([uri]$Url).AbsolutePath)"
+    }
     if ($response.Content) { return $response.Content | ConvertFrom-Json }
+}
+
+function Undo-NewGiteeRelease($ReleaseId, $ExpectedTag) {
+    $url = "$($apis.gitee)/releases/$ReleaseId"
+    $release = Invoke-PublishApi gitee GET $url -AllowMissing
+    if (-not $release) { return }
+    if ($release.tag_name -ne $ExpectedTag) { throw '新建发行记录不匹配，停止清理' }
+    if ($release.prerelease) {
+        $null = Invoke-PublishApi gitee DELETE $url
+        Write-Output '已撤下本次未完成的 Gitee 发行记录，保留之前的稳定更新入口'
+    }
 }
 
 function Push-Repository($Service, $Ref) {
@@ -91,7 +105,7 @@ $tag = "v$version"
 $sha = (git rev-parse HEAD).Trim()
 $existingTag = git rev-parse --verify "refs/tags/$tag" 2>$null
 if ($existingTag -and $existingTag.Trim() -ne $sha) {
-    git diff --quiet $tag HEAD -- . ':(exclude)release/latest.json' ':(exclude)scripts/publish.ps1' ':(exclude)docs/DEVELOPMENT.md'
+    git diff --quiet $tag HEAD -- . ':(exclude)release/latest.json' ':(exclude)scripts/publish.ps1' ':(exclude)scripts/check.ps1' ':(exclude)scripts/test-publish-rollback.ps1' ':(exclude)docs/DEVELOPMENT.md'
     if ($LASTEXITCODE) { throw '版本标签已指向其他源码，请增加版本号' }
     $sha = $existingTag.Trim()
 }
@@ -101,11 +115,14 @@ $installerHash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.T
 $installerSize = (Get-Item -LiteralPath $installer).Length
 $releaseIds = @{}
 $assets = @{}
+$createdGiteeRelease = $null
+try {
 foreach ($service in @('github', 'gitee')) {
     $api = $apis[$service]
     $release = Invoke-PublishApi $service GET "$api/releases/tags/$tag" -AllowMissing
     if (-not $release) {
         $release = Invoke-PublishApi $service POST "$api/releases" @{ tag_name = $tag; target_commitish = $sha; name = "podor $version"; body = $notes; prerelease = $true }
+        if ($service -eq 'gitee') { $createdGiteeRelease = $release.id }
     }
     $releaseIds[$service] = $release.id
     $assetApi = if ($service -eq 'gitee') { "$api/releases/$($release.id)/attach_files" } else { "$api/releases/$($release.id)/assets" }
@@ -157,3 +174,11 @@ try {
     Verify-PublicDownload $publishedManifest.browser_download_url (Get-FileHash $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant() (Get-Item $manifestPath).Length
 } catch { throw '公开发行接口校验失败，请检查更新通道' }
 Write-Output "podor $version 已同步发布，应用更新通道已验证"
+} catch {
+    $failure = $_
+    if ($createdGiteeRelease) {
+        try { Undo-NewGiteeRelease $createdGiteeRelease $tag }
+        catch { Write-Warning '未完成的 Gitee 发行记录清理失败，请检查更新入口' }
+    }
+    throw $failure
+}
