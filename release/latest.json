@@ -1,0 +1,8 @@
+{
+  "version": "0.2.2",
+  "notes": "# podor 0.2.2\n\n整理了项目目录、说明和下载页，更新了封面与界面预览。\n\n工程只支持 `.podor`，移除了旧格式读取与旧目录迁移。\n\nWindows x64，安装前请保存作品并退出应用。\n",
+  "platform": "windows-x64",
+  "url": "https://gitee.com/Micheanl/podor/releases/download/v0.2.2/podor-0.2.2.msi",
+  "sha256": "8f912792c0f1bcaea5b80700bf072a4bf291172536c485c4b6eb551f054f6064",
+  "size": 69821922
+}

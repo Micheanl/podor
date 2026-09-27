@@ -1,0 +1,314 @@
+package app.podor.ui
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import app.podor.domain.*
+import app.podor.presentation.StudioController
+import app.podor.resources.Res
+import app.podor.resources.brand
+import kotlin.math.roundToInt
+import org.jetbrains.compose.resources.painterResource
+
+@Composable
+fun StudioHeader(
+    controller: StudioController,
+    compact: Boolean,
+    showDocument: Boolean,
+    onDialog: (StudioDialog) -> Unit,
+) {
+    var menu by remember { mutableStateOf(false) }
+    Row(
+        Modifier.fillMaxWidth()
+            .height(64.dp)
+            .background(StudioTheme.panel)
+            .padding(horizontal = if (compact) 16.dp else 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Image(painterResource(Res.drawable.brand), AppIdentity.name, Modifier.size(30.dp))
+        Spacer(Modifier.width(if (compact) 8.dp else 20.dp))
+        if (!compact) {
+            Box(Modifier.width(1.dp).height(20.dp).background(StudioTheme.border))
+            Spacer(Modifier.width(12.dp))
+        }
+        Box {
+            ToolButton(Glyph.Folder, "工程菜单") { menu = true }
+            DropdownMenu(
+                menu,
+                { menu = false },
+                shape = RoundedCornerShape(18.dp),
+                containerColor = StudioTheme.panel,
+            ) {
+                DropdownMenuItem(
+                    { Text(tr("新建画布")) },
+                    {
+                        onDialog(StudioDialog.New)
+                        menu = false
+                    },
+                    leadingIcon = { StudioIcon(Glyph.Plus) },
+                )
+                DropdownMenuItem(
+                    { Text(tr("打开工程 / 图片")) },
+                    {
+                        onDialog(StudioDialog.Open)
+                        menu = false
+                    },
+                    leadingIcon = { StudioIcon(Glyph.Folder) },
+                )
+                DropdownMenuItem(
+                    { Text(tr("保存工程")) },
+                    {
+                        controller.file(StudioController.FileAction.Save)
+                        menu = false
+                    },
+                    leadingIcon = { StudioIcon(Glyph.Save) },
+                )
+                DropdownMenuItem(
+                    { Text(tr("导出图像")) },
+                    {
+                        onDialog(StudioDialog.Export)
+                        menu = false
+                    },
+                    leadingIcon = { StudioIcon(Glyph.Export) },
+                )
+                HorizontalDivider(color = StudioTheme.border)
+                DropdownMenuItem(
+                    { Text(tr("清空当前图层")) },
+                    {
+                        onDialog(StudioDialog.Clear)
+                        menu = false
+                    },
+                )
+                DropdownMenuItem(
+                    { Text(tr("设置")) },
+                    {
+                        onDialog(StudioDialog.Settings)
+                        menu = false
+                    },
+                )
+                DropdownMenuItem(
+                    { Text(controller.shortcutLabel(ShortcutAction.Deselect)) },
+                    {
+                        controller.clearSelection()
+                        menu = false
+                    },
+                    enabled = controller.document.selection != null,
+                )
+            }
+        }
+        ToolButton(Glyph.Settings, "设置") { onDialog(StudioDialog.Settings) }
+        if (showDocument) {
+            Spacer(Modifier.weight(1f))
+            Row(
+                Modifier.background(StudioTheme.background.copy(alpha = 0.5f), CircleShape)
+                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                StudioIcon(Glyph.Selection, StudioTheme.muted, Modifier.size(15.dp))
+                Text(tr("自由创作"), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    "${controller.document.width} × ${controller.document.height} px",
+                    fontSize = 10.sp,
+                    color = StudioTheme.muted,
+                )
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        Row(
+            Modifier.clip(CircleShape)
+                .background(StudioTheme.background.copy(alpha = 0.65f))
+                .padding(horizontal = 2.dp)
+        ) {
+            ToolButton(
+                Glyph.Undo,
+                controller.shortcutLabel(ShortcutAction.Undo),
+                enabled = controller.document.canUndo,
+            ) {
+                controller.command("undo")
+            }
+            ToolButton(
+                Glyph.Redo,
+                controller.shortcutLabel(ShortcutAction.Redo),
+                enabled = controller.document.canRedo,
+            ) {
+                controller.command("redo")
+            }
+        }
+        if (!compact) {
+            Spacer(Modifier.width(8.dp))
+            ToolButton(
+                Glyph.Save,
+                controller.shortcutLabel(ShortcutAction.Save),
+                enabled = controller.ready && !controller.busy,
+            ) {
+                controller.file(StudioController.FileAction.Save)
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        ToolButton(
+            Glyph.Export,
+            controller.shortcutLabel(ShortcutAction.Export),
+            prominent = true,
+            enabled = controller.ready && !controller.busy,
+        ) {
+            onDialog(StudioDialog.Export)
+        }
+    }
+}
+
+@Composable
+fun StudioTools(controller: StudioController, compact: Boolean = false) {
+    var more by remember { mutableStateOf(false) }
+    ToolButton(
+        Glyph.Brush,
+        controller.shortcutLabel(ShortcutAction.Brush),
+        controller.tool == Tool.Brush,
+    ) {
+        controller.tool = Tool.Brush
+    }
+    ToolButton(
+        Glyph.Eraser,
+        controller.shortcutLabel(ShortcutAction.Eraser),
+        controller.tool == Tool.Eraser,
+    ) {
+        controller.tool = Tool.Eraser
+    }
+    if (compact)
+        Box {
+            ToolButton(Glyph.More, "更多工具", controller.tool !in listOf(Tool.Brush, Tool.Eraser)) {
+                more = true
+            }
+            DropdownMenu(
+                more,
+                { more = false },
+                containerColor = StudioTheme.panel,
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                listOf(Tool.Select, Tool.Fill, Tool.Picker, Tool.Hand).forEach { tool ->
+                    DropdownMenuItem(
+                        { Text(tr(tool.label)) },
+                        {
+                            controller.tool = tool
+                            more = false
+                        },
+                    )
+                }
+            }
+        }
+    else {
+        ToolButton(
+            Glyph.Selection,
+            controller.shortcutLabel(ShortcutAction.Select),
+            controller.tool == Tool.Select,
+        ) {
+            controller.tool = Tool.Select
+        }
+        ToolButton(
+            Glyph.Fill,
+            controller.shortcutLabel(ShortcutAction.Fill),
+            controller.tool == Tool.Fill,
+        ) {
+            controller.tool = Tool.Fill
+        }
+        ToolButton(
+            Glyph.Picker,
+            controller.shortcutLabel(ShortcutAction.Picker),
+            controller.tool == Tool.Picker,
+        ) {
+            controller.tool = Tool.Picker
+        }
+        ToolButton(
+            Glyph.Hand,
+            controller.shortcutLabel(ShortcutAction.Hand),
+            controller.tool == Tool.Hand,
+        ) {
+            controller.tool = Tool.Hand
+        }
+    }
+}
+
+@Composable
+fun BrushDock(controller: StudioController, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    Row(
+        modifier
+            .clickable(interaction, indication = null, onClick = onClick)
+            .controlFeedback(interaction, CircleShape)
+            .shadow(12.dp, CircleShape)
+            .clip(CircleShape)
+            .background(StudioTheme.panel)
+            .border(1.dp, StudioTheme.border.copy(alpha = 0.7f), CircleShape)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(13.dp),
+    ) {
+        StudioIcon(
+            if (controller.tool == Tool.Eraser) Glyph.Eraser else Glyph.Brush,
+            StudioTheme.accent,
+            Modifier.size(18.dp),
+        )
+        Text(
+            tr(if (controller.tool == Tool.Eraser) "橡皮" else controller.brush.preset.label),
+            fontSize = 11.sp,
+            color = StudioTheme.text,
+        )
+        Box(Modifier.width(1.dp).height(16.dp).background(StudioTheme.border))
+        Text(
+            "${controller.brush.size.roundToInt()} px",
+            fontSize = 11.sp,
+            color = StudioTheme.muted,
+        )
+        Text(
+            "${(controller.brush.opacity*100).roundToInt()}%",
+            fontSize = 11.sp,
+            color = StudioTheme.muted,
+        )
+        StudioIcon(Glyph.Chevron, StudioTheme.muted, Modifier.size(13.dp))
+    }
+}
+
+@Composable
+fun CanvasFooter(controller: StudioController, compact: Boolean, modifier: Modifier = Modifier) {
+    Row(
+        modifier.fillMaxWidth().height(46.dp).padding(horizontal = 22.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            if (compact) "${controller.document.width} × ${controller.document.height}"
+            else "${controller.document.layers.size} · ${tr(controller.tool.label)}",
+            fontSize = 10.sp,
+            color = StudioTheme.muted.copy(alpha = 0.8f),
+            modifier = Modifier.weight(1f),
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(
+                { controller.viewport = Viewport() },
+                contentPadding = PaddingValues(horizontal = 7.dp),
+            ) {
+                Text(
+                    "${(controller.viewport.zoom*100).roundToInt()}%",
+                    fontSize = 11.sp,
+                    color = StudioTheme.muted,
+                )
+            }
+            ToolButton(Glyph.Fit, controller.shortcutLabel(ShortcutAction.Fit)) {
+                controller.viewport = Viewport()
+            }
+        }
+    }
+}

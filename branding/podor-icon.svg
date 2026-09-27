@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="podor-title">
+  <title id="podor-title">podor — O and rainbow paintbrush</title>
+  <defs>
+    <linearGradient id="podor-frame" x1="183" y1="32" x2="332" y2="487" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A43550"/>
+      <stop offset="1" stop-color="#711C39"/>
+    </linearGradient>
+    <linearGradient id="podor-letter" x1="259" y1="82" x2="252" y2="438" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8C2541"/>
+      <stop offset="1" stop-color="#A83450"/>
+    </linearGradient>
+    <linearGradient id="podor-left" x1="102" y1="185" x2="186" y2="333" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7B1B39"/>
+      <stop offset="1" stop-color="#891F41"/>
+    </linearGradient>
+    <linearGradient id="podor-fold" x1="136" y1="328" x2="252" y2="415" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#68142E"/>
+      <stop offset="1" stop-color="#57112A"/>
+    </linearGradient>
+    <linearGradient id="podor-rainbow" x1="0" y1="-86" x2="0" y2="14" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF6178"/>
+      <stop offset=".18" stop-color="#FFA94D"/>
+      <stop offset=".36" stop-color="#FFE16B"/>
+      <stop offset=".54" stop-color="#6ADC9A"/>
+      <stop offset=".72" stop-color="#51D2E8"/>
+      <stop offset=".88" stop-color="#728EFF"/>
+      <stop offset="1" stop-color="#B084FF"/>
+    </linearGradient>
+    <linearGradient id="podor-metal" x1="-12" y1="20" x2="12" y2="20" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#939AB6"/>
+      <stop offset=".42" stop-color="#EDF0F8"/>
+      <stop offset="1" stop-color="#A7ADC8"/>
+    </linearGradient>
+    <linearGradient id="podor-bristles" x1="-19" y1="80" x2="16" y2="34" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FA668B"/>
+      <stop offset=".24" stop-color="#FFB957"/>
+      <stop offset=".45" stop-color="#BEEB81"/>
+      <stop offset=".64" stop-color="#5CDAD0"/>
+      <stop offset=".82" stop-color="#7199F2"/>
+      <stop offset="1" stop-color="#BC87ED"/>
+    </linearGradient>
+    <clipPath id="podor-o-clip">
+      <path d="M236 87C249 80 262 80 275 88L388 153C405 163 414 179 414 198V323C414 342 405 357 389 366L277 431C264 439 249 439 236 431L117 363C102 354 95 338 95 319V198C95 179 104 164 120 154L236 87ZM243 173C251 168 261 168 269 173L325 205C334 210 339 219 339 230V290C339 301 334 310 325 315L269 347C261 352 251 352 243 347L186 315C177 310 172 301 172 290V230C172 219 177 210 186 205L243 173Z" clip-rule="evenodd"/>
+    </clipPath>
+  </defs>
+  <path d="M285 47 425 128C445 140 455 158 455 182V337C455 361 445 380 425 392L285 473C267 484 245 484 227 473L87 392C67 380 57 361 57 337V182C57 158 67 140 87 128L227 47C245 36 267 36 285 47Z" stroke="url(#podor-frame)" stroke-width="24" stroke-linejoin="round"/>
+  <g clip-path="url(#podor-o-clip)">
+    <path d="M90 78H419V442H90Z" fill="url(#podor-letter)"/>
+    <path d="M90 168 176 218V304L90 354Z" fill="url(#podor-left)"/>
+    <path d="m90 354 86-50 80 47v91H90Z" fill="url(#podor-fold)"/>
+    <path d="m336 218 83-48v184l-83-50Z" fill="#70203C" fill-opacity=".22"/>
+  </g>
+  <g transform="translate(256 256) rotate(42) scale(2.25)">
+    <path d="M-8 13-10-73C-10-80-6-86 0-86S10-80 10-73L8 13Z" fill="url(#podor-rainbow)"/>
+    <path d="M-11 29H11C18 39 21 50 15 63C10 75 0 82-3 90C-5 78-19 73-20 58C-21 45-17 36-11 29Z" fill="url(#podor-bristles)"/>
+    <rect x="-12" y="10" width="24" height="21" rx="3" fill="url(#podor-metal)"/>
+    <path d="M-5-72-4-6" stroke="#FFF" stroke-opacity=".34" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+</svg>
