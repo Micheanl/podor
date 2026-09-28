@@ -19,6 +19,9 @@ function Has-Row([string]$Sql) {
     }
 }
 try {
+    if (Has-Row 'SELECT `File` FROM `File` WHERE `FileName` = ''ucrtbase.dll''') {
+        throw 'Windows 10 and later use the system UCRT; rebuild the runtime without ucrtbase.dll'
+    }
     if (-not (Has-Row 'SELECT `Directory` FROM `Directory` WHERE `Directory` = ''INSTALLDIR''') -or
         -not (Has-Row 'SELECT `File` FROM `File` WHERE `FileName` = ''podor.exe''') -or
         -not (Has-Row 'SELECT `Shortcut` FROM `Shortcut` WHERE `Directory_` = ''DesktopFolder''') -or

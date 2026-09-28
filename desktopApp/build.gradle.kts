@@ -1,4 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.compose.desktop.application.tasks.AbstractJLinkTask
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -19,6 +20,9 @@ dependencies {
 }
 
 val windows = System.getProperty("os.name").startsWith("Windows")
+tasks.withType<AbstractJLinkTask>().configureEach {
+    if (windows) freeArgs.add("--exclude-files=glob:**/ucrtbase.dll")
+}
 val localCargo = rootProject.file(".tools/cargo/bin/cargo.exe")
 val buildEngine =
     tasks.register<Exec>("buildEngine") {
