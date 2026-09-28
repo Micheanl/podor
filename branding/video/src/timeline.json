@@ -1,0 +1,530 @@
+[
+  {
+    "id": "Intro",
+    "title": "podor",
+    "duration": 165,
+    "cues": [
+      {
+        "text": "Let's make something in Podor.",
+        "file": "operation-Intro-0-e122e70f11.mp3",
+        "from": 24,
+        "duration": 75,
+        "captions": [
+          {
+            "start": 3,
+            "end": 74,
+            "text": "Let's make something in Podor."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "NewCanvas",
+    "title": "Create a canvas",
+    "cues": [
+      {
+        "text": "Press Control N to open a new canvas.",
+        "file": "operation-NewCanvas-0-78d80203b2.mp3",
+        "from": 24,
+        "duration": 98,
+        "captions": [
+          {
+            "start": 3,
+            "end": 97,
+            "text": "Press Control N to open a new canvas."
+          }
+        ]
+      },
+      {
+        "text": "Set the width to twelve hundred pixels, and the height to nine hundred. Create your canvas, and start with a clean page.",
+        "file": "operation-NewCanvas-1-937356258f.mp3",
+        "from": 128,
+        "duration": 243,
+        "captions": [
+          {
+            "start": 3,
+            "end": 135,
+            "text": "Set the width to twelve hundred pixels, and the height to nine hundred."
+          },
+          {
+            "start": 133,
+            "end": 241,
+            "text": "Create your canvas, and start with a clean page."
+          }
+        ]
+      }
+    ],
+    "duration": 450
+  },
+  {
+    "id": "Brushes",
+    "title": "Make your first marks",
+    "cues": [
+      {
+        "text": "Open the color panel and enter a Bordeaux red.",
+        "file": "operation-Brushes-0-75f6d44f99.mp3",
+        "from": 24,
+        "duration": 108,
+        "captions": [
+          {
+            "start": 3,
+            "end": 107,
+            "text": "Open the color panel and enter a Bordeaux red."
+          }
+        ]
+      },
+      {
+        "text": "Choose Ink. Increase the size, then draw a continuous line across the canvas.",
+        "file": "operation-Brushes-1-f00881a42b.mp3",
+        "from": 225,
+        "duration": 194,
+        "captions": [
+          {
+            "start": 3,
+            "end": 52,
+            "text": "Choose Ink."
+          },
+          {
+            "start": 51,
+            "end": 192,
+            "text": "Increase the size, then draw a continuous line across the canvas."
+          }
+        ]
+      },
+      {
+        "text": "Switch to Soft for a diffused edge.",
+        "file": "operation-Brushes-2-8bdc3a27ba.mp3",
+        "from": 504,
+        "duration": 91,
+        "captions": [
+          {
+            "start": 3,
+            "end": 90,
+            "text": "Switch to Soft for a diffused edge."
+          }
+        ]
+      },
+      {
+        "text": "Now try Marker. The same movement produces a different finish. Compare the three marks before choosing your brush.",
+        "file": "operation-Brushes-3-763bc995cf.mp3",
+        "from": 672,
+        "duration": 270,
+        "captions": [
+          {
+            "start": 3,
+            "end": 67,
+            "text": "Now try Marker."
+          },
+          {
+            "start": 65,
+            "end": 163,
+            "text": "The same movement produces a different finish."
+          },
+          {
+            "start": 163,
+            "end": 268,
+            "text": "Compare the three marks before choosing your brush."
+          }
+        ]
+      }
+    ],
+    "duration": 972
+  },
+  {
+    "id": "Color",
+    "title": "Build a palette",
+    "cues": [
+      {
+        "text": "Open Color. Drag around the ring to choose a hue, then move inside the square to adjust brightness and saturation.",
+        "file": "operation-Color-0-0984ca8c08.mp3",
+        "from": 24,
+        "duration": 238,
+        "captions": [
+          {
+            "start": 3,
+            "end": 59,
+            "text": "Open Color."
+          },
+          {
+            "start": 58,
+            "end": 236,
+            "text": "Drag around the ring to choose a hue, then move inside the square to adjust brightness and saturation."
+          }
+        ]
+      },
+      {
+        "text": "Add this color to your palette. Choose another swatch and save that too, ready for your next stroke.",
+        "file": "operation-Color-1-3afff814f0.mp3",
+        "from": 279,
+        "duration": 209,
+        "captions": [
+          {
+            "start": 3,
+            "end": 79,
+            "text": "Add this color to your palette."
+          },
+          {
+            "start": 77,
+            "end": 207,
+            "text": "Choose another swatch and save that too, ready for your next stroke."
+          }
+        ]
+      }
+    ],
+    "duration": 540
+  },
+  {
+    "id": "Layers",
+    "title": "Work in layers",
+    "cues": [
+      {
+        "text": "Here is a layered study. Toggle the foreground off and on to see how the image is built.",
+        "file": "operation-Layers-0-c9e6cdcc02.mp3",
+        "from": 24,
+        "duration": 194,
+        "captions": [
+          {
+            "start": 3,
+            "end": 73,
+            "text": "Here is a layered study."
+          },
+          {
+            "start": 71,
+            "end": 192,
+            "text": "Toggle the foreground off and on to see how the image is built."
+          }
+        ]
+      },
+      {
+        "text": "Duplicate the active layer, then open its blending controls.",
+        "file": "operation-Layers-1-01e3e90665.mp3",
+        "from": 224,
+        "duration": 136,
+        "captions": [
+          {
+            "start": 3,
+            "end": 135,
+            "text": "Duplicate the active layer, then open its blending controls."
+          }
+        ]
+      },
+      {
+        "text": "Try Multiply and watch the colors deepen. Return to Normal, and confirm the result.",
+        "file": "operation-Layers-2-711f3f4ee8.mp3",
+        "from": 366,
+        "duration": 201,
+        "captions": [
+          {
+            "start": 3,
+            "end": 99,
+            "text": "Try Multiply and watch the colors deepen."
+          },
+          {
+            "start": 97,
+            "end": 199,
+            "text": "Return to Normal, and confirm the result."
+          }
+        ]
+      }
+    ],
+    "duration": 660
+  },
+  {
+    "id": "Selection",
+    "title": "Select and copy",
+    "cues": [
+      {
+        "text": "Press M and drag a rectangle around part of the painting.",
+        "file": "operation-Selection-0-4584d3b7e8.mp3",
+        "from": 24,
+        "duration": 119,
+        "captions": [
+          {
+            "start": 3,
+            "end": 118,
+            "text": "Press M and drag a rectangle around part of the painting."
+          }
+        ]
+      },
+      {
+        "text": "Copy the visible selection with Control Shift C. Paste it onto a new layer, then clear the selection with Control D.",
+        "file": "operation-Selection-1-29dae507f5.mp3",
+        "from": 198,
+        "duration": 219,
+        "captions": [
+          {
+            "start": 3,
+            "end": 218,
+            "text": "Copy the visible selection with Control Shift C. Paste it onto a new layer, then clear the selection with Control D."
+          }
+        ]
+      }
+    ],
+    "duration": 540
+  },
+  {
+    "id": "Transform",
+    "title": "Move and refine",
+    "cues": [
+      {
+        "text": "Press Control T to transform the pasted layer.",
+        "file": "operation-Transform-0-f45f45c5f9.mp3",
+        "from": 24,
+        "duration": 112,
+        "captions": [
+          {
+            "start": 3,
+            "end": 111,
+            "text": "Press Control T to transform the pasted layer."
+          }
+        ]
+      },
+      {
+        "text": "Drag the artwork into position, then press Enter to apply the move.",
+        "file": "operation-Transform-1-ef36b4c6bd.mp3",
+        "from": 142,
+        "duration": 142,
+        "captions": [
+          {
+            "start": 3,
+            "end": 141,
+            "text": "Drag the artwork into position, then press Enter to apply the move."
+          }
+        ]
+      },
+      {
+        "text": "Use Undo to step back through the move and the paste. The original composition is still there.",
+        "file": "operation-Transform-2-39f883eb69.mp3",
+        "from": 324,
+        "duration": 213,
+        "captions": [
+          {
+            "start": 3,
+            "end": 115,
+            "text": "Use Undo to step back through the move and the paste."
+          },
+          {
+            "start": 114,
+            "end": 211,
+            "text": "The original composition is still there."
+          }
+        ]
+      }
+    ],
+    "duration": 600
+  },
+  {
+    "id": "Curves",
+    "title": "Shape the light",
+    "cues": [
+      {
+        "text": "Open Adjust, then Curves.",
+        "file": "operation-Curves-0-b4cf38567c.mp3",
+        "from": 24,
+        "duration": 85,
+        "captions": [
+          {
+            "start": 3,
+            "end": 84,
+            "text": "Open Adjust, then Curves."
+          }
+        ]
+      },
+      {
+        "text": "Add a point and lift the curve. Watch the active layer brighten as you drag.",
+        "file": "operation-Curves-1-85454c608f.mp3",
+        "from": 135,
+        "duration": 182,
+        "captions": [
+          {
+            "start": 3,
+            "end": 82,
+            "text": "Add a point and lift the curve."
+          },
+          {
+            "start": 81,
+            "end": 180,
+            "text": "Watch the active layer brighten as you drag."
+          }
+        ]
+      },
+      {
+        "text": "Toggle the preview to compare with the original. Apply the change when the balance feels right.",
+        "file": "operation-Curves-2-d19247e9a0.mp3",
+        "from": 323,
+        "duration": 204,
+        "captions": [
+          {
+            "start": 3,
+            "end": 106,
+            "text": "Toggle the preview to compare with the original."
+          },
+          {
+            "start": 104,
+            "end": 202,
+            "text": "Apply the change when the balance feels right."
+          }
+        ]
+      }
+    ],
+    "duration": 570
+  },
+  {
+    "id": "References",
+    "title": "Keep a reference close",
+    "cues": [
+      {
+        "text": "Copy a reference image, then press Control Shift V to place it on the canvas.",
+        "file": "operation-References-0-009f6346df.mp3",
+        "from": 24,
+        "duration": 155,
+        "captions": [
+          {
+            "start": 3,
+            "end": 154,
+            "text": "Copy a reference image, then press Control Shift V to place it on the canvas."
+          }
+        ]
+      },
+      {
+        "text": "Drag it beside your work. Pull a corner to resize it without changing its proportions.",
+        "file": "operation-References-1-cfd4d70421.mp3",
+        "from": 185,
+        "duration": 200,
+        "captions": [
+          {
+            "start": 3,
+            "end": 75,
+            "text": "Drag it beside your work."
+          },
+          {
+            "start": 73,
+            "end": 197,
+            "text": "Pull a corner to resize it without changing its proportions."
+          }
+        ]
+      },
+      {
+        "text": "References stay separate from the painting. They will not appear in your export, and are kept only for this session.",
+        "file": "operation-References-2-e7db546aa9.mp3",
+        "from": 391,
+        "duration": 231,
+        "captions": [
+          {
+            "start": 3,
+            "end": 98,
+            "text": "References stay separate from the painting."
+          },
+          {
+            "start": 97,
+            "end": 229,
+            "text": "They will not appear in your export, and are kept only for this session."
+          }
+        ]
+      }
+    ],
+    "duration": 652
+  },
+  {
+    "id": "Export",
+    "title": "Export your work",
+    "cues": [
+      {
+        "text": "Open Export to prepare the finished image.",
+        "file": "operation-Export-0-5c2f524435.mp3",
+        "from": 24,
+        "duration": 104,
+        "captions": [
+          {
+            "start": 3,
+            "end": 103,
+            "text": "Open Export to prepare the finished image."
+          }
+        ]
+      },
+      {
+        "text": "Choose JPEG for a flat image, or PSD for supported pixel layers.",
+        "file": "operation-Export-1-9d11afefab.mp3",
+        "from": 138,
+        "duration": 155,
+        "captions": [
+          {
+            "start": 3,
+            "end": 155,
+            "text": "Choose JPEG for a flat image, or PSD for supported pixel layers."
+          }
+        ]
+      },
+      {
+        "text": "For this study, choose PNG and export. The reference stays out of the final image.",
+        "file": "operation-Export-2-5b119abdeb.mp3",
+        "from": 306,
+        "duration": 204,
+        "captions": [
+          {
+            "start": 3,
+            "end": 111,
+            "text": "For this study, choose PNG and export."
+          },
+          {
+            "start": 109,
+            "end": 201,
+            "text": "The reference stays out of the final image."
+          }
+        ]
+      }
+    ],
+    "duration": 540
+  },
+  {
+    "id": "Workspace",
+    "title": "Back to your workspace",
+    "cues": [
+      {
+        "text": "Save the editable project, then return home. Your recent work is ready to open again.",
+        "file": "operation-Workspace-0-56576b411b.mp3",
+        "from": 24,
+        "duration": 209,
+        "captions": [
+          {
+            "start": 3,
+            "end": 114,
+            "text": "Save the editable project, then return home."
+          },
+          {
+            "start": 112,
+            "end": 206,
+            "text": "Your recent work is ready to open again."
+          }
+        ]
+      }
+    ],
+    "duration": 263
+  },
+  {
+    "id": "Outro",
+    "title": "podor",
+    "duration": 194,
+    "cues": [
+      {
+        "text": "From the first mark to the finished piece. Podor.",
+        "file": "operation-Outro-0-63b8187a96.mp3",
+        "from": 24,
+        "duration": 140,
+        "captions": [
+          {
+            "start": 3,
+            "end": 94,
+            "text": "From the first mark to the finished piece."
+          },
+          {
+            "start": 93,
+            "end": 138,
+            "text": "Podor."
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,162 @@
+[
+  {
+    "id": "Intro",
+    "title": "podor",
+    "duration": 165,
+    "cues": [{ "at": 0.8, "text": "Let's make something in Podor." }]
+  },
+  {
+    "id": "NewCanvas",
+    "title": "Create a canvas",
+    "cues": [
+      { "at": 0.8, "text": "Press Control N to open a new canvas." },
+      {
+        "at": 4,
+        "text": "Set the width to twelve hundred pixels, and the height to nine hundred. Create your canvas, and start with a clean page."
+      }
+    ]
+  },
+  {
+    "id": "Brushes",
+    "title": "Make your first marks",
+    "cues": [
+      { "at": 0.8, "text": "Open the color panel and enter a Bordeaux red." },
+      {
+        "at": 7.5,
+        "text": "Choose Ink. Increase the size, then draw a continuous line across the canvas."
+      },
+      { "at": 16.8, "text": "Switch to Soft for a diffused edge." },
+      {
+        "at": 22.4,
+        "text": "Now try Marker. The same movement produces a different finish. Compare the three marks before choosing your brush."
+      }
+    ]
+  },
+  {
+    "id": "Color",
+    "title": "Build a palette",
+    "cues": [
+      {
+        "at": 0.8,
+        "text": "Open Color. Drag around the ring to choose a hue, then move inside the square to adjust brightness and saturation."
+      },
+      {
+        "at": 9.3,
+        "text": "Add this color to your palette. Choose another swatch and save that too, ready for your next stroke."
+      }
+    ]
+  },
+  {
+    "id": "Layers",
+    "title": "Work in layers",
+    "cues": [
+      {
+        "at": 0.8,
+        "text": "Here is a layered study. Toggle the foreground off and on to see how the image is built."
+      },
+      {
+        "at": 7.1,
+        "text": "Duplicate the active layer, then open its blending controls."
+      },
+      {
+        "at": 11,
+        "text": "Try Multiply and watch the colors deepen. Return to Normal, and confirm the result."
+      }
+    ]
+  },
+  {
+    "id": "Selection",
+    "title": "Select and copy",
+    "cues": [
+      {
+        "at": 0.8,
+        "text": "Press M and drag a rectangle around part of the painting."
+      },
+      {
+        "at": 6.6,
+        "text": "Copy the visible selection with Control Shift C. Paste it onto a new layer, then clear the selection with Control D."
+      }
+    ]
+  },
+  {
+    "id": "Transform",
+    "title": "Move and refine",
+    "cues": [
+      { "at": 0.8, "text": "Press Control T to transform the pasted layer." },
+      {
+        "at": 3.6,
+        "text": "Drag the artwork into position, then press Enter to apply the move."
+      },
+      {
+        "at": 10.8,
+        "text": "Use Undo to step back through the move and the paste. The original composition is still there."
+      }
+    ]
+  },
+  {
+    "id": "Curves",
+    "title": "Shape the light",
+    "cues": [
+      { "at": 0.8, "text": "Open Adjust, then Curves." },
+      {
+        "at": 4.5,
+        "text": "Add a point and lift the curve. Watch the active layer brighten as you drag."
+      },
+      {
+        "at": 10.4,
+        "text": "Toggle the preview to compare with the original. Apply the change when the balance feels right."
+      }
+    ]
+  },
+  {
+    "id": "References",
+    "title": "Keep a reference close",
+    "cues": [
+      {
+        "at": 0.8,
+        "text": "Copy a reference image, then press Control Shift V to place it on the canvas."
+      },
+      {
+        "at": 5.1,
+        "text": "Drag it beside your work. Pull a corner to resize it without changing its proportions."
+      },
+      {
+        "at": 12.8,
+        "text": "References stay separate from the painting. They will not appear in your export, and are kept only for this session."
+      }
+    ]
+  },
+  {
+    "id": "Export",
+    "title": "Export your work",
+    "cues": [
+      { "at": 0.8, "text": "Open Export to prepare the finished image." },
+      {
+        "at": 4.6,
+        "text": "Choose JPEG for a flat image, or PSD for supported pixel layers."
+      },
+      {
+        "at": 10.2,
+        "text": "For this study, choose PNG and export. The reference stays out of the final image."
+      }
+    ]
+  },
+  {
+    "id": "Workspace",
+    "title": "Back to your workspace",
+    "cues": [
+      {
+        "at": 0.8,
+        "text": "Save the editable project, then return home. Your recent work is ready to open again."
+      }
+    ]
+  },
+  {
+    "id": "Outro",
+    "title": "podor",
+    "duration": 180,
+    "cues": [
+      { "at": 0.8, "text": "From the first mark to the finished piece. Podor." }
+    ]
+  }
+]
