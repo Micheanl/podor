@@ -36,6 +36,7 @@ enum class Tool(val label: String) {
     Fill("填充"),
     MoveLayer("移动图层"),
     TransformLayer("变换图层"),
+    Gradient("渐变"),
 }
 
 @Serializable
@@ -204,6 +205,10 @@ object StudioDefaults {
     const val maxTransformOffset = maxDimension * 2f
     const val transformNudge = 1f
     const val transformFastNudge = 10f
+    const val gradientEndColor = 0xFFFFFFFFL
+    const val gradientOpacity = 1f
+    const val maxGradientCoordinate = maxDimension * 2f
+    const val gradientMinLength = 0.001f
     const val maxCanvasPixels = 16_777_216L
     val canvasPresets =
         listOf(

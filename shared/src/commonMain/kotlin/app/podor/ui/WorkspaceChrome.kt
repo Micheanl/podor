@@ -237,21 +237,23 @@ fun StudioTools(controller: StudioController, compact: Boolean = false) {
                 shape = RoundedCornerShape(16.dp),
             ) {
                 listOf(
-                    Tool.Select,
-                    Tool.Fill,
-                    Tool.Picker,
-                    Tool.Hand,
-                    Tool.MoveLayer,
-                    Tool.TransformLayer,
-                ).forEach { tool ->
-                    DropdownMenuItem(
-                        { Text(tr(tool.label)) },
-                        {
-                            controller.tool = tool
-                            more = false
-                        },
+                        Tool.Select,
+                        Tool.Fill,
+                        Tool.Picker,
+                        Tool.Hand,
+                        Tool.MoveLayer,
+                        Tool.TransformLayer,
+                        Tool.Gradient,
                     )
-                }
+                    .forEach { tool ->
+                        DropdownMenuItem(
+                            { Text(tr(tool.label)) },
+                            {
+                                controller.tool = tool
+                                more = false
+                            },
+                        )
+                    }
             }
         }
     else {
@@ -292,6 +294,13 @@ fun StudioTools(controller: StudioController, compact: Boolean = false) {
             controller.tool == Tool.TransformLayer,
         ) {
             controller.tool = Tool.TransformLayer
+        }
+        ToolButton(
+            Glyph.Gradient,
+            controller.shortcutLabel(ShortcutAction.Gradient),
+            controller.tool == Tool.Gradient,
+        ) {
+            controller.tool = Tool.Gradient
         }
     }
 }

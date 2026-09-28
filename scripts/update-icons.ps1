@@ -16,6 +16,7 @@ $icons = [ordered]@{
     EllipseSelection='circle-dashed'; Lasso='lasso'
     Cut='scissors'; Clipboard='clipboard'
     Transform='scaling'; MirrorVertical='flip-vertical-2'
+    Gradient='blend'
 }
 $drawable = Join-Path $root 'shared/src/commonMain/composeResources/drawable'
 $entries = foreach ($icon in $icons.GetEnumerator()) {

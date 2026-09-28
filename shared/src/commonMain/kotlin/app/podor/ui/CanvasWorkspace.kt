@@ -29,6 +29,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import app.podor.domain.GradientGesture
+import app.podor.domain.GradientHandle
 import app.podor.domain.SelectionGesture
 import app.podor.domain.SelectionKind
 import app.podor.domain.StudioDefaults
@@ -36,6 +38,7 @@ import app.podor.domain.Tool
 import app.podor.domain.TouchGesture
 import app.podor.domain.TransformGesture
 import app.podor.domain.transformHandle
+import app.podor.presentation.GradientPreview
 import app.podor.presentation.LayerMovePreview
 import app.podor.presentation.StudioController
 import app.podor.ui.input.platformPenInput
@@ -86,6 +89,16 @@ fun CanvasWorkspace(
             filterQuality = FilterQuality.Low
         }
     }
+    LaunchedEffect(
+        controller.tool,
+        controller.document.revision,
+        controller.document.active,
+        controller.document.selection,
+        controller.busy,
+    ) {
+        if (controller.tool == Tool.Gradient) controller.prepareGradient()
+        else controller.cancelGradient()
+    }
     val selectionScale by remember {
         derivedStateOf {
             controller.viewport.scale(viewSize, controller.document).coerceAtLeast(0.01f)
@@ -112,6 +125,13 @@ fun CanvasWorkspace(
                 var movePreview: LayerMovePreview? = null
                 var transformDrag: TransformGesture? = null
                 var transformPreview: LayerMovePreview? = null
+                var gradientDrag: GradientGesture? = null
+                var gradientPreview: GradientPreview? = null
+                fun cancelGradientDrag() {
+                    if (controller.gradientPreview === gradientPreview)
+                        gradientDrag?.let { controller.previewGradient(it.before) }
+                    gradientDrag = null
+                }
                 fun cancelTransformDrag() {
                     if (controller.layerMove === transformPreview)
                         transformDrag?.let { controller.previewLayerTransform(it.initial) }
@@ -135,6 +155,7 @@ fun CanvasWorkspace(
                         val pen = event.platformPenInput()
                         val touch = event.platformTouchInput()
                         if (pen?.cancelled == true || touch?.cancelled == true) {
+                            cancelGradientDrag()
                             cancelTransformDrag()
                             if (drawing) controller.end(cancel = true)
                             drawing = false
@@ -166,6 +187,7 @@ fun CanvasWorkspace(
                                     }
                                 )
                             if (touch.gesturing) {
+                                cancelGradientDrag()
                                 cancelTransformDrag()
                                 if (drawing) controller.end(cancel = true)
                                 drawing = false
@@ -250,7 +272,8 @@ fun CanvasWorkspace(
                                 drawing ||
                                     selectionGesture != null ||
                                     moveAnchor != null ||
-                                    transformDrag != null
+                                    transformDrag != null ||
+                                    gradientDrag != null
                             )
                                 continue
                             val rotating = event.keyboardModifiers.isShiftPressed
@@ -285,6 +308,7 @@ fun CanvasWorkspace(
                             gesture = true
                         }
                         if (stylus == null && pressed.size >= 2) {
+                            cancelGradientDrag()
                             cancelTransformDrag()
                             if (moveAnchor != null) controller.cancelLayerMove()
                             moveAnchor = null
@@ -310,6 +334,25 @@ fun CanvasWorkspace(
                             continue
                         }
                         if (pressed.isEmpty()) {
+                            gradientDrag?.let {
+                                if (
+                                    controller.tool == Tool.Gradient &&
+                                        controller.gradientPreview === gradientPreview
+                                ) {
+                                    val point =
+                                        controller.viewport.toDocument(
+                                            position,
+                                            viewSize,
+                                            controller.document,
+                                        )
+                                    val line =
+                                        it.update(point, event.keyboardModifiers.isShiftPressed)
+                                    controller.previewGradient(
+                                        if (line.valid()) line else it.before
+                                    )
+                                }
+                            }
+                            gradientDrag = null
                             transformDrag?.let {
                                 if (
                                     controller.tool == Tool.TransformLayer &&
@@ -376,6 +419,54 @@ fun CanvasWorkspace(
                             continue
                         }
                         if (gesture) continue
+                        if (controller.tool == Tool.Gradient) {
+                            if (
+                                (primary.type == PointerType.Touch || touch != null) &&
+                                    !controller.fingerDrawing
+                            )
+                                continue
+                            val preview = controller.gradientPreview
+                            val point =
+                                controller.viewport.toDocument(
+                                    position,
+                                    viewSize,
+                                    controller.document,
+                                )
+                            if (
+                                primary.pressed &&
+                                    !primary.previousPressed &&
+                                    preview != null &&
+                                    !preview.committing
+                            ) {
+                                val radius =
+                                    StudioTheme.transformHitRadius.value * density /
+                                        controller.viewport
+                                            .scale(viewSize, controller.document)
+                                            .coerceAtLeast(0.01f)
+                                val line = preview.line
+                                val handle =
+                                    when {
+                                        line != null &&
+                                            (point - line.start).getDistance() <= radius ->
+                                            GradientHandle.Start
+                                        line != null &&
+                                            (point - line.end).getDistance() <= radius ->
+                                            GradientHandle.End
+                                        else -> GradientHandle.New
+                                    }
+                                gradientDrag = GradientGesture(line, point, handle)
+                                gradientPreview = preview
+                                activePointer = primary.id
+                            }
+                            if (preview === gradientPreview && preview?.committing == false)
+                                gradientDrag?.let {
+                                    controller.previewGradient(
+                                        it.update(point, event.keyboardModifiers.isShiftPressed)
+                                    )
+                                }
+                            primary.consume()
+                            continue
+                        }
                         if (controller.tool == Tool.TransformLayer) {
                             if (
                                 (primary.type == PointerType.Touch || touch != null) &&
@@ -552,6 +643,7 @@ fun CanvasWorkspace(
                         if (drawing) primary.consume()
                     }
                 } finally {
+                    cancelGradientDrag()
                     cancelTransformDrag()
                     if (drawing) controller.command("cancel")
                     if (moveAnchor != null) controller.cancelLayerMove()
@@ -580,7 +672,7 @@ fun CanvasWorkspace(
             }) {
                 clipRect(0f, 0f, document.width.toFloat(), document.height.toFloat()) {
                     drawRect(Color.White, size = paper)
-                    if (controller.layerMove == null)
+                    if (controller.layerMove == null && controller.gradientPreview == null)
                         controller.frame.tiles.values.forEach { tile ->
                             val x = tile.x * tile.size
                             val y = tile.y * tile.size
@@ -607,6 +699,9 @@ fun CanvasWorkspace(
             LayerMoveOverlay(controller, it, viewSize, Modifier.matchParentSize())
             if (it.transform != null)
                 LayerTransformHandles(controller, it, viewSize, Modifier.matchParentSize())
+        }
+        controller.gradientPreview?.let {
+            GradientOverlay(controller, it, viewSize, Modifier.matchParentSize())
         }
         Canvas(Modifier.matchParentSize().graphicsLayer()) {
             val document = controller.document

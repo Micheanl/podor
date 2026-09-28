@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.sp
 import app.podor.domain.Language
 
 object StudioTheme {
+    val gradientHandleRadius = 6.dp
+    val gradientDockWidth = 590.dp
     val transformHitRadius = 13.dp
     val transformHandleRadius = 4.dp
     val transformRotationGap = 30.dp

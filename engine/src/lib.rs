@@ -3,6 +3,7 @@ mod blending;
 mod canvas;
 mod clipboard;
 mod ffi;
+mod gradient;
 mod history;
 mod import_layer;
 #[cfg(not(target_os = "ios"))]
@@ -20,6 +21,7 @@ mod storage;
 mod transform;
 mod translation;
 pub use clipboard::CopyMode;
+pub use gradient::{Gradient, GradientShape};
 pub use resample::ResampleFilter;
 pub use selection::{SelectionKind, SelectionPoint, SelectionSpec};
 pub use storage::{ExportFormat, ExportOptions};
@@ -36,6 +38,11 @@ use std::collections::BTreeSet;
 #[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Command {
+    Gradient {
+        id: u32,
+        revision: u64,
+        settings: Gradient,
+    },
     Select {
         rect: Option<Rect>,
     },
@@ -324,6 +331,37 @@ impl Engine {
                     return Err("请先结束当前笔画".into());
                 }
                 match command {
+                    Command::Gradient {
+                        id,
+                        revision,
+                        settings,
+                    } => {
+                        if id != self.document.active || revision != self.revision {
+                            return Err("画布已改变，请重新绘制渐变".into());
+                        }
+                        let tiles =
+                            gradient::prepare(&self.document, self.selection.as_ref(), settings)?;
+                        let index = self.layer_index(id)?;
+                        let changed: Vec<_> = tiles
+                            .iter()
+                            .filter_map(|(key, tile)| {
+                                self.document.layers[index]
+                                    .tiles
+                                    .get(key)
+                                    .is_none_or(|old| !std::sync::Arc::ptr_eq(old, tile))
+                                    .then_some(*key)
+                            })
+                            .collect();
+                        if !changed.is_empty() {
+                            let before = self.document.clone();
+                            self.dirty.extend(changed);
+                            self.document.layers[index].tiles = tiles;
+                            self.history
+                                .push(before, self.content_id, &self.document, true);
+                            self.revision += 1;
+                            self.content_id = self.revision;
+                        }
+                    }
                     Command::Select { rect } => {
                         self.selection = rect
                             .map(|rect| Selection::rectangle(rect, self.document.bounds()))
@@ -781,6 +819,9 @@ impl Engine {
     }
     pub fn layer_frame(&self) -> Vec<u8> {
         translation::frame(&self.document)
+    }
+    pub fn selection_frame(&self) -> Vec<u8> {
+        gradient::selection_frame(self.selection.as_ref())
     }
     pub fn layer_bounds(&self) -> Result<Rect, String> {
         let layer = self

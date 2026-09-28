@@ -4,6 +4,7 @@ use std::{collections::BTreeMap, sync::Arc};
 pub const TILE_SIZE: u32 = 128;
 pub const TILE_BYTES: usize = (TILE_SIZE * TILE_SIZE * 4) as usize;
 pub const MAX_DIMENSION: u32 = 8192;
+pub const MAX_GRADIENT_COORDINATE: f64 = MAX_DIMENSION as f64 * 2.0;
 pub const MAX_PIXELS: u64 = 16_777_216;
 pub const MAX_LAYERS: usize = 32;
 pub const MAX_LAYER_NAME_BYTES: usize = 256;

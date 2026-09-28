@@ -5,8 +5,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -45,6 +47,19 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
         }
         fun handleShortcut(event: KeyEvent): Boolean {
             if (event.type != KeyEventType.KeyDown || dialog != StudioDialog.None) return false
+            if (controller.tool == Tool.Gradient) {
+                if (event.key == Key.Enter) {
+                    controller.commitGradient()
+                    return true
+                }
+                if (event.key == Key.Escape) {
+                    if (!controller.busy) {
+                        controller.cancelGradient()
+                        controller.tool = Tool.Brush
+                    }
+                    return true
+                }
+            }
             if (controller.tool == Tool.TransformLayer) {
                 if (!event.isCtrlPressed && !event.isMetaPressed && !event.isAltPressed) {
                     val direction =
@@ -97,6 +112,7 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                 ShortcutAction.Hand -> controller.tool = Tool.Hand
                 ShortcutAction.MoveLayer -> controller.tool = Tool.MoveLayer
                 ShortcutAction.TransformLayer -> controller.tool = Tool.TransformLayer
+                ShortcutAction.Gradient -> controller.tool = Tool.Gradient
                 ShortcutAction.Select -> controller.tool = Tool.Select
                 ShortcutAction.Fill -> controller.tool = Tool.Fill
                 ShortcutAction.Fit -> controller.viewport = Viewport()
@@ -120,11 +136,12 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                     .safeDrawingPadding()
                     .focusRequester(focus)
                     .onPreviewKeyEvent { event ->
-                        val transformConfirmation =
-                            controller.tool == Tool.TransformLayer &&
+                        val previewConfirmation =
+                            (controller.tool == Tool.TransformLayer ||
+                                controller.tool == Tool.Gradient) &&
                                 (event.key == Key.Enter || event.key == Key.Escape)
                         if (
-                            transformConfirmation ||
+                            previewConfirmation ||
                                 ((event.isCtrlPressed || event.isMetaPressed || event.isAltPressed) &&
                                     !clipboardShortcut(event))
                         )
@@ -181,6 +198,7 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                                             StudioTheme.border.copy(alpha = 0.65f),
                                             RoundedCornerShape(32.dp),
                                         )
+                                        .verticalScroll(rememberScrollState())
                                         .padding(8.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -208,7 +226,8 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                                     )
                                 else if (
                                     controller.tool != Tool.Select &&
-                                        controller.tool != Tool.TransformLayer
+                                        controller.tool != Tool.TransformLayer &&
+                                        controller.tool != Tool.Gradient
                                 )
                                     BrushDock(
                                         controller,
@@ -228,6 +247,13 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                                     controller,
                                     Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
                                 )
+                            if (controller.tool == Tool.Gradient)
+                                GradientDock(
+                                    controller,
+                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
+                                ) {
+                                    openPanel(StudioPanel.Colors)
+                                }
                             CanvasFooter(
                                 controller,
                                 compact,

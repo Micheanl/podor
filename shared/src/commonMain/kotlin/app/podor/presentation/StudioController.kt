@@ -48,6 +48,18 @@ class StudioController(
         private set
 
     private var preparingLayerMove = false
+    private var currentGradient by mutableStateOf(GradientSettings())
+    var gradient: GradientSettings
+        get() = currentGradient
+        set(value) {
+            if (gradientPreview?.committing != true) currentGradient = value
+        }
+
+    var gradientEditingStart by mutableStateOf(true)
+    var gradientPreview by mutableStateOf<GradientPreview?>(null)
+        private set
+
+    private var preparingGradient = false
 
     val exportFormats = files.exportFormats
     val clipboardAvailable = files.clipboard != null
@@ -68,7 +80,11 @@ class StudioController(
     var tool: Tool
         get() = currentTool
         set(value) {
-            if (value != currentTool && transformPending()) return
+            if (value != currentTool && previewPending()) return
+            if (value == Tool.Gradient && currentTool != value) {
+                gradient = gradient.copy(from = brush.color)
+                gradientEditingStart = true
+            }
             currentTool = value
         }
 
@@ -126,6 +142,15 @@ class StudioController(
         data class Clipboard(val kind: ClipboardAction) : Action
 
         data object Frame : Action
+
+        data object PrepareGradient : Action
+
+        data class ApplyGradient(
+            val id: Int,
+            val revision: Long,
+            val line: GradientLine,
+            val settings: GradientSettings,
+        ) : Action
 
         data class PrepareLayerMove(val transform: Boolean) : Action
 
@@ -196,6 +221,38 @@ class StudioController(
                     pending.clear()
                     frameDirty = true
                 }
+                fun readLayers(): List<LayerFrame> {
+                    val bytes = engine!!.call(EngineOperation.LAYERS)
+                    val size = bytes.intAt(8)
+                    var position = 16
+                    val layers = buildList {
+                        repeat(bytes.intAt(12)) {
+                            val id = bytes.intAt(position)
+                            val count = bytes.intAt(position + 4)
+                            position += 8
+                            val images = buildList {
+                                repeat(count) {
+                                    add(
+                                        TileImage(
+                                            bytes.intAt(position),
+                                            bytes.intAt(position + 4),
+                                            size,
+                                            rgbaBitmap(bytes, position + 8, size),
+                                        )
+                                    )
+                                    position += 8 + size * size * 4
+                                }
+                            }
+                            add(
+                                LayerFrame(
+                                    info.layers.first { it.id == id },
+                                    images,
+                                )
+                            )
+                        }
+                    }
+                    return layers
+                }
                 suspend fun publishFrame() {
                     val bytes = engine!!.call(EngineOperation.FRAME)
                     val width = bytes.intAt(0)
@@ -228,6 +285,14 @@ class StudioController(
                         layerMove?.let {
                             if (it.revision != info.revision || it.layerId != info.active)
                                 layerMove = null
+                        }
+                        gradientPreview?.let {
+                            if (
+                                it.revision != info.revision ||
+                                    it.layerId != info.active ||
+                                    it.selection != info.selection
+                            )
+                                gradientPreview = null
                         }
                     }
                     frameDirty = false
@@ -335,6 +400,77 @@ class StudioController(
                     for (action in actions) {
                         try {
                             when (action) {
+                                Action.PrepareGradient -> {
+                                    finishDrawing()
+                                    val layers = readLayers()
+                                    val data = engine.call(EngineOperation.SELECTION_FRAME)
+                                    val size = data.intAt(0)
+                                    var offset = 8
+                                    val mask = buildList {
+                                        repeat(data.intAt(4)) {
+                                            add(
+                                                TileImage(
+                                                    data.intAt(offset),
+                                                    data.intAt(offset + 4),
+                                                    size,
+                                                    rgbaBitmap(data, offset + 8, size),
+                                                )
+                                            )
+                                            offset += 8 + size * size * 4
+                                        }
+                                    }
+                                    withContext(Dispatchers.Main) {
+                                        if (tool == Tool.Gradient && document.active == info.active)
+                                            gradientPreview =
+                                                GradientPreview(
+                                                    info.active,
+                                                    info.revision,
+                                                    info.selection,
+                                                    layers,
+                                                    mask,
+                                                )
+                                    }
+                                }
+                                is Action.ApplyGradient -> {
+                                    info =
+                                        command(
+                                            jsonCommand("gradient") {
+                                                put("id", action.id)
+                                                put("revision", action.revision)
+                                                putJsonObject("settings") {
+                                                    putJsonArray("start") {
+                                                        add(action.line.start.x)
+                                                        add(action.line.start.y)
+                                                    }
+                                                    putJsonArray("end") {
+                                                        add(action.line.end.x)
+                                                        add(action.line.end.y)
+                                                    }
+                                                    fun color(name: String, value: Long) {
+                                                        putJsonArray(name) {
+                                                            add((value shr 16 and 255).toInt())
+                                                            add((value shr 8 and 255).toInt())
+                                                            add((value and 255).toInt())
+                                                            add((value shr 24 and 255).toInt())
+                                                        }
+                                                    }
+                                                    color("from", action.settings.startColor)
+                                                    color("to", action.settings.endColor)
+                                                    put("opacity", action.settings.opacity)
+                                                    put(
+                                                        "shape",
+                                                        action.settings.shape.name.lowercase(),
+                                                    )
+                                                }
+                                            }
+                                        )
+                                    publishFrame()
+                                    withContext(Dispatchers.Main) {
+                                        gradientPreview = null
+                                        tool = Tool.Brush
+                                        status = "渐变已完成"
+                                    }
+                                }
                                 is Action.Settings ->
                                     files.writePreferences(
                                         parser.encodeToString(action.value).encodeToByteArray()
@@ -355,35 +491,7 @@ class StudioController(
                                                 data.intAt(12).toFloat(),
                                             )
                                         } else null
-                                    val bytes = engine.call(EngineOperation.LAYERS)
-                                    val size = bytes.intAt(8)
-                                    var position = 16
-                                    val layers = buildList {
-                                        repeat(bytes.intAt(12)) {
-                                            val id = bytes.intAt(position)
-                                            val count = bytes.intAt(position + 4)
-                                            position += 8
-                                            val images = buildList {
-                                                repeat(count) {
-                                                    add(
-                                                        TileImage(
-                                                            bytes.intAt(position),
-                                                            bytes.intAt(position + 4),
-                                                            size,
-                                                            rgbaBitmap(bytes, position + 8, size),
-                                                        )
-                                                    )
-                                                    position += 8 + size * size * 4
-                                                }
-                                            }
-                                            add(
-                                                LayerFrame(
-                                                    info.layers.first { it.id == id },
-                                                    images,
-                                                )
-                                            )
-                                        }
-                                    }
+                                    val layers = readLayers()
                                     withContext(Dispatchers.Main) {
                                         if (
                                             tool ==
@@ -743,6 +851,12 @@ class StudioController(
                                 publishFrame()
                             }
                             withContext(Dispatchers.Main) {
+                                if (action is Action.ApplyGradient)
+                                    gradientPreview?.committing = false
+                                if (action == Action.PrepareGradient) {
+                                    gradientPreview = null
+                                    tool = Tool.Brush
+                                }
                                 if (
                                     action is Action.PrepareLayerMove ||
                                         action is Action.TranslateLayer ||
@@ -756,6 +870,7 @@ class StudioController(
                         } finally {
                             withContext(Dispatchers.Main) {
                                 if (action is Action.PrepareLayerMove) preparingLayerMove = false
+                                if (action == Action.PrepareGradient) preparingGradient = false
                                 busy = false
                             }
                         }
@@ -781,14 +896,50 @@ class StudioController(
     }
 
     fun command(type: String, values: JsonObjectBuilder.() -> Unit = {}) {
-        if (transformPending()) return
+        if (previewPending()) return
         if (ready && !busy) scope.launch { actions.send(Action.Command(jsonCommand(type, values))) }
     }
 
-    private fun transformPending(): Boolean {
+    private fun previewPending(): Boolean {
+        if (gradientPreview?.line != null) {
+            error = "请先确认或取消渐变"
+            return true
+        }
         if (layerMove?.transformChanged != true) return false
         error = "请先确认或取消图层变换"
         return true
+    }
+
+    fun prepareGradient() {
+        if (!ready || busy || preparingGradient || gradientPreview != null || tool != Tool.Gradient)
+            return
+        val active = document.layers.firstOrNull { it.id == document.active } ?: return
+        if (!active.visible || active.locked) return
+        preparingGradient = true
+        busy = true
+        scope.launch { actions.send(Action.PrepareGradient) }
+    }
+
+    fun previewGradient(line: GradientLine?) {
+        val preview = gradientPreview ?: return
+        if (!preview.committing) preview.line = line
+    }
+
+    fun cancelGradient() {
+        if (gradientPreview?.committing != true) gradientPreview = null
+    }
+
+    fun commitGradient() {
+        if (!ready || busy) return
+        val preview = gradientPreview ?: return
+        val line = preview.line?.takeIf { it.valid() } ?: return
+        if (preview.committing) return
+        preview.committing = true
+        busy = true
+        val settings = gradient
+        scope.launch {
+            actions.send(Action.ApplyGradient(preview.layerId, preview.revision, line, settings))
+        }
     }
 
     fun prepareLayerMove() {
@@ -910,7 +1061,7 @@ class StudioController(
     }
 
     fun file(action: FileAction) {
-        if (transformPending()) return
+        if (previewPending()) return
         if (action == FileAction.ImportLayer && (!hasCanvas || showWorkspace)) return
         if (action == FileAction.Open) {
             navigate(WorkspaceDestination.Open())
@@ -951,7 +1102,7 @@ class StudioController(
         }
 
     fun selectPreset(preset: BrushPreset) {
-        if (transformPending()) return
+        if (previewPending()) return
         brush = brush.copy(preset = preset, size = preset.size, opacity = preset.opacity)
         tool = Tool.Brush
     }
@@ -993,7 +1144,7 @@ class StudioController(
     }
 
     fun export(options: ExportOptions) {
-        if (transformPending()) return
+        if (previewPending()) return
         if (!ready || busy) return
         require(options.format in exportFormats)
         scope.launch { actions.send(Action.Export(options)) }
@@ -1014,7 +1165,7 @@ class StudioController(
 
     fun clipboard(action: ClipboardAction) {
         if (!ready || busy || !clipboardAvailable || !hasCanvas || showWorkspace) return
-        if (transformPending()) return
+        if (previewPending()) return
         cancelSelectionGesture()
         scope.launch { actions.send(Action.Clipboard(action)) }
     }
@@ -1051,7 +1202,7 @@ class StudioController(
     }
 
     fun navigate(destination: WorkspaceDestination) {
-        if (transformPending()) return
+        if (previewPending()) return
         if (destination == WorkspaceDestination.Exit && !ready) {
             exitRequested = true
             return
@@ -1069,7 +1220,7 @@ class StudioController(
     }
 
     fun home() {
-        if (transformPending()) return
+        if (previewPending()) return
         if (ready && !busy) showWorkspace = true
     }
 

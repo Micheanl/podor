@@ -24,20 +24,30 @@ import kotlin.math.roundToInt
 
 @Composable
 fun ColorControls(controller: StudioController) {
+    val color =
+        if (controller.tool == Tool.Gradient) {
+            if (controller.gradientEditingStart) controller.gradient.from
+            else controller.gradient.to
+        } else controller.brush.color
+    fun changeColor(value: Long) {
+        if (controller.tool == Tool.Gradient) {
+            controller.gradient =
+                if (controller.gradientEditingStart) controller.gradient.copy(from = value)
+                else controller.gradient.copy(to = value)
+        } else controller.brush = controller.brush.copy(color = value)
+    }
     val hexLabel = tr("HEX 颜色")
-    var hsv by remember { mutableStateOf(HsvColor.fromArgb(controller.brush.color)) }
+    var hsv by remember { mutableStateOf(HsvColor.fromArgb(color)) }
     var hex by
-        remember(controller.brush.color) {
-            mutableStateOf(
-                (controller.brush.color and 0xFFFFFF).toString(16).padStart(6, '0').uppercase()
-            )
+        remember(color) {
+            mutableStateOf((color and 0xFFFFFF).toString(16).padStart(6, '0').uppercase())
         }
-    LaunchedEffect(controller.brush.color) {
-        if (hsv.toArgb() != controller.brush.color) hsv = HsvColor.fromArgb(controller.brush.color)
+    LaunchedEffect(color) {
+        if (hsv.toArgb() != color) hsv = HsvColor.fromArgb(color)
     }
     fun update(value: HsvColor) {
         hsv = value
-        controller.brush = controller.brush.copy(color = value.toArgb())
+        changeColor(value.toArgb())
     }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(tr("调色盘"), Modifier.weight(1f), fontSize = 12.sp, color = StudioTheme.muted)
@@ -64,7 +74,7 @@ fun ColorControls(controller: StudioController) {
                 hex = value.take(6)
                 if (hex.length == 6)
                     hex.toLongOrNull(16)?.let {
-                        controller.brush = controller.brush.copy(color = 0xFF000000L or it)
+                        changeColor(0xFF000000L or it)
                     }
             },
             singleLine = true,
@@ -77,14 +87,14 @@ fun ColorControls(controller: StudioController) {
             cursorBrush = SolidColor(StudioTheme.accent),
             modifier = Modifier.weight(1f).semantics { contentDescription = hexLabel },
         )
-        Box(Modifier.size(22.dp).clip(CircleShape).background(Color(controller.brush.color)))
+        Box(Modifier.size(22.dp).clip(CircleShape).background(Color(color)))
     }
     SectionLabel("工作室色卡", "${StudioDefaults.palette.size}")
     StudioDefaults.palette.chunked(6).forEach { row ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            row.forEach { color ->
-                ColorSwatch(color, controller.brush.color == color) {
-                    controller.brush = controller.brush.copy(color = color)
+            row.forEach { swatch ->
+                ColorSwatch(swatch, color == swatch) {
+                    changeColor(swatch)
                 }
             }
         }
