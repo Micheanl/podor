@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,32 +14,65 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.podor.domain.LayerBlendMode
+import app.podor.presentation.StudioController
+import kotlin.math.roundToInt
 
 @Composable
-fun LayerBlendDialog(
-    current: LayerBlendMode,
-    onSelect: (LayerBlendMode) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var selected by remember { mutableStateOf<LayerBlendMode?>(null) }
-    StudioModal(
-        "混合模式",
-        Glyph.Layers,
-        {
-            selected?.let(onSelect)
-            onDismiss()
-        },
-        width = 400.dp,
-    ) { dismiss ->
-        Column(Modifier.weight(1f, false).verticalScroll(rememberScrollState())) {
-            LayerBlendOptions(current) {
-                selected = it
-                dismiss()
+fun LayerBlendControls(controller: StudioController) {
+    val preview = controller.adjustmentPreview ?: return
+    val settings = preview.settings
+    val active = controller.document.layers.firstOrNull { it.id == preview.layerId } ?: return
+    Column(
+        Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(StudioTheme.layerBlendGap),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(StudioTheme.layerBlendGap),
+        ) {
+            ArtworkPreview(
+                controller.previews.images[active.id],
+                controller.document.width,
+                controller.document.height,
+                Modifier.size(StudioTheme.layerPreviewSize),
+            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    tr(active.name),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = StudioTheme.layerBlendLabelSize,
+                    color = StudioTheme.text,
+                )
+                Text(
+                    tr(if (active.visible) "图层混合" else "图层已隐藏"),
+                    fontSize = StudioTheme.layerBlendCaptionSize,
+                    color = StudioTheme.muted,
+                )
             }
         }
+        LabeledSlider(
+            "图层不透明度",
+            settings.opacity,
+            0f..1f,
+            "${(settings.opacity * 100).roundToInt()}%",
+        ) {
+            controller.updateAdjustment(settings.copy(opacity = it))
+        }
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            LayerBlendOptions(settings.blend) {
+                controller.updateAdjustment(settings.copy(blend = it))
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(StudioTheme.layerBlendProgressHeight)) {
+            if (preview.updating || preview.committing)
+                LinearProgressIndicator(Modifier.fillMaxSize())
+        }
+        AdjustmentDock(controller, Modifier.align(Alignment.CenterHorizontally))
     }
 }
 
@@ -60,8 +94,10 @@ fun LayerBlendOptions(current: LayerBlendMode, onSelect: (LayerBlendMode) -> Uni
                         }
                         Text(
                             tr(mode.label),
-                            Modifier.padding(top = 10.dp),
+                            Modifier.padding(top = StudioTheme.layerBlendLabelGap),
                             fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             color =
                                 if (mode == current) StudioTheme.onSelection else StudioTheme.text,
                         )
@@ -86,9 +122,10 @@ private fun BlendSample(mode: LayerBlendMode) {
             LayerBlendMode.Difference -> BlendMode.Difference
         }
     Canvas(
-        Modifier.size(52.dp, 32.dp).graphicsLayer {
-            compositingStrategy = CompositingStrategy.Offscreen
-        }
+        Modifier.size(StudioTheme.layerBlendSampleWidth, StudioTheme.layerBlendSampleHeight)
+            .graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            }
     ) {
         val radius = size.height / 2f
         drawCircle(StudioTheme.blendBackdrop, radius, Offset(radius, radius))

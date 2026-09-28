@@ -16,6 +16,7 @@ import androidx.compose.ui.scene.ComposeScenePointer
 import androidx.compose.ui.unit.dp
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
+import app.podor.domain.AdjustmentKind
 import app.podor.engine.EngineOperation
 import app.podor.engine.createNativeEngine
 import app.podor.presentation.StudioController
@@ -145,6 +146,49 @@ class LayerReorderTest {
             scope.cancel()
         }
     }
+
+    @Test
+    fun returningFromLayerBlendKeepsTheScrolledLayerList() =
+        runBlocking<Unit> {
+            session(20) {
+                fun rowPixels() =
+                    scene.render(frame++ * 16_666_667L).use { image ->
+                        val pixels = image.toComposeImageBitmap().toPixelMap()
+                        (90..440 step 32).map { y -> pixels[630, y] }
+                    }
+                val top = withContext(Dispatchers.Main) { rowPixels() }
+                withContext(Dispatchers.Main) {
+                    scene.sendPointerEvent(
+                        PointerEventType.Scroll,
+                        Offset(750f, 240f),
+                        scrollDelta = Offset(0f, 12f),
+                    )
+                    scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
+                }
+                render(40)
+                val scrolled = withContext(Dispatchers.Main) { rowPixels() }
+                assertNotEquals(top, scrolled)
+                withContext(Dispatchers.Main) {
+                    controller.prepareAdjustment(AdjustmentKind.LayerBlend)
+                }
+                awaitState {
+                    controller.adjustmentPreview != null && !controller.adjustmentPreview!!.updating
+                }
+                render(40)
+                withContext(Dispatchers.Main) { controller.cancelAdjustment() }
+                render(40)
+                withContext(Dispatchers.Main) {
+                    assertEquals(
+                        scrolled,
+                        rowPixels(),
+                        "Returning from blending moved the layer list",
+                    )
+                    assertFalse(controller.hasUnsavedChanges)
+                    assertFalse(controller.document.canUndo)
+                    assertNull(controller.error)
+                }
+            }
+        }
 
     @Test
     fun dragCommitsOnceUpdatesCanvasAndSurvivesUndoAndSave() =

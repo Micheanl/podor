@@ -255,7 +255,14 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                                         openPanel(StudioPanel.Brushes)
                                     }
                             }
-                            if (controller.adjustmentPreview != null)
+                            if (
+                                controller.adjustmentPreview != null &&
+                                    !(controller.adjustmentPreview?.settings?.kind ==
+                                        AdjustmentKind.LayerBlend &&
+                                        panel in
+                                            listOf(StudioPanel.Layers, StudioPanel.Adjustments) &&
+                                        (wide && inspectorExpanded || showInspector))
+                            )
                                 AdjustmentDock(
                                     controller,
                                     Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),

@@ -635,7 +635,16 @@ impl Engine {
                             self.selection.as_ref(),
                             request,
                         )?;
-                        if !dirty.is_empty() {
+                        let before_layer = self.document.active_mut();
+                        let after_layer = document
+                            .layers
+                            .iter()
+                            .find(|layer| layer.id == document.active)
+                            .unwrap();
+                        if !dirty.is_empty()
+                            || before_layer.opacity != after_layer.opacity
+                            || before_layer.blend != after_layer.blend
+                        {
                             let before = std::mem::replace(&mut self.document, document);
                             self.dirty.extend(dirty);
                             self.history

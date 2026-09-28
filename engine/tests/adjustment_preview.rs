@@ -44,6 +44,134 @@ fn apply(engine: &mut Engine, request: &Value) -> Result<Value, String> {
 }
 
 #[test]
+fn layer_blend_preview_preserves_pixels_and_commits_properties_in_one_step() {
+    for mode in [
+        "normal",
+        "multiply",
+        "screen",
+        "overlay",
+        "soft_light",
+        "darken",
+        "lighten",
+        "difference",
+    ] {
+        let mut engine = fixture();
+        for key in [(0, 0), (1, 1)] {
+            engine.document.layers[0]
+                .tiles
+                .insert(key, Arc::new([90, 140, 70, 255].repeat(TILE_BYTES / 4)));
+        }
+        engine.document.layers[1].locked = true;
+        command(
+            &mut engine,
+            json!({"type":"select","rect":{"left":0,"top":0,"right":1,"bottom":1}}),
+        )
+        .unwrap();
+        let before = engine.save().unwrap();
+        let state = engine.state();
+        let source = engine.document.layers[1].tiles[&(0, 0)].clone();
+        let mut value = request(&engine, "layer_blend", 0.0);
+        value["settings"]["opacity"] = json!(0.23);
+        value["settings"]["blend"] = json!(mode);
+        let frame = preview(&engine, &value).unwrap();
+        let mut reference = Engine::new(256, 192).unwrap();
+        reference.load(&before).unwrap();
+        command(
+            &mut reference,
+            json!({"type":"set_layer","id":2,"name":"Paint","visible":true,"opacity":0.23}),
+        )
+        .unwrap();
+        command(
+            &mut reference,
+            json!({"type":"set_blend","id":2,"mode":mode}),
+        )
+        .unwrap();
+        assert_eq!(frame, reference.frame());
+        assert!(frame.len() > 16);
+        assert_eq!(engine.save().unwrap(), before);
+        assert_eq!(engine.state(), state);
+        assert_eq!(engine.frame().len(), 16);
+        apply(&mut engine, &value).unwrap();
+        assert_eq!(engine.frame(), frame);
+        assert!(Arc::ptr_eq(
+            &source,
+            &engine.document.layers[1].tiles[&(0, 0)]
+        ));
+        assert_eq!(engine.document.layers[1].opacity, 0.23);
+        let after = engine.save().unwrap();
+        engine.command(Command::Undo).unwrap();
+        assert_eq!(engine.save().unwrap(), before);
+        assert!(!engine.state()["canUndo"].as_bool().unwrap());
+        engine.command(Command::Redo).unwrap();
+        assert_eq!(engine.save().unwrap(), after);
+    }
+}
+
+#[test]
+fn empty_layer_properties_commit_and_unchanged_settings_do_not_create_history() {
+    let mut engine = Engine::new(64, 64).unwrap();
+    let mut value = request(&engine, "layer_blend", 0.0);
+    value["settings"]["opacity"] = json!(1.0);
+    value["settings"]["blend"] = json!("normal");
+    let state = engine.state();
+    apply(&mut engine, &value).unwrap();
+    assert_eq!(engine.state(), state);
+    value["settings"]["opacity"] = json!(0.0);
+    value["settings"]["blend"] = json!("screen");
+    assert_eq!(preview(&engine, &value).unwrap().len(), 16);
+    apply(&mut engine, &value).unwrap();
+    assert_eq!(engine.document.layers[0].opacity, 0.0);
+    assert_eq!(engine.document.layers[0].blend, BlendMode::Screen);
+    assert_eq!(engine.state()["canUndo"], true);
+    let saved = engine.save().unwrap();
+    engine.command(Command::Undo).unwrap();
+    assert_eq!(engine.document.layers[0].opacity, 1.0);
+    engine.load(&saved).unwrap();
+    assert_eq!(engine.document.layers[0].opacity, 0.0);
+    assert_eq!(engine.document.layers[0].blend, BlendMode::Screen);
+}
+
+#[test]
+fn layer_blend_rejects_stale_or_invalid_settings_without_mutation() {
+    for fault in ["revision", "id", "opacity"] {
+        let mut engine = fixture();
+        let mut value = request(&engine, "layer_blend", 0.0);
+        value["settings"]["opacity"] = json!(0.5);
+        match fault {
+            "revision" => value["revision"] = json!(999),
+            "id" => value["id"] = json!(1),
+            "opacity" => value["settings"]["opacity"] = json!(1.01),
+            _ => unreachable!(),
+        }
+        let saved = engine.save().unwrap();
+        let state = engine.state();
+        assert!(preview(&engine, &value).is_err());
+        assert!(apply(&mut engine, &value).is_err());
+        assert_eq!(engine.save().unwrap(), saved);
+        assert_eq!(engine.state(), state);
+    }
+}
+
+#[test]
+fn hidden_layer_blend_changes_properties_without_rendering_hidden_pixels() {
+    let mut engine = fixture();
+    engine.document.layers[1].visible = false;
+    engine.document.layers[1].locked = true;
+    let saved = engine.save().unwrap();
+    let mut value = request(&engine, "layer_blend", 0.0);
+    value["settings"]["opacity"] = json!(0.4);
+    value["settings"]["blend"] = json!("overlay");
+    assert_eq!(preview(&engine, &value).unwrap().len(), 16);
+    apply(&mut engine, &value).unwrap();
+    assert_eq!(engine.frame().len(), 16);
+    assert_eq!(engine.document.layers[1].opacity, 0.4);
+    assert_eq!(engine.document.layers[1].blend, BlendMode::Overlay);
+    assert!(!engine.document.layers[1].visible);
+    engine.command(Command::Undo).unwrap();
+    assert_eq!(engine.save().unwrap(), saved);
+}
+
+#[test]
 fn preview_is_read_only_and_confirmed_pixels_match_with_one_undo() {
     for kind in ["tone", "blur"] {
         let mut engine = fixture();

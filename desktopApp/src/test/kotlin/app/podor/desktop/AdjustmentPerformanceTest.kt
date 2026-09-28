@@ -95,7 +95,8 @@ class AdjustmentPerformanceTest {
                     }
                 val updates = linkedMapOf<String, Double>()
                 val renders = linkedMapOf<String, Double>()
-                val intermediateFrames = mutableSetOf<AdjustmentSettings>()
+                val intermediateFrames =
+                    linkedMapOf<AdjustmentKind, MutableSet<AdjustmentSettings>>()
                 try {
                     for (kind in AdjustmentKind.entries) {
                         withContext(Dispatchers.Main) { controller.prepareAdjustment(kind) }
@@ -112,6 +113,10 @@ class AdjustmentPerformanceTest {
                                         settings.copy(
                                             brightness = (index % 100) / 100f,
                                             sigma = 0.5f + index % 32,
+                                            opacity = (index % 100) / 100f,
+                                            blend =
+                                                LayerBlendMode.entries[
+                                                        index % LayerBlendMode.entries.size],
                                         )
                                     )
                                 }
@@ -121,6 +126,8 @@ class AdjustmentPerformanceTest {
                                         contrast = 0.15f,
                                         saturation = -0.2f,
                                         sigma = 14f,
+                                        opacity = 0.45f,
+                                        blend = LayerBlendMode.Multiply,
                                     )
                                     .also(controller::updateAdjustment)
                             }
@@ -138,15 +145,20 @@ class AdjustmentPerformanceTest {
                             assertFalse(controller.hasUnsavedChanges)
                             assertFalse(controller.document.canUndo)
                         }
-                        if (kind == AdjustmentKind.Tone) {
+                        if (kind == AdjustmentKind.Tone || kind == AdjustmentKind.LayerBlend) {
+                            val received = mutableSetOf<AdjustmentSettings>()
+                            intermediateFrames[kind] = received
                             repeat(90) { index ->
                                 withContext(Dispatchers.Main) {
                                     val preview = controller.adjustmentPreview!!
                                     preview.renderedSettings
                                         ?.takeIf { it != expected }
-                                        ?.let(intermediateFrames::add)
+                                        ?.let(received::add)
                                     controller.updateAdjustment(
-                                        expected.copy(brightness = 0.05f + index / 120f)
+                                        expected.copy(
+                                            brightness = 0.05f + index / 120f,
+                                            opacity = 0.1f + index / 120f,
+                                        )
                                     )
                                 }
                                 delay(16)
@@ -167,9 +179,11 @@ class AdjustmentPerformanceTest {
                     appendLine(
                         "2048 x 2048 canvas, six mixed layers, 300 slider changes per burst."
                     )
-                    appendLine(
-                        "Distinct intermediate previews during 90 continuous slider changes: ${intermediateFrames.size}"
-                    )
+                    intermediateFrames.forEach { (kind, frames) ->
+                        appendLine(
+                            "$kind distinct previews during 90 continuous slider changes: ${frames.size}"
+                        )
+                    }
                     updates.forEach { (kind, time) ->
                         appendLine(
                             "$kind latest settings to matching preview: %.2f ms".format(time)
@@ -194,7 +208,7 @@ class AdjustmentPerformanceTest {
                 Files.createDirectories(output.parent)
                 Files.writeString(output, report)
                 assertTrue(updates.values.all { it < 5_000.0 }, report)
-                assertTrue(intermediateFrames.size >= 2, report)
+                assertTrue(intermediateFrames.values.all { it.size >= 2 }, report)
                 assertTrue(renders.values.all { it < 250.0 }, report)
                 assertTrue(waits.last() < 250.0, report)
             } finally {

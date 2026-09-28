@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
@@ -38,6 +39,8 @@ internal fun LayerList(
 ) {
     val list = rememberLazyListState()
     val ids = remember(layers) { layers.map { it.id } }
+    var revealedLayer by rememberSaveable { mutableIntStateOf(0) }
+    var revealedIndex by rememberSaveable { mutableIntStateOf(-1) }
     val revision = controller.document.revision
     var drag by remember { mutableStateOf<LayerDrag?>(null) }
     val density = LocalDensity.current
@@ -67,7 +70,7 @@ internal fun LayerList(
     }
     LaunchedEffect(controller.document.active, ids) {
         val index = ids.indexOf(controller.document.active)
-        if (index >= 0) {
+        if (index >= 0 && (revealedLayer != controller.document.active || revealedIndex != index)) {
             val layout = list.layoutInfo
             val visible =
                 layout.visibleItemsInfo.any {
@@ -79,6 +82,8 @@ internal fun LayerList(
                 if (layout.visibleItemsInfo.isEmpty()) list.scrollToItem(index)
                 else list.animateScrollToItem(index)
             }
+            revealedLayer = controller.document.active
+            revealedIndex = index
         }
     }
     LaunchedEffect(drag) {

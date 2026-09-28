@@ -7,6 +7,7 @@ use std::collections::BTreeSet;
 pub enum AdjustmentKind {
     Tone,
     Blur,
+    LayerBlend,
 }
 
 #[derive(Clone, Copy, Deserialize)]
@@ -16,6 +17,14 @@ pub struct AdjustmentSettings {
     pub contrast: f32,
     pub saturation: f32,
     pub sigma: f32,
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
+    #[serde(default)]
+    pub blend: BlendMode,
+}
+
+fn default_opacity() -> f32 {
+    1.0
 }
 
 #[derive(Deserialize)]
@@ -39,10 +48,10 @@ pub fn prepare(
         .iter()
         .find(|layer| layer.id == request.id)
         .unwrap();
-    if original.locked {
+    if original.locked && !matches!(request.settings.kind, AdjustmentKind::LayerBlend) {
         return Err("图层已锁定，请先解锁".into());
     }
-    if !original.visible {
+    if !original.visible && !matches!(request.settings.kind, AdjustmentKind::LayerBlend) {
         return Err("请先显示当前图层".into());
     }
     let mut document = source.clone();
@@ -67,6 +76,14 @@ pub fn prepare(
             selection,
             settings.sigma,
         )?,
+        AdjustmentKind::LayerBlend => {
+            if !settings.opacity.is_finite() || !(0.0..=1.0).contains(&settings.opacity) {
+                return Err("图层属性无效".into());
+            }
+            let edited = document.active_mut();
+            edited.opacity = settings.opacity;
+            edited.blend = settings.blend;
+        }
     }
     document.validate()?;
     let edited = document.active_mut();
@@ -76,7 +93,12 @@ pub fn prepare(
         .chain(edited.tiles.keys())
         .copied()
         .collect();
-    keys.retain(|key| original.tiles.get(key) != edited.tiles.get(key));
+    if original.opacity == edited.opacity && original.blend == edited.blend {
+        keys.retain(|key| original.tiles.get(key) != edited.tiles.get(key));
+    }
+    if !original.visible {
+        keys.clear();
+    }
     Ok((document, keys))
 }
 

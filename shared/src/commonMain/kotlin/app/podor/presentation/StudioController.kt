@@ -511,13 +511,30 @@ class StudioController(
                                     publishFrame()
                                     withContext(Dispatchers.Main) {
                                         val active = info.layers.first { it.id == info.active }
-                                        check(!active.locked) { "图层已锁定，请先解锁" }
-                                        check(active.visible) { "请先显示当前图层" }
+                                        check(
+                                            !active.locked ||
+                                                action.kind == AdjustmentKind.LayerBlend
+                                        ) {
+                                            "图层已锁定，请先解锁"
+                                        }
+                                        check(
+                                            active.visible ||
+                                                action.kind == AdjustmentKind.LayerBlend
+                                        ) {
+                                            "请先显示当前图层"
+                                        }
                                         adjustmentPreview =
                                             AdjustmentPreview(
                                                 info.active,
                                                 info.revision,
-                                                action.kind,
+                                                AdjustmentSettings.defaults(action.kind).let {
+                                                    if (action.kind == AdjustmentKind.LayerBlend)
+                                                        it.copy(
+                                                            opacity = active.opacity,
+                                                            blend = active.blend,
+                                                        )
+                                                    else it
+                                                },
                                                 action.previousTool,
                                                 frame,
                                             )
@@ -863,7 +880,13 @@ class StudioController(
                                                     preview.updating
                                             ) {
                                                 preview.frame = adjusted
-                                                preview.changed = count > 0
+                                                preview.changed =
+                                                    if (settings.kind == AdjustmentKind.LayerBlend)
+                                                        settings.opacity !=
+                                                            preview.initialSettings.opacity ||
+                                                            settings.blend !=
+                                                                preview.initialSettings.blend
+                                                    else count > 0
                                                 preview.renderedSettings = settings
                                             }
                                         }

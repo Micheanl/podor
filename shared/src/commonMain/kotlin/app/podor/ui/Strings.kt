@@ -25,6 +25,8 @@ fun trValue(value: String, language: Language): String {
 
 private val english =
     mapOf(
+        "图层混合" to "Layer blending",
+        "图层已隐藏" to "Layer hidden",
         "原图对比" to "Compare original",
         "重置调整" to "Reset adjustment",
         "取消调整" to "Cancel adjustment",

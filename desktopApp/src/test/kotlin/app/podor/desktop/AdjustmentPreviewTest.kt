@@ -33,7 +33,7 @@ class AdjustmentPreviewTest {
         }
     }
 
-    private fun project(): ByteArray {
+    private fun project(hidden: Boolean = false): ByteArray {
         NativeLoader.load()
         val engine = createNativeEngine(256, 192)
         fun command(value: String) = engine.call(EngineOperation.COMMAND, value.encodeToByteArray())
@@ -45,6 +45,12 @@ class AdjustmentPreviewTest {
             command(
                 """{"type":"set_layer","id":2,"name":"Color study","visible":true,"opacity":0.8}"""
             )
+            if (hidden) {
+                command(
+                    """{"type":"set_layer","id":2,"name":"Color study","visible":false,"opacity":0.8}"""
+                )
+                command("""{"type":"set_protection","id":2,"locked":true}""")
+            }
             return engine.call(EngineOperation.SAVE)
         } finally {
             engine.close()
@@ -101,8 +107,8 @@ class AdjustmentPreviewTest {
             }
     }
 
-    private suspend fun session(block: suspend Session.() -> Unit) {
-        val files = FilesMemory(project())
+    private suspend fun session(bytes: ByteArray = project(), block: suspend Session.() -> Unit) {
+        val files = FilesMemory(bytes)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         val controller = withContext(Dispatchers.Main) { StudioController(files, scope) }
         val scene =
@@ -120,6 +126,189 @@ class AdjustmentPreviewTest {
                 controller.shutdown()
             }
             scope.cancel()
+        }
+    }
+
+    @Test
+    fun hiddenLockedLayerRemainsHiddenWhileItsDisplayPropertiesAreEdited() = runBlocking {
+        session(project(hidden = true)) {
+            val original = withContext(Dispatchers.Main) { pixel() }
+            withContext(Dispatchers.Main) {
+                click(1240f, 194f)
+                click(1150f, 739f)
+            }
+            waitFor {
+                controller.adjustmentPreview != null && !controller.adjustmentPreview!!.updating
+            }
+            withContext(Dispatchers.Main) {
+                controller.updateAdjustment(
+                    controller.adjustmentPreview!!
+                        .settings
+                        .copy(opacity = 0.2f, blend = LayerBlendMode.Overlay)
+                )
+            }
+            waitFor { !controller.adjustmentPreview!!.updating }
+            withContext(Dispatchers.Main) {
+                assertTrue(controller.adjustmentPreview!!.changed)
+                assertEquals(original, pixel())
+                capture("layer-blend-hidden")
+                controller.commitAdjustment()
+            }
+            waitFor { controller.adjustmentPreview == null && !controller.busy }
+            withContext(Dispatchers.Main) {
+                val layer = controller.document.layers.last()
+                assertEquals(0.2f, layer.opacity)
+                assertEquals(LayerBlendMode.Overlay, layer.blend)
+                assertTrue(layer.locked)
+                assertFalse(layer.visible)
+                assertEquals(original, pixel())
+                controller.command("undo")
+            }
+            waitFor { !controller.document.canUndo && !controller.busy }
+            withContext(Dispatchers.Main) { controller.file(StudioController.FileAction.Save) }
+            waitFor { files.saved != null && !controller.busy }
+            assertContentEquals(files.bytes, files.saved)
+        }
+    }
+
+    @Test
+    fun layerBlendPanelPreviewsOpacityAndModeAndRestoresOriginalWithOneUndo() = runBlocking {
+        session {
+            val original = withContext(Dispatchers.Main) { pixel() }
+            val document = withContext(Dispatchers.Main) { controller.document }
+            val originalFrame = withContext(Dispatchers.Main) { controller.frame }
+            withContext(Dispatchers.Main) {
+                click(1240f, 194f)
+                capture("layer-blend-entry")
+                click(1150f, 739f)
+            }
+            waitFor {
+                controller.adjustmentPreview != null && !controller.adjustmentPreview!!.updating
+            }
+            withContext(Dispatchers.Main) {
+                assertEquals(
+                    AdjustmentKind.LayerBlend,
+                    controller.adjustmentPreview!!.settings.kind,
+                )
+                assertEquals(0.8f, controller.adjustmentPreview!!.settings.opacity)
+                assertFalse(controller.adjustmentPreview!!.changed)
+                settle()
+                capture("layer-blend-neutral")
+                click(1260f, 402f)
+            }
+            waitFor { !controller.adjustmentPreview!!.updating }
+            withContext(Dispatchers.Main) {
+                assertEquals(LayerBlendMode.Multiply, controller.adjustmentPreview!!.settings.blend)
+                click(1150f, 346f)
+            }
+            waitFor { !controller.adjustmentPreview!!.updating }
+            withContext(Dispatchers.Main) {
+                assertTrue(controller.adjustmentPreview!!.settings.opacity < 0.7f)
+                assertNotEquals(original, pixel())
+                assertEquals(document, controller.document)
+                assertSame(originalFrame, controller.frame)
+                assertFalse(controller.hasUnsavedChanges)
+                val settings = controller.adjustmentPreview!!.settings
+                click(1300f, 124f)
+                click(1320f, 104f)
+                assertEquals(settings, controller.adjustmentPreview!!.settings)
+                click(1298f, 194f)
+                assertNotEquals(original, pixel())
+                click(1240f, 194f)
+                capture("layer-blend-preview")
+                click(1115f, 795f)
+                assertTrue(controller.adjustmentPreview!!.comparing)
+                assertEquals(original, pixel())
+                click(1165f, 795f)
+            }
+            waitFor { !controller.adjustmentPreview!!.updating }
+            withContext(Dispatchers.Main) {
+                assertEquals(0.8f, controller.adjustmentPreview!!.settings.opacity)
+                assertEquals(LayerBlendMode.Normal, controller.adjustmentPreview!!.settings.blend)
+                assertFalse(controller.adjustmentPreview!!.changed)
+                assertEquals(original, pixel())
+                controller.updateAdjustment(
+                    controller.adjustmentPreview!!
+                        .settings
+                        .copy(opacity = 0.35f, blend = LayerBlendMode.Screen)
+                )
+            }
+            waitFor { !controller.adjustmentPreview!!.updating }
+            val expected =
+                withContext(Dispatchers.Main) {
+                    controller.updatePreferences(
+                        controller.preferences.copy(language = Language.English)
+                    )
+                    settle()
+                    capture("layer-blend-english")
+                    val result = pixel()
+                    key(Key.Enter)
+                    result
+                }
+            waitFor { controller.adjustmentPreview == null && !controller.busy }
+            withContext(Dispatchers.Main) {
+                assertEquals(expected, pixel())
+                assertEquals(0.35f, controller.document.layers.last().opacity)
+                assertEquals(LayerBlendMode.Screen, controller.document.layers.last().blend)
+                assertTrue(controller.hasUnsavedChanges)
+                assertEquals(Tool.Brush, controller.tool)
+                controller.command("undo")
+            }
+            waitFor { !controller.document.canUndo && !controller.busy }
+            withContext(Dispatchers.Main) {
+                assertEquals(original, pixel())
+                assertFalse(controller.hasUnsavedChanges)
+                settle()
+                assertFalse(scene.hasInvalidations())
+            }
+        }
+    }
+
+    @Test
+    fun layerBlendRapidUpdatesAndCancelPreserveSavedPropertiesAndFrame() = runBlocking {
+        session {
+            val original = withContext(Dispatchers.Main) { controller.frame }
+            withContext(Dispatchers.Main) {
+                controller.prepareAdjustment(AdjustmentKind.LayerBlend)
+            }
+            waitFor { controller.adjustmentPreview != null }
+            withContext(Dispatchers.Main) {
+                val settings = controller.adjustmentPreview!!.settings
+                repeat(300) {
+                    controller.updateAdjustment(
+                        settings.copy(
+                            opacity = (it % 100) / 100f,
+                            blend = LayerBlendMode.entries[it % LayerBlendMode.entries.size],
+                        )
+                    )
+                }
+                controller.updateAdjustment(
+                    settings.copy(opacity = 0f, blend = LayerBlendMode.Difference)
+                )
+            }
+            waitFor { !controller.adjustmentPreview!!.updating }
+            withContext(Dispatchers.Main) {
+                assertEquals(0f, controller.adjustmentPreview!!.renderedSettings!!.opacity)
+                assertEquals(
+                    LayerBlendMode.Difference,
+                    controller.adjustmentPreview!!.renderedSettings!!.blend,
+                )
+                assertSame(original, controller.frame)
+                controller.updateAdjustment(
+                    controller.adjustmentPreview!!.settings.copy(opacity = 0.6f)
+                )
+                key(Key.Escape)
+                controller.file(StudioController.FileAction.Save)
+            }
+            waitFor { files.saved != null && !controller.busy }
+            withContext(Dispatchers.Main) {
+                assertContentEquals(files.bytes, files.saved)
+                assertFalse(controller.hasUnsavedChanges)
+                assertFalse(controller.document.canUndo)
+                assertNull(controller.adjustmentPreview)
+                settle()
+                assertFalse(scene.hasInvalidations())
+            }
         }
     }
 

@@ -95,6 +95,7 @@ class ImportLayerTest {
                     }
                 }
             suspend fun importFromButton() {
+                render()
                 withContext(Dispatchers.Main) {
                     scene!!.sendPointerEvent(PointerEventType.Press, Offset(834f, 22f))
                     scene!!.sendPointerEvent(PointerEventType.Release, Offset(834f, 22f))

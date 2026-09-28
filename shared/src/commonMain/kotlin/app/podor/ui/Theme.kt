@@ -109,6 +109,13 @@ object StudioTheme {
     val canvasOutlineDash = floatArrayOf(5f, 4f)
     val iconSize = 21.dp
     val layerStatusIconSize = 12.dp
+    val layerBlendGap = 14.dp
+    val layerBlendLabelSize = 12.sp
+    val layerBlendCaptionSize = 10.sp
+    val layerBlendProgressHeight = 2.dp
+    val layerBlendSampleWidth = 40.dp
+    val layerBlendSampleHeight = 24.dp
+    val layerBlendLabelGap = 4.dp
     val layerPreviewSize = 42.dp
     val layerRowPadding = 8.dp
     val layerPreviewInset = 10.dp

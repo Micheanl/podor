@@ -6,11 +6,11 @@ import app.podor.domain.*
 class AdjustmentPreview(
     val layerId: Int,
     val revision: Long,
-    kind: AdjustmentKind,
+    val initialSettings: AdjustmentSettings,
     val previousTool: Tool,
     val original: RenderFrame,
 ) {
-    var settings by mutableStateOf(AdjustmentSettings.defaults(kind))
+    var settings by mutableStateOf(initialSettings)
         internal set
 
     var renderedSettings by mutableStateOf<AdjustmentSettings?>(null)

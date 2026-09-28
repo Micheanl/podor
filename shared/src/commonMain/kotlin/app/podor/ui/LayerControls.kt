@@ -9,6 +9,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -19,6 +20,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.podor.domain.AdjustmentKind
 import app.podor.domain.LayerInfo
 import app.podor.presentation.StudioController
 import kotlin.math.roundToInt
@@ -26,12 +28,22 @@ import kotlinx.serialization.json.put
 
 @Composable
 fun LayerControls(controller: StudioController) {
+    val pages = rememberSaveableStateHolder()
+    val blending = controller.adjustmentPreview?.settings?.kind == AdjustmentKind.LayerBlend
+    PageTransition(if (blending) 1 else 0, Modifier.fillMaxSize()) { page ->
+        pages.SaveableStateProvider(page) {
+            if (page == 1) LayerBlendControls(controller) else LayerListControls(controller)
+        }
+    }
+}
+
+@Composable
+private fun LayerListControls(controller: StudioController) {
     val layers = controller.document.layers
     val active = layers.firstOrNull { it.id == controller.document.active }
     val enabled = controller.ready && !controller.busy
     val ordered = remember(layers) { layers.asReversed() }
     var settings by remember { mutableStateOf(false) }
-    var blending by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -84,9 +96,9 @@ fun LayerControls(controller: StudioController) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     ActionButton(
                         "${tr(active.blend.label)} · ${(active.opacity * 100).roundToInt()}%",
-                        { blending = true },
+                        { controller.prepareAdjustment(AdjustmentKind.LayerBlend) },
                         Modifier.weight(1f),
-                        enabled = enabled,
+                        enabled = enabled && controller.adjustmentPreview == null,
                         primary = false,
                     )
                     ToolButton(Glyph.Adjustments, "图层设置", enabled = enabled) { settings = true }
@@ -139,13 +151,6 @@ fun LayerControls(controller: StudioController) {
                 }
             }
         }
-    }
-    if (blending && active != null) {
-        LayerBlendDialog(
-            active.blend,
-            { mode -> if (mode != active.blend) controller.setLayerBlend(active.id, mode) },
-            { blending = false },
-        )
     }
     if (settings && active != null) {
         LayerSettingsDialog(controller, active) { settings = false }
@@ -265,14 +270,13 @@ private fun LayerSettingsDialog(
     onDismiss: () -> Unit,
 ) {
     var name by remember(layer.id) { mutableStateOf(layer.name) }
-    var opacity by remember(layer.id) { mutableFloatStateOf(layer.opacity) }
     StudioAlertDialog(
         onDismissRequest = onDismiss,
         title = "图层设置",
         glyph = Glyph.Layers,
         confirmLabel = "保存",
         enabled = name.isNotBlank(),
-        onConfirm = { controller.setLayer(layer.copy(name = name.trim(), opacity = opacity)) },
+        onConfirm = { controller.setLayer(layer.copy(name = name.trim())) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 OutlinedTextField(
@@ -282,9 +286,6 @@ private fun LayerSettingsDialog(
                     label = { Text(tr("图层名称")) },
                     singleLine = true,
                 )
-                LabeledSlider("图层不透明度", opacity, 0f..1f, "${(opacity * 100).roundToInt()}%") {
-                    opacity = it
-                }
             }
         },
     )

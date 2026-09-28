@@ -147,7 +147,7 @@ fun AdjustmentDock(controller: StudioController, modifier: Modifier = Modifier) 
         }
         ToolButton(Glyph.Rotate, "重置调整", enabled = !preview.committing) {
             preview.comparing = false
-            controller.updateAdjustment(AdjustmentSettings.defaults(preview.settings.kind))
+            controller.updateAdjustment(preview.initialSettings)
         }
         ToolButton(Glyph.Close, "取消调整", enabled = !preview.committing) {
             controller.cancelAdjustment()

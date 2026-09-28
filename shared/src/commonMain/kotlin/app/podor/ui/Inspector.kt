@@ -13,6 +13,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.podor.domain.AdjustmentKind
 import app.podor.presentation.StudioController
 
 enum class StudioPanel(val label: String) {
@@ -82,6 +83,11 @@ fun Inspector(
             val activePanel = StudioPanel.entries[page]
             if (activePanel == StudioPanel.Brushes) BrushControls(controller)
             else if (activePanel == StudioPanel.Layers) LayerControls(controller)
+            else if (
+                activePanel == StudioPanel.Adjustments &&
+                    controller.adjustmentPreview?.settings?.kind == AdjustmentKind.LayerBlend
+            )
+                LayerBlendControls(controller)
             else {
                 Column(
                     Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
