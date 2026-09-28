@@ -207,6 +207,7 @@ data class BrushPreset(
                     56f,
                     spacing = 0.05f,
                     stabilization = 0.2f,
+                    mix = 0.8f,
                 ),
                 BrushPreset(
                     "oily",

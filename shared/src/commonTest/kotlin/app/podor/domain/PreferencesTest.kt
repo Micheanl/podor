@@ -124,13 +124,17 @@ class PreferencesTest {
 
     @Test
     fun bundledBrushesHaveDistinctAndValidParameters() {
-        assertEquals(16, BrushPreset.entries.size)
+        assertEquals(22, BrushPreset.entries.size)
         assertTrue(BrushPreset.entries.all { it.valid() })
-        assertEquals(16, BrushPreset.entries.map { it.id }.distinct().size)
+        assertEquals(22, BrushPreset.entries.map { it.id }.distinct().size)
         assertTrue(BrushPreset.entries.any { it.tip == BrushTip.Flat })
+        assertTrue(BrushPreset.entries.any { it.tip == BrushTip.Leaf })
+        assertTrue(BrushPreset.entries.any { it.tip == BrushTip.Comb })
         assertTrue(BrushPreset.entries.any { it.grain > 0f })
+        assertTrue(BrushPreset.entries.any { it.paper > 0f })
+        assertTrue(BrushPreset.entries.any { it.mix > 0f })
         assertTrue(BrushPreset.entries.any { it.stabilization > 0f })
-        assertEquals(3, BrushPreset.entries.count { it.followDirection })
+        assertEquals(5, BrushPreset.entries.count { it.followDirection })
         assertTrue(BrushPreset.entries.any { it.opacityPressure == 1f && it.sizePressure < 1f })
     }
 
