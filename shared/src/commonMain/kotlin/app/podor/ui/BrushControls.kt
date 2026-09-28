@@ -31,6 +31,8 @@ import kotlin.random.Random
 @Composable
 fun BrushControls(controller: StudioController) {
     var editing by remember { mutableStateOf(false) }
+    val smudge = controller.tool == Tool.Smudge
+    val strength = if (smudge) controller.smudgeStrength else controller.brush.opacity
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = Modifier.fillMaxSize().selectableGroup(),
@@ -65,9 +67,9 @@ fun BrushControls(controller: StudioController) {
                             opacity = 1f,
                         ),
                         Modifier.fillMaxWidth().height(40.dp).graphicsLayer {
-                            alpha = controller.brush.opacity
+                            alpha = strength
                         },
-                        Color(controller.brush.color),
+                        if (smudge) StudioTheme.accent else Color(controller.brush.color),
                     )
                 }
                 Column {
@@ -80,12 +82,13 @@ fun BrushControls(controller: StudioController) {
                         controller.brush = controller.brush.copy(size = it)
                     }
                     LabeledSlider(
-                        "不透明度",
-                        controller.brush.opacity,
+                        if (smudge) "涂抹强度" else "不透明度",
+                        strength,
                         0.01f..1f,
-                        "${(controller.brush.opacity*100).roundToInt()}%",
+                        "${(strength*100).roundToInt()}%",
                     ) {
-                        controller.brush = controller.brush.copy(opacity = it)
+                        if (smudge) controller.smudgeStrength = it
+                        else controller.brush = controller.brush.copy(opacity = it)
                     }
                     LabeledSlider(
                         "稳笔",
@@ -249,7 +252,11 @@ private fun BrushEditor(controller: StudioController, onDismiss: () -> Unit) {
                     }
                 }
                 if (pressure) {
-                    BrushPressureControls(preset, onChange = ::update)
+                    BrushPressureControls(
+                        preset,
+                        smudge = controller.tool == Tool.Smudge,
+                        onChange = ::update,
+                    )
                 } else {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         BrushTip.entries.forEach { tip ->

@@ -4,6 +4,14 @@ import kotlin.test.*
 import kotlinx.serialization.json.Json
 
 class PreferencesTest {
+    @Test fun addingSmudgePreservesAnOlderSBinding() {
+        val previous = Preferences(shortcuts = mapOf(ShortcutAction.Brush to Shortcut("S")))
+        val restored = previous.withNewShortcuts()
+        assertTrue(restored.valid())
+        assertEquals(Shortcut("S"), restored.shortcut(ShortcutAction.Brush))
+        assertNotEquals(Shortcut("S"), restored.shortcut(ShortcutAction.Smudge))
+        assertEquals(Shortcut("S"), Preferences().shortcut(ShortcutAction.Smudge))
+    }
     @Test
     fun addingClipboardActionsKeepsOlderBindingsAndResolvesAllNewConflicts() {
         val old = Preferences(shortcuts = mapOf(

@@ -32,27 +32,19 @@ fn stamp_impl<const SIMPLE: bool>(
     if opacity == 0.0 {
         return Ok(());
     }
-    let radius = (brush.size_at_pressure(point.pressure) * 0.5).max(0.5);
-    let extent = if brush.tip == BrushTip::Flat {
-        radius * std::f32::consts::SQRT_2
-    } else {
-        radius
-    };
-    let (sin, cos) = brush.angle.to_radians().sin_cos();
-    let circular = brush.tip == BrushTip::Round && brush.aspect == 1.0;
-    let inverse_aspect = 1.0 / brush.aspect;
+    let dab = crate::dab::Dab::new(doc.bounds(), selection, brush, point);
+    let Rect {
+        left,
+        top,
+        right,
+        bottom,
+    } = dab.bounds;
     let region = selection.map_or(doc.bounds(), Selection::bounds);
-    let left = ((point.x - extent).floor().max(0.0) as u32).max(region.left);
-    let top = ((point.y - extent).floor().max(0.0) as u32).max(region.top);
-    let right = ((point.x + extent).ceil().max(0.0) as u32).min(region.right);
-    let bottom = ((point.y + extent).ceil().max(0.0) as u32).min(region.bottom);
     if left >= right || top >= bottom {
         return Ok(());
     }
     let layer = doc.active_mut();
     let alpha_locked = layer.alpha_locked;
-    let inner = radius * brush.hardness;
-    let feather = (radius - inner).max(0.75);
     for ty in top / TILE_SIZE..=(bottom - 1) / TILE_SIZE {
         for tx in left / TILE_SIZE..=(right - 1) / TILE_SIZE {
             let key = (tx, ty);
@@ -89,29 +81,7 @@ fn stamp_impl<const SIMPLE: bool>(
                     if selected == 0 {
                         continue;
                     }
-                    let dx = x as f32 + 0.5 - point.x;
-                    let dy = y as f32 + 0.5 - point.y;
-                    let squared = if SIMPLE || circular {
-                        dx * dx + dy * dy
-                    } else {
-                        let rx = dx * cos + dy * sin;
-                        let ry = (-dx * sin + dy * cos) * inverse_aspect;
-                        if brush.tip == BrushTip::Flat {
-                            rx.abs().max(ry.abs()).powi(2)
-                        } else {
-                            rx * rx + ry * ry
-                        }
-                    };
-                    if squared >= radius * radius {
-                        continue;
-                    }
-                    let mut coverage = ((radius - squared.sqrt()) / feather).clamp(0.0, 1.0);
-                    if !SIMPLE && brush.grain > 0.0 {
-                        let mut hash = x.wrapping_mul(374_761_393) ^ y.wrapping_mul(668_265_263);
-                        hash = (hash ^ (hash >> 13)).wrapping_mul(1_274_126_177);
-                        let noise = ((hash ^ (hash >> 16)) & 65535) as f32 / 65535.0;
-                        coverage *= (1.0 - brush.grain) + brush.grain * noise.powi(3);
-                    }
+                    let coverage = dab.coverage::<SIMPLE>(x, y);
                     let alpha = (coverage * opacity * f32::from(selected)).round() as u32;
                     if alpha == 0 {
                         continue;

@@ -113,6 +113,7 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                 ShortcutAction.MoveLayer -> controller.tool = Tool.MoveLayer
                 ShortcutAction.TransformLayer -> controller.tool = Tool.TransformLayer
                 ShortcutAction.Gradient -> controller.tool = Tool.Gradient
+                ShortcutAction.Smudge -> controller.tool = Tool.Smudge
                 ShortcutAction.Select -> controller.tool = Tool.Select
                 ShortcutAction.Fill -> controller.tool = Tool.Fill
                 ShortcutAction.Fit -> controller.viewport = Viewport()

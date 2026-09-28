@@ -777,7 +777,10 @@ fun CanvasWorkspace(
                 }
             }
             cursor?.let { position ->
-                if (controller.tool == Tool.Brush || controller.tool == Tool.Eraser) {
+                if (
+                    controller.tool == Tool.Brush || controller.tool == Tool.Eraser ||
+                        controller.tool == Tool.Smudge
+                ) {
                     val radius = (controller.brush.size * scale * 0.5f).coerceAtLeast(2f)
                     drawCircle(
                         Color.Black.copy(alpha = 0.55f),

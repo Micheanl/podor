@@ -65,6 +65,7 @@ class StudioController(
     val clipboardAvailable = files.clipboard != null
 
     var brush by mutableStateOf(BrushSettings())
+    var smudgeStrength by mutableStateOf(StudioDefaults.smudgeStrength)
     var preferences by mutableStateOf(Preferences())
         private set
 
@@ -1022,12 +1023,14 @@ class StudioController(
     suspend fun begin(point: Offset, pressure: Float, stylusEraser: Boolean = false) {
         if (!ready || busy) return
         val settings = brush
+        val smudge = tool == Tool.Smudge && !stylusEraser
         actions.send(
             Action.Command(
                 jsonCommand("begin") {
                     putJsonObject("brush") {
                         put("size", settings.size)
-                        put("opacity", settings.opacity)
+                        put("opacity", if (smudge) smudgeStrength else settings.opacity)
+                        put("smudge", smudge)
                         put("hardness", settings.preset.hardness)
                         put("tip", settings.preset.tip.name.lowercase())
                         put("aspect", settings.preset.aspect)
@@ -1104,7 +1107,7 @@ class StudioController(
     fun selectPreset(preset: BrushPreset) {
         if (previewPending()) return
         brush = brush.copy(preset = preset, size = preset.size, opacity = preset.opacity)
-        tool = Tool.Brush
+        if (tool != Tool.Smudge) tool = Tool.Brush
     }
 
     fun setLayerBlend(id: Int, mode: LayerBlendMode) =

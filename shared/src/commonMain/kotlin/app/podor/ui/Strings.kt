@@ -25,6 +25,10 @@ fun trValue(value: String, language: Language): String {
 
 private val english =
     mapOf(
+        "涂抹" to "Smudge",
+        "涂抹强度" to "Smudge strength",
+        "强度压感" to "Strength pressure",
+        "涂抹笔尖过大" to "Smudge tip is too large",
         "作品" to "Your work",
         "作品首页" to "Workspace",
         "空白画布" to "Blank canvas",

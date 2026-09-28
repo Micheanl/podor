@@ -80,6 +80,7 @@ enum class ShortcutAction(val label: String, val default: Shortcut) {
     Paste("粘贴为新图层", Shortcut("V", true)),
     TransformLayer("变换图层", Shortcut("T", true)),
     Gradient("渐变", Shortcut("G", shift = true)),
+    Smudge("涂抹", Shortcut("S")),
 }
 
 @Serializable
@@ -103,6 +104,7 @@ data class Preferences(
                 ShortcutAction.Paste,
                 ShortcutAction.TransformLayer,
                 ShortcutAction.Gradient,
+                ShortcutAction.Smudge,
             )) {
             if (action in result.shortcuts || action.default !in result.shortcuts.values) continue
             val used = ShortcutAction.entries.filter { it != action }.map(result::shortcut).toSet()

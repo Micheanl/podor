@@ -11,6 +11,7 @@ pub const MAX_LAYER_NAME_BYTES: usize = 256;
 pub const MAX_HISTORY_BYTES: usize = 64 * 1024 * 1024;
 pub const MAX_DOCUMENT_BYTES: usize = 128 * 1024 * 1024;
 pub const MAX_STROKE_CACHE_BYTES: usize = 4 * 1024 * 1024;
+pub const MAX_SMUDGE_CACHE_BYTES: usize = 2 * 1024 * 1024;
 pub const MAX_RESAMPLE_CACHE_BYTES: usize = 4 * 1024 * 1024;
 pub const MAX_SELECTION_POINTS: usize = 4096;
 pub const MAX_COMMAND_BYTES: usize = 4096;
@@ -186,6 +187,8 @@ pub struct Brush {
     pub color: [u8; 3],
     pub eraser: bool,
     #[serde(default)]
+    pub smudge: bool,
+    #[serde(default)]
     pub tip: BrushTip,
     #[serde(default = "default_aspect")]
     pub aspect: f32,
@@ -233,6 +236,7 @@ impl Default for Brush {
             hardness: 0.9,
             color: [0, 0, 0],
             eraser: false,
+            smudge: false,
             tip: BrushTip::Round,
             aspect: 1.0,
             angle: 0.0,
@@ -271,6 +275,7 @@ impl Brush {
             || !(0.0..=1.0).contains(&self.size_pressure)
             || !self.opacity_pressure.is_finite()
             || !(0.0..=1.0).contains(&self.opacity_pressure)
+            || (self.smudge && self.eraser)
         {
             return Err("画笔参数无效".into());
         }

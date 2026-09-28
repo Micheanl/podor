@@ -2,6 +2,7 @@ mod adjustments;
 mod blending;
 mod canvas;
 mod clipboard;
+mod dab;
 mod ffi;
 mod gradient;
 mod history;
@@ -16,6 +17,7 @@ mod psd;
 mod raster;
 mod resample;
 mod selection;
+mod smudge;
 mod stabilizer;
 mod storage;
 mod transform;
@@ -150,9 +152,28 @@ struct Stroke {
     direction: f32,
     distance: f32,
     changed: bool,
+    smudge: Option<smudge::Smudge>,
+    modified: bool,
 }
 
 impl Stroke {
+    fn stamp(
+        &mut self,
+        document: &mut Document,
+        selection: Option<&Selection>,
+        point: Sample,
+        dirty: &mut BTreeSet<TileKey>,
+        remaining: &mut usize,
+    ) -> Result<(), String> {
+        let brush = self.stamp_brush();
+        if let Some(smudge) = &mut self.smudge {
+            self.modified |= smudge.stamp(document, selection, brush, point, dirty, remaining)?;
+            Ok(())
+        } else {
+            raster::stamp(document, selection, brush, point, dirty, remaining)
+        }
+    }
+
     fn stamp_brush(&self) -> Brush {
         Brush {
             angle: self.brush.angle + self.direction,
@@ -176,9 +197,8 @@ impl Stroke {
                 if self.brush.follow_direction {
                     self.direction = dy.atan2(dx).to_degrees();
                 }
-                let brush = self.stamp_brush();
                 if !self.changed {
-                    raster::stamp(document, selection, brush, last, dirty, remaining)?;
+                    self.stamp(document, selection, last, dirty, remaining)?;
                     self.changed = true;
                 }
                 let spacing = (self
@@ -189,10 +209,9 @@ impl Stroke {
                 let mut cursor = spacing - self.distance.min(spacing);
                 while cursor <= length {
                     let t = cursor / length;
-                    raster::stamp(
+                    self.stamp(
                         document,
                         selection,
-                        brush,
                         Sample {
                             x: last.x + dx * t,
                             y: last.y + dy * t,
@@ -207,7 +226,7 @@ impl Stroke {
                 self.distance = (self.distance + length) % spacing;
             }
         } else if !self.brush.follow_direction {
-            raster::stamp(document, selection, self.brush, point, dirty, remaining)?;
+            self.stamp(document, selection, point, dirty, remaining)?;
             self.changed = true;
         }
         self.last = Some(point);
@@ -268,6 +287,12 @@ impl Engine {
                     direction: 0.0,
                     distance: 0.0,
                     changed: false,
+                    smudge: if brush.smudge {
+                        Some(smudge::Smudge::new(brush)?)
+                    } else {
+                        None
+                    },
+                    modified: false,
                 });
             }
             Command::End => {
@@ -286,13 +311,14 @@ impl Engine {
                     }
                     if let Some(point) = stroke.last {
                         if !stroke.changed
-                            || ((tail.is_some() || stroke.brush.follow_direction)
+                            || ((tail.is_some()
+                                || stroke.brush.follow_direction
+                                || stroke.brush.smudge)
                                 && stroke.distance > f32::EPSILON)
                         {
-                            raster::stamp(
+                            stroke.stamp(
                                 &mut self.document,
                                 self.selection.as_ref(),
-                                stroke.stamp_brush(),
                                 point,
                                 &mut self.dirty,
                                 &mut remaining,
@@ -302,7 +328,7 @@ impl Engine {
                     }
                 }
                 if let Some(stroke) = self.stroke.take() {
-                    if stroke.changed {
+                    if stroke.changed && (stroke.smudge.is_none() || stroke.modified) {
                         self.history
                             .push(stroke.before, self.content_id, &self.document, true);
                         self.revision += 1;

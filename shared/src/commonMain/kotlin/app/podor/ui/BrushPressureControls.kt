@@ -21,6 +21,7 @@ import kotlin.math.roundToInt
 fun BrushPressureControls(
     preset: BrushPreset,
     modifier: Modifier = Modifier,
+    smudge: Boolean = false,
     onChange: (BrushPreset) -> Unit,
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(StudioTheme.brushSettingsGap)) {
@@ -107,7 +108,7 @@ fun BrushPressureControls(
             onChange(preset.copy(sizePressure = it))
         }
         LabeledSlider(
-            "透明度压感",
+            if (smudge) "强度压感" else "透明度压感",
             preset.opacityPressure,
             0f..1f,
             "${(preset.opacityPressure * 100).roundToInt()}%",

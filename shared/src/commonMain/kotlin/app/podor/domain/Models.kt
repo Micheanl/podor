@@ -37,6 +37,7 @@ enum class Tool(val label: String) {
     MoveLayer("移动图层"),
     TransformLayer("变换图层"),
     Gradient("渐变"),
+    Smudge("涂抹"),
 }
 
 @Serializable
@@ -195,6 +196,7 @@ object StudioDefaults {
     val imageScalePresets = listOf(50, 100, 200)
     val canvasAnchor = CanvasAnchor.Center
     const val brushColor = 0xFF000000L
+    const val smudgeStrength = 0.8f
     const val stabilization = 0f
     const val lineStabilization = 0.5f
     const val pressureCurve = 0f

@@ -58,6 +58,7 @@ enum class Glyph(val resource: DrawableResource) {
     Move(Res.drawable.ic_move),
     Transform(Res.drawable.ic_transform),
     Gradient(Res.drawable.ic_gradient),
+    Smudge(Res.drawable.ic_smudge),
     MirrorVertical(Res.drawable.ic_mirrorvertical),
     ImportImage(Res.drawable.ic_importimage),
 }

@@ -244,6 +244,7 @@ fun StudioTools(controller: StudioController, compact: Boolean = false) {
                         Tool.MoveLayer,
                         Tool.TransformLayer,
                         Tool.Gradient,
+                        Tool.Smudge,
                     )
                     .forEach { tool ->
                         DropdownMenuItem(
@@ -302,6 +303,13 @@ fun StudioTools(controller: StudioController, compact: Boolean = false) {
         ) {
             controller.tool = Tool.Gradient
         }
+        ToolButton(
+            Glyph.Smudge,
+            controller.shortcutLabel(ShortcutAction.Smudge),
+            controller.tool == Tool.Smudge,
+        ) {
+            controller.tool = Tool.Smudge
+        }
     }
 }
 
@@ -321,12 +329,22 @@ fun BrushDock(controller: StudioController, modifier: Modifier = Modifier, onCli
         horizontalArrangement = Arrangement.spacedBy(13.dp),
     ) {
         StudioIcon(
-            if (controller.tool == Tool.Eraser) Glyph.Eraser else Glyph.Brush,
+            when (controller.tool) {
+                Tool.Eraser -> Glyph.Eraser
+                Tool.Smudge -> Glyph.Smudge
+                else -> Glyph.Brush
+            },
             StudioTheme.accent,
             Modifier.size(18.dp),
         )
         Text(
-            tr(if (controller.tool == Tool.Eraser) "橡皮" else controller.brush.preset.label),
+            tr(
+                when (controller.tool) {
+                    Tool.Eraser -> "橡皮"
+                    Tool.Smudge -> "涂抹"
+                    else -> controller.brush.preset.label
+                }
+            ),
             fontSize = 11.sp,
             color = StudioTheme.text,
         )
@@ -337,7 +355,7 @@ fun BrushDock(controller: StudioController, modifier: Modifier = Modifier, onCli
             color = StudioTheme.muted,
         )
         Text(
-            "${(controller.brush.opacity*100).roundToInt()}%",
+            "${((if (controller.tool == Tool.Smudge) controller.smudgeStrength else controller.brush.opacity)*100).roundToInt()}%",
             fontSize = 11.sp,
             color = StudioTheme.muted,
         )
