@@ -270,7 +270,7 @@ impl Stroke {
                     self.changed = true;
                     cursor += spacing;
                 }
-                self.travel_base = self.travel_base + length;
+                self.travel_base += length;
                 self.travel = self.travel_base;
                 self.distance = (self.distance + length) % spacing;
             }
