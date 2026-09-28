@@ -14,7 +14,7 @@ fun ClipboardMenu(controller: StudioController) {
         DropdownMenu(
             expanded,
             { expanded = false },
-            shape = StudioTheme.clipboardMenuShape,
+            shape = StudioTheme.menuShape,
             containerColor = StudioTheme.panel,
         ) {
             ClipboardMenuItems(controller) { expanded = false }

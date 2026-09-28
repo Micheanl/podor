@@ -3,7 +3,6 @@ package app.podor.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,9 +47,10 @@ fun UpdateSettings(controller: UpdateController?, onInstall: (AppRelease, String
                     Triple("Gitee", AppIdentity.giteeUrl, Res.drawable.ic_gitee),
                 )
                 .forEach { (label, url, icon) ->
-                    OutlinedButton(
+                    StudioButton(
                         { linkFailed = runCatching { links.openUri(url) }.isFailure },
                         Modifier.weight(1f),
+                        primary = false,
                     ) {
                         Image(painterResource(icon), null, Modifier.size(StudioTheme.iconSize))
                         Spacer(Modifier.width(StudioTheme.repositoryLinkGap))
@@ -68,7 +68,7 @@ fun UpdateSettings(controller: UpdateController?, onInstall: (AppRelease, String
         val state = controller.state
         Column(
             Modifier.fillMaxWidth()
-                .background(StudioTheme.elevated, RoundedCornerShape(20.dp))
+                .background(StudioTheme.elevated, StudioTheme.cardShape)
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -107,10 +107,10 @@ fun UpdateSettings(controller: UpdateController?, onInstall: (AppRelease, String
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 when (state.phase) {
                     UpdatePhase.Checking,
-                    UpdatePhase.Downloading -> TextButton(controller::cancel) { Text(tr("取消")) }
+                    UpdatePhase.Downloading -> StudioTextButton(controller::cancel) { Text(tr("取消")) }
                     UpdatePhase.Downloaded -> {
-                        TextButton(controller::reveal) { Text(tr("下载文件夹")) }
-                        Button({
+                        StudioTextButton(controller::reveal) { Text(tr("下载文件夹")) }
+                        StudioButton({
                             val release = state.release
                             val installer = state.installer
                             if (release != null && installer != null) onInstall(release, installer)
@@ -118,17 +118,17 @@ fun UpdateSettings(controller: UpdateController?, onInstall: (AppRelease, String
                             Text(tr("安装并打开"))
                         }
                     }
-                    UpdatePhase.Available -> Button(controller::download) { Text(tr("下载更新")) }
+                    UpdatePhase.Available -> StudioButton(controller::download) { Text(tr("下载更新")) }
                     UpdatePhase.Failed -> {
                         if (state.release != null)
-                            TextButton(controller::check) { Text(tr("重新检查")) }
-                        Button(
+                            StudioTextButton(controller::check) { Text(tr("重新检查")) }
+                        StudioButton(
                             if (state.release != null) controller::download else controller::check
                         ) {
                             Text(tr("重试"))
                         }
                     }
-                    else -> Button(controller::check) { Text(tr("检查更新")) }
+                    else -> StudioButton(controller::check) { Text(tr("检查更新")) }
                 }
             }
         }

@@ -50,29 +50,32 @@ internal fun WindowTitleBar(
                 val spectrum = Brush.horizontalGradient(StudioTheme.windowSpectrum)
                 val fade = Brush.verticalGradient(listOf(Color.Transparent, background))
                 onDrawBehind {
-                    drawRect(spectrum, alpha = StudioTheme.windowTintAlpha)
-                    drawRect(fade)
-                    drawRect(
-                        spectrum,
-                        size = Size(size.width, StudioTheme.windowRimHeight.toPx()),
-                        alpha = StudioTheme.windowRimAlpha,
-                    )
+                    if (background.alpha > 0f) {
+                        drawRect(spectrum, alpha = StudioTheme.windowTintAlpha)
+                        drawRect(fade)
+                        drawRect(
+                            spectrum,
+                            size = Size(size.width, StudioTheme.windowRimHeight.toPx()),
+                            alpha = StudioTheme.windowRimAlpha,
+                        )
+                    }
                 }
             }
     ) {
         Spacer(Modifier.weight(1f))
-        WindowButton(trValue("最小化", language), 0, onClick = onMinimize)
+        WindowButton(trValue("最小化", language), 0, background.alpha == 0f, onClick = onMinimize)
         WindowButton(
             trValue(if (maximized) "还原窗口" else "最大化", language),
             if (maximized) 2 else 1,
+            background.alpha == 0f,
             onClick = onMaximize,
         )
-        WindowButton(trValue("关闭", language), 3, onClick = onClose)
+        WindowButton(trValue("关闭", language), 3, background.alpha == 0f, onClick = onClose)
     }
 }
 
 @Composable
-private fun WindowButton(label: String, glyph: Int, onClick: () -> Unit) {
+private fun WindowButton(label: String, glyph: Int, overAnimation: Boolean, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
     val pressed by interaction.collectIsPressedAsState()
@@ -88,7 +91,7 @@ private fun WindowButton(label: String, glyph: Int, onClick: () -> Unit) {
         animateColorAsState(
             when {
                 active && glyph == 3 -> StudioTheme.accent
-                active -> StudioTheme.text
+                active || overAnimation -> StudioTheme.text
                 else -> StudioTheme.muted
             },
             tween(StudioMotion.feedbackMillis),

@@ -20,7 +20,7 @@ fun ReferenceMenu(controller: StudioController) {
             expanded,
             { expanded = false },
             containerColor = StudioTheme.panel,
-            shape = StudioTheme.layerShape,
+            shape = StudioTheme.menuShape,
         ) {
             ReferenceMenuItems(controller) { expanded = false }
         }

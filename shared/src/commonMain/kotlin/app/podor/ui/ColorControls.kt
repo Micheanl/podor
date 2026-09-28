@@ -101,7 +101,7 @@ fun ColorControls(controller: StudioController) {
         }
     }
     Column(
-        Modifier.clip(RoundedCornerShape(16.dp)).background(StudioTheme.background).padding(14.dp)
+        Modifier.clip(StudioTheme.cardShape).background(StudioTheme.background).padding(14.dp)
     ) {
         LabeledSlider("饱和度", hsv.saturation, 0f..1f, "${(hsv.saturation*100).roundToInt()}%") {
             update(hsv.copy(saturation = it))

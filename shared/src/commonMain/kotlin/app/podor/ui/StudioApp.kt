@@ -334,20 +334,7 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                                     panel,
                                     { panel = it },
                                     Modifier.fillMaxSize(),
-                                    onCollapse = { inspectorExpanded = false },
                                 )
-                            }
-                        } else if (wide) {
-                            Box(
-                                Modifier.align(Alignment.TopEnd)
-                                    .padding(StudioTheme.inspectorMargin)
-                                    .clip(CircleShape)
-                                    .background(StudioTheme.panel)
-                                    .border(1.dp, StudioTheme.border, CircleShape)
-                            ) {
-                                ToolButton(Glyph.Sidebar, "展开面板") {
-                                    inspectorExpanded = true
-                                }
                             }
                         }
                     }
@@ -355,12 +342,12 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                         Row(
                             Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(24.dp))
+                                .clip(StudioTheme.inspectorShape)
                                 .background(StudioTheme.panel)
                                 .border(
                                     1.dp,
                                     StudioTheme.border.copy(alpha = 0.6f),
-                                    RoundedCornerShape(24.dp),
+                                    StudioTheme.inspectorShape,
                                 )
                                 .padding(vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,

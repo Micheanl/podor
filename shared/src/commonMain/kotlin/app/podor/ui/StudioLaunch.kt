@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import app.podor.domain.AppIdentity
 import app.podor.presentation.StudioController
 import app.podor.presentation.UpdateController
@@ -27,9 +29,14 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
-fun PodorApp(controller: StudioController, updates: UpdateController? = null) {
+fun PodorApp(
+    controller: StudioController,
+    updates: UpdateController? = null,
+    titleBarHeight: Dp = 0.dp,
+    titleBar: @Composable (Boolean) -> Unit = {},
+) {
     CompositionLocalProvider(LocalLanguage provides controller.preferences.language) {
-        StudioLaunch(controller.ready) {
+        StudioLaunch(controller.ready, titleBarHeight, titleBar) {
             if (controller.showWorkspace) WorkspaceHome(controller, updates)
             else StudioApp(controller, updates)
         }
@@ -38,7 +45,12 @@ fun PodorApp(controller: StudioController, updates: UpdateController? = null) {
 }
 
 @Composable
-fun StudioLaunch(ready: Boolean, content: @Composable () -> Unit) {
+fun StudioLaunch(
+    ready: Boolean,
+    titleBarHeight: Dp = 0.dp,
+    titleBar: @Composable (Boolean) -> Unit = {},
+    content: @Composable () -> Unit,
+) {
     var shownEnough by remember { mutableStateOf(false) }
     var dismissed by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -64,10 +76,15 @@ fun StudioLaunch(ready: Boolean, content: @Composable () -> Unit) {
             if (visible && it.type == KeyEventType.KeyDown && it.key == Key.Escape) {
                 dismissed = true
                 true
-            } else visible
+            } else false
         }
     ) {
-        content()
+        Box(
+            Modifier.fillMaxSize().background(StudioTheme.background).padding(top = titleBarHeight)
+                .onPreviewKeyEvent { visible }
+        ) {
+            content()
+        }
         if (visible) {
             Box(
                 Modifier.fillMaxSize().clickable(
@@ -85,9 +102,9 @@ fun StudioLaunch(ready: Boolean, content: @Composable () -> Unit) {
                             val progress = ((reveal.value - 0.3f) / 0.7f).coerceIn(0f, 1f)
                             alpha = 1f - StudioMotion.easing.transform(progress)
                         }
-                        .background(StudioTheme.background)
+                        .background(StudioTheme.launchSwirlBack)
                 ) {
-                    LaunchPaths(Modifier.fillMaxSize())
+                    LaunchSwirl(Modifier.fillMaxSize())
                 }
                 val mask = texture
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -107,10 +124,14 @@ fun StudioLaunch(ready: Boolean, content: @Composable () -> Unit) {
                         fontSize = StudioTheme.launchWordmarkSize,
                         letterSpacing = StudioTheme.launchWordmarkSpacing,
                         fontWeight = FontWeight.Light,
-                        modifier = Modifier.graphicsLayer { alpha = (1f - reveal.value / 0.3f).coerceIn(0f, 1f) },
+                        modifier =
+                            Modifier.graphicsLayer {
+                                alpha = (1f - reveal.value / 0.3f).coerceIn(0f, 1f)
+                            },
                     )
                 }
             }
         }
+        Box(Modifier.align(Alignment.TopCenter)) { titleBar(visible) }
     }
 }

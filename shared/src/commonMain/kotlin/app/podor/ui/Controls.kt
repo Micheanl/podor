@@ -1,9 +1,7 @@
 package app.podor.ui
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -47,22 +45,6 @@ fun ToolButton(
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
     val filled = selected || prominent
-    val iconTurn = remember { Animatable(0f) }
-    LaunchedEffect(selected) {
-        iconTurn.snapTo(0f)
-        if (selected)
-            iconTurn.animateTo(
-                0f,
-                keyframes {
-                    durationMillis = StudioMotion.iconSelectMillis
-                    0f at 0
-                    StudioMotion.iconSelectAngle at
-                        StudioMotion.pressMillis using
-                        StudioMotion.easing
-                    0f at StudioMotion.iconSelectMillis
-                },
-            )
-    }
     val tint =
         animateColorAsState(
             when {
@@ -93,14 +75,14 @@ fun ToolButton(
                     onClick = onClick,
                 )
                 .controlFeedback(interaction, CircleShape, enabled)
-                .gradientButtonSurface(interaction, filled, enabled)
+                .buttonSurface(filled, enabled, CircleShape)
                 .semantics {
                     contentDescription = translatedLabel
                     this.selected = selected
                 },
             contentAlignment = Alignment.Center,
         ) {
-            StudioIcon(glyph, tint.value, Modifier.graphicsLayer { rotationZ = iconTurn.value })
+            StudioIcon(glyph, tint.value)
         }
     }
 }

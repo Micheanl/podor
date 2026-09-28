@@ -183,7 +183,7 @@ fun SettingsDialog(controller: StudioController, onDismiss: () -> Unit, updates:
                             conflict?.let {
                                 Text(tr(it), fontSize = 11.sp, color = StudioTheme.accent)
                             }
-                            TextButton({
+                            StudioTextButton({
                                 controller.updatePreferences(
                                     controller.preferences.copy(shortcuts = emptyMap())
                                 )

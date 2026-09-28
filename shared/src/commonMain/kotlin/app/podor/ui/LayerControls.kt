@@ -89,7 +89,7 @@ private fun LayerListControls(controller: StudioController) {
         if (active != null) {
             Column(
                 Modifier.fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(StudioTheme.cardShape)
                     .background(StudioTheme.background)
                     .padding(6.dp)
             ) {
@@ -168,8 +168,8 @@ internal fun LayerRow(
 ) {
     val background =
         animateColorAsState(
-            if (selected) StudioTheme.accent.copy(alpha = 0.12f)
-            else StudioTheme.elevated.copy(alpha = 0.5f),
+            if (selected) StudioTheme.selection
+            else StudioTheme.elevated,
             tween(StudioMotion.feedbackMillis),
         )
     Row(

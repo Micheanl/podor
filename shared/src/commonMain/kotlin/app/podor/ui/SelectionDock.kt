@@ -67,7 +67,7 @@ fun SelectionDock(controller: StudioController, modifier: Modifier = Modifier) {
             DropdownMenu(
                 expanded,
                 { expanded = false },
-                shape = StudioTheme.clipboardMenuShape,
+                shape = StudioTheme.menuShape,
                 containerColor = StudioTheme.panel,
             ) {
                 SelectionMode.entries.forEach { mode ->
@@ -114,7 +114,7 @@ private fun ColorSelectionOptions(controller: StudioController) {
         DropdownMenu(
             expanded,
             { expanded = false },
-            shape = StudioTheme.clipboardMenuShape,
+            shape = StudioTheme.menuShape,
             containerColor = StudioTheme.panel,
         ) {
             Column(

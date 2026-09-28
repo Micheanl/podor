@@ -60,6 +60,7 @@ enum class Glyph(val resource: DrawableResource) {
     FavoriteFilled(Res.drawable.ic_favorite_filled),
     Update(Res.drawable.ic_update),
     Sidebar(Res.drawable.ic_sidebar),
+    SidebarClosed(Res.drawable.ic_sidebar_closed),
     Lock(Res.drawable.ic_lock),
     AlphaLock(Res.drawable.ic_alpha_lock),
     Rotate(Res.drawable.ic_rotate),

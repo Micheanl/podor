@@ -7,7 +7,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,7 +52,7 @@ fun StudioHeader(
             DropdownMenu(
                 menu,
                 { menu = false },
-                shape = RoundedCornerShape(18.dp),
+                shape = StudioTheme.menuShape,
                 containerColor = StudioTheme.panel,
             ) {
                 DropdownMenuItem(
@@ -201,7 +200,7 @@ fun StudioHeader(
         if (onToggleInspector != null) {
             Spacer(Modifier.width(8.dp))
             ToolButton(
-                Glyph.Sidebar,
+                if (inspectorExpanded) Glyph.Sidebar else Glyph.SidebarClosed,
                 if (inspectorExpanded) "收起面板" else "展开面板",
                 selected = inspectorExpanded,
                 onClick = onToggleInspector,
@@ -236,7 +235,7 @@ fun StudioTools(controller: StudioController, compact: Boolean = false) {
                 more,
                 { more = false },
                 containerColor = StudioTheme.panel,
-                shape = RoundedCornerShape(16.dp),
+                shape = StudioTheme.menuShape,
             ) {
                 listOf(
                         Tool.Select,

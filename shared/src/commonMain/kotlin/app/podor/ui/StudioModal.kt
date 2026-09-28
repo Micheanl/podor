@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -84,9 +83,9 @@ fun StudioModal(
                 scaleY = scale
                 translationY = 12.dp.toPx() * travel
             },
-            shape = RoundedCornerShape(28.dp),
+            shape = StudioTheme.modalShape,
             color = StudioTheme.panel,
-            border = BorderStroke(1.dp, rim),
+            border = BorderStroke(StudioTheme.hairline, rim),
         ) {
             Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -142,7 +141,7 @@ fun StudioAlertDialog(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (showCancel) TextButton(dismiss) { Text(tr(cancelLabel), color = StudioTheme.muted) }
+            if (showCancel) StudioTextButton(dismiss) { Text(tr(cancelLabel), color = StudioTheme.muted) }
             Spacer(Modifier.width(10.dp))
             ActionButton(
                 confirmLabel,

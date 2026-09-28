@@ -3,6 +3,7 @@ package app.podor.desktop
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
@@ -65,24 +66,30 @@ fun main() {
                         StudioTheme.minimumWindowHeight.value.toInt(),
                     )
             }
-            Column(Modifier.fillMaxSize().nativeTouchGuard()) {
-                if (customChrome)
-                    WindowTitleBar(
-                        language = controller.preferences.language,
-                        maximized = windowState.placement == WindowPlacement.Maximized,
-                        onMinimize = { windowState.isMinimized = true },
-                        onMaximize = {
-                            windowState.placement =
-                                if (windowState.placement == WindowPlacement.Maximized)
-                                    WindowPlacement.Floating
-                                else WindowPlacement.Maximized
-                        },
-                        onClose = { controller.navigate(WorkspaceDestination.Exit) },
-                        background =
-                            if (controller.showWorkspace) StudioTheme.background
-                            else StudioTheme.panel,
-                    )
-                Box(Modifier.weight(1f)) { PodorApp(controller, updates) }
+            Box(Modifier.fillMaxSize().nativeTouchGuard()) {
+                PodorApp(
+                    controller,
+                    updates,
+                    titleBarHeight = if (customChrome) StudioTheme.windowTitleHeight else 0.dp,
+                ) { launching ->
+                    if (customChrome)
+                        WindowTitleBar(
+                            language = controller.preferences.language,
+                            maximized = windowState.placement == WindowPlacement.Maximized,
+                            onMinimize = { windowState.isMinimized = true },
+                            onMaximize = {
+                                windowState.placement =
+                                    if (windowState.placement == WindowPlacement.Maximized)
+                                        WindowPlacement.Floating
+                                    else WindowPlacement.Maximized
+                            },
+                            onClose = { controller.navigate(WorkspaceDestination.Exit) },
+                            background =
+                                if (launching) Color.Transparent
+                                else if (controller.showWorkspace) StudioTheme.background
+                                else StudioTheme.panel,
+                        )
+                }
             }
         }
     }

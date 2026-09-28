@@ -1,7 +1,6 @@
 package app.podor.ui
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,7 +18,7 @@ fun ViewportControls(viewport: Viewport, fitLabel: String, onChange: (Viewport) 
     var expanded by remember { mutableStateOf(false) }
     val rotationLabel = tr("旋转视图")
     Row(verticalAlignment = Alignment.CenterVertically) {
-        TextButton({ onChange(Viewport()) }, contentPadding = PaddingValues(horizontal = 7.dp)) {
+        StudioTextButton({ onChange(Viewport()) }, contentPadding = PaddingValues(horizontal = 7.dp)) {
             Text(
                 "${(viewport.zoom * 100).roundToInt()}%",
                 fontSize = 11.sp,
@@ -27,7 +26,7 @@ fun ViewportControls(viewport: Viewport, fitLabel: String, onChange: (Viewport) 
             )
         }
         Box {
-            TextButton(
+            StudioTextButton(
                 { expanded = !expanded },
                 modifier = Modifier.semantics { contentDescription = rotationLabel },
                 contentPadding = PaddingValues(horizontal = 7.dp),
@@ -43,7 +42,7 @@ fun ViewportControls(viewport: Viewport, fitLabel: String, onChange: (Viewport) 
             DropdownMenu(
                 expanded,
                 { expanded = false },
-                shape = RoundedCornerShape(18.dp),
+                shape = StudioTheme.menuShape,
                 containerColor = StudioTheme.panel,
             ) {
                 Column(Modifier.width(StudioTheme.viewControlsWidth).padding(16.dp)) {
@@ -59,7 +58,7 @@ fun ViewportControls(viewport: Viewport, fitLabel: String, onChange: (Viewport) 
                         ToolButton(Glyph.Undo, "向左旋转") {
                             onChange(viewport.rotateBy(-StudioDefaults.rotationStep))
                         }
-                        TextButton({ onChange(viewport.copy(rotation = 0f)) }) { Text(tr("回正")) }
+                        StudioTextButton({ onChange(viewport.copy(rotation = 0f)) }) { Text(tr("回正")) }
                         ToolButton(Glyph.Redo, "向右旋转") {
                             onChange(viewport.rotateBy(StudioDefaults.rotationStep))
                         }

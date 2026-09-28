@@ -10,7 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -57,10 +56,7 @@ fun PageTransition(
         Box(
             Modifier.fillMaxSize()
                 .graphicsLayer {
-                    rotationY = -turn.value * StudioMotion.pageAngle
                     translationX = turn.value * StudioMotion.pageTravel.dp.toPx()
-                    transformOrigin = TransformOrigin(if (direction > 0f) 0f else 1f, 0.5f)
-                    cameraDistance = StudioMotion.pageCameraDistance.dp.toPx()
                 }
                 .then(if (active) Modifier else Modifier.clearAndSetSemantics {})
                 .onPreviewKeyEvent { !active }

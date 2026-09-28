@@ -155,7 +155,7 @@ fun WorkspaceHome(controller: StudioController, updates: UpdateController? = nul
                                 controller.resumeCanvas()
                             },
                             color = StudioTheme.panel,
-                            shape = RoundedCornerShape(20.dp),
+                            shape = StudioTheme.cardShape,
                         ) {
                             Row(
                                 Modifier.padding(14.dp),
@@ -200,9 +200,9 @@ fun WorkspaceHome(controller: StudioController, updates: UpdateController? = nul
                                 placeholder = { Text(tr("查找作品"), fontSize = 13.sp) },
                                 leadingIcon = { StudioIcon(Glyph.Search, StudioTheme.muted) },
                                 singleLine = true,
-                                shape = RoundedCornerShape(16.dp),
+                                shape = StudioTheme.cardShape,
                             )
-                            TextButton({ byName = !byName }) {
+                            StudioTextButton({ byName = !byName }) {
                                 Text(tr(if (byName) "名称" else "最近"))
                             }
                         }
@@ -259,7 +259,7 @@ private fun ProjectCard(controller: StudioController, project: RecentProject) {
         }
     var menu by remember { mutableStateOf(false) }
     val interaction = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(20.dp)
+    val shape = StudioTheme.cardShape
     val rim = remember {
         Brush.linearGradient(
             listOf(StudioTheme.surfaceRim.copy(alpha = 0.5f), StudioTheme.border.copy(alpha = 0.3f))
@@ -278,7 +278,7 @@ private fun ProjectCard(controller: StudioController, project: RecentProject) {
             ),
         shape = shape,
         color = StudioTheme.panel,
-        border = BorderStroke(1.dp, rim),
+        border = BorderStroke(StudioTheme.hairline, rim),
     ) {
         Column {
             Box(
@@ -314,7 +314,7 @@ private fun ProjectCard(controller: StudioController, project: RecentProject) {
                     DropdownMenu(
                         menu,
                         { menu = false },
-                        shape = RoundedCornerShape(14.dp),
+                        shape = StudioTheme.menuShape,
                         containerColor = StudioTheme.panel,
                     ) {
                         DropdownMenuItem(
@@ -347,14 +347,14 @@ fun UnsavedChangesDialog(controller: StudioController) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                TextButton(
+                StudioTextButton(
                     { controller.resolveUnsaved(UnsavedChoice.Discard) },
                     enabled = !controller.busy,
                 ) {
                     Text(tr("不保存"), color = StudioTheme.muted)
                 }
                 Spacer(Modifier.weight(1f))
-                TextButton(
+                StudioTextButton(
                     { controller.resolveUnsaved(UnsavedChoice.Cancel) },
                     enabled = !controller.busy,
                 ) {

@@ -12,26 +12,19 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawOutline
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 @Composable
 internal fun Modifier.controlFeedback(
@@ -69,35 +62,11 @@ internal fun Modifier.controlFeedback(
         }
         .clip(shape)
         .drawWithCache {
-            val sheen =
-                Brush.verticalGradient(
-                    listOf(StudioTheme.surfaceLight, Color.Transparent, StudioTheme.surfaceShade)
-                )
-            val highlight =
-                Brush.radialGradient(
-                    listOf(Color.White, Color.Transparent),
-                    center = Offset(size.width * 0.28f, 0f),
-                    radius = size.maxDimension.coerceAtLeast(1f),
-                )
-            val rim =
-                Brush.linearGradient(
-                    listOf(StudioTheme.accent, Color.Transparent),
-                    start = Offset.Zero,
-                    end = Offset(size.width * 0.8f, size.height),
-                )
-            val outline = shape.createOutline(size, layoutDirection, this)
             onDrawWithContent {
                 drawContent()
-                if (enabled) drawRect(sheen)
                 val brightness = light.value
                 if (brightness > 0f) {
-                    drawRect(highlight, alpha = brightness)
-                    drawOutline(
-                        outline,
-                        rim,
-                        alpha = brightness / StudioTheme.pressLight * 0.4f,
-                        style = Stroke(1.dp.toPx()),
-                    )
+                    drawRect(Color.White, alpha = brightness)
                 }
             }
         }
@@ -118,32 +87,59 @@ fun ActionButton(
     glyph: Glyph? = null,
     primary: Boolean = true,
 ) {
+    StudioButton(onClick, modifier, enabled, primary) {
+        if (glyph != null) {
+            StudioIcon(glyph, LocalContentColor.current, Modifier.size(16.dp))
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(tr(label))
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StudioButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    primary: Boolean = true,
+    content: @Composable RowScope.() -> Unit,
+) {
     val interaction = remember { MutableInteractionSource() }
     CompositionLocalProvider(LocalRippleConfiguration provides null) {
         Button(
             onClick,
             modifier
                 .heightIn(min = StudioTheme.controlSize)
-                .controlFeedback(interaction, CircleShape, enabled)
-                .gradientButtonSurface(interaction, primary, enabled, alwaysVisible = true),
+                .controlFeedback(interaction, StudioTheme.buttonShape, enabled)
+                .buttonSurface(
+                    primary,
+                    enabled,
+                    StudioTheme.buttonShape,
+                    alwaysVisible = true,
+                    primary = primary,
+                ),
             enabled = enabled,
             interactionSource = interaction,
-            shape = CircleShape,
+            shape = StudioTheme.buttonShape,
             elevation = null,
             colors =
                 ButtonDefaults.buttonColors(
                     containerColor = Color.Transparent,
-                    contentColor = if (primary) StudioTheme.onSelection else StudioTheme.text,
+                    contentColor = if (primary) StudioTheme.onAccent else StudioTheme.text,
                     disabledContainerColor = Color.Transparent,
                     disabledContentColor = StudioTheme.muted.copy(alpha = 0.4f),
                 ),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
         ) {
-            if (glyph != null) {
-                StudioIcon(glyph, LocalContentColor.current, Modifier.size(16.dp))
-                Spacer(Modifier.width(8.dp))
+            ProvideTextStyle(
+                LocalTextStyle.current.copy(
+                    fontSize = StudioTheme.buttonLabelSize,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                )
+            ) {
+                content()
             }
-            Text(tr(label), fontSize = 12.sp)
         }
     }
 }
@@ -156,11 +152,10 @@ fun ChoiceSurface(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(18.dp)
+    val shape = StudioTheme.cardShape
     val background =
         animateColorAsState(
-            if (selected) StudioTheme.selection.copy(alpha = 0.3f)
-            else StudioTheme.elevated.copy(alpha = 0.6f),
+            if (selected) StudioTheme.selection else StudioTheme.elevated,
             tween(StudioMotion.feedbackMillis),
         )
     Column(
@@ -175,7 +170,7 @@ fun ChoiceSurface(
             .controlFeedback(interaction, shape)
             .drawBehind { drawRect(background.value) }
             .border(
-                1.dp,
+                StudioTheme.hairline,
                 if (selected) StudioTheme.selectionBorder
                 else StudioTheme.border.copy(alpha = 0.45f),
                 shape,
@@ -183,4 +178,27 @@ fun ChoiceSurface(
             .padding(12.dp),
         content = content,
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StudioTextButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+    content: @Composable RowScope.() -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    CompositionLocalProvider(LocalRippleConfiguration provides null) {
+        TextButton(
+            onClick,
+            modifier.controlFeedback(interaction, StudioTheme.buttonShape, enabled),
+            enabled = enabled,
+            shape = StudioTheme.buttonShape,
+            interactionSource = interaction,
+            contentPadding = contentPadding,
+            content = content,
+        )
+    }
 }

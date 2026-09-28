@@ -70,9 +70,11 @@ kotlin {
         commonTest.dependencies { implementation(kotlin("test")) }
         jvmMain {
             kotlin.srcDir("src/jvmBridgeMain/kotlin")
+            kotlin.srcDir("src/skiaMain/kotlin")
             dependencies { implementation(compose.desktop.currentOs) }
         }
         getByName("androidMain").kotlin.srcDir("src/jvmBridgeMain/kotlin")
+        findByName("iosMain")?.kotlin?.srcDir("src/skiaMain/kotlin")
     }
 }
 

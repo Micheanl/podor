@@ -24,28 +24,92 @@ import org.jetbrains.skia.EncodedImageFormat
 @OptIn(ExperimentalComposeUiApi::class)
 class StudioLaunchTest {
     @Test
-    fun capturePathsPreview() = runBlocking {
+    fun titleControlsRemainClickableAboveTheContinuousSwirl() = runBlocking {
+        withContext(Dispatchers.Main) {
+            var minimized = 0
+            var maximized = 0
+            var closed = 0
+            val scene =
+                ImageComposeScene(800, 600) {
+                    StudioLaunch(
+                        false,
+                        StudioTheme.windowTitleHeight,
+                        {
+                            WindowTitleBar(
+                                app.podor.domain.Language.English,
+                                false,
+                                { minimized++ },
+                                { maximized++ },
+                                { closed++ },
+                                Color.Transparent,
+                            )
+                        },
+                    ) {
+                        Box(Modifier.fillMaxSize().background(Color.White))
+                    }
+                }
+            try {
+                scene.render(0).close()
+                for ((index, x) in listOf(685f, 731f, 777f).withIndex()) {
+                    scene.sendPointerEvent(PointerEventType.Press, Offset(x, 20f))
+                    scene.sendPointerEvent(PointerEventType.Release, Offset(x, 20f))
+                    scene.render((index + 1) * 16_666_667L).close()
+                }
+                assertEquals(1, minimized)
+                assertEquals(1, maximized)
+                assertEquals(1, closed)
+                scene.render(100_000_000L).use { image ->
+                    val pixels = image.toComposeImageBitmap().toPixelMap()
+                    assertTrue((0..650).count { pixels[it, 20].green > 0.9f } > 20)
+                    assertTrue(pixels[400, 300].green < 0.1f)
+                }
+            } finally {
+                scene.close()
+            }
+        }
+    }
+
+    @Test
+    fun captureSwirlPreview() = runBlocking {
         org.junit.Assume.assumeTrue(System.getenv("PODOR_CAPTURE_STARTUP") == "1")
         app.podor.desktop.engine.NativeLoader.load()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-        val files = object : app.podor.data.ProjectFiles {
-            override suspend fun open(): ByteArray? = null
-            override suspend fun save(bytes: ByteArray, png: Boolean) = false
-        }
+        val files =
+            object : app.podor.data.ProjectFiles {
+                override suspend fun open(): ByteArray? = null
+
+                override suspend fun save(bytes: ByteArray, png: Boolean) = false
+            }
         withContext(Dispatchers.Main) {
             val controller = app.podor.presentation.StudioController(files, scope)
             val ready = mutableStateOf(false)
-            val scene = ImageComposeScene(960, 600) {
-                StudioLaunch(ready.value) { app.podor.ui.WorkspaceHome(controller) }
-            }
-            val directory = Path.of("build/reports/startup-paths")
+            val scene =
+                ImageComposeScene(960, 600) {
+                    StudioLaunch(
+                        ready.value,
+                        StudioTheme.windowTitleHeight,
+                        { launching ->
+                            WindowTitleBar(
+                                app.podor.domain.Language.English,
+                                false,
+                                {},
+                                {},
+                                {},
+                                if (launching) Color.Transparent else StudioTheme.background,
+                            )
+                        },
+                    ) {
+                        app.podor.ui.WorkspaceHome(controller)
+                    }
+                }
+            val directory = Path.of("build/reports/startup-swirl")
             Files.createDirectories(directory)
             try {
                 scene.render(0).close()
                 delay((StudioMotion.launchHoldMillis + 100).toLong())
-                repeat(110) { frame ->
-                    if (frame == 48) ready.value = true
-                    scene.render((frame + 1) * 33_333_333L).use { image ->
+                repeat(220) { frame ->
+                    if (frame == 96) ready.value = true
+                    scene.render((frame + 1) * 16_666_667L).use { image ->
                         image.encodeToData(EncodedImageFormat.PNG)!!.use {
                             Files.write(directory.resolve("%03d.png".format(frame)), it.bytes)
                         }
@@ -61,7 +125,7 @@ class StudioLaunchTest {
     }
 
     @Test
-    fun flowingPathsStopAfterTheirBoundedEntranceAndDisappearWhenReady() =
+    fun swirlKeepsMovingWhileLoadingAndStopsWhenDismissed() =
         runBlocking<Unit> {
             withContext(Dispatchers.Main) {
                 val ready = mutableStateOf(false)
@@ -77,7 +141,7 @@ class StudioLaunchTest {
                     val before =
                         scene.render(500_000_000L).use { image ->
                             val pixels = image.toComposeImageBitmap().toPixelMap()
-                            assertEquals(StudioTheme.background.red, pixels[8, 8].red, 0.01f)
+                            assertTrue(pixels[8, 8].red < 0.15f)
                             assertTrue(
                                 (170..250).sumOf { y ->
                                     (280..360).count { x -> pixels[x, y].red > 0.2f }
@@ -97,9 +161,11 @@ class StudioLaunchTest {
                     assertFalse(before.contentEquals(after))
                     scene.render(9_000_000_000L).close()
                     scene.render(10_000_000_000L).close()
-                    assertFalse(scene.hasInvalidations())
+                    assertTrue(scene.hasInvalidations())
                     ready.value = true
-                    for (frame in 1..105) scene.render(10_000_000_000L + frame * 16_666_667L).close()
+                    for (frame in 1..105) scene
+                        .render(10_000_000_000L + frame * 16_666_667L)
+                        .close()
                     scene.render(11_800_000_000L).use { image ->
                         assertEquals(1f, image.toComposeImageBitmap().toPixelMap()[8, 8].red, 0.01f)
                     }
@@ -111,7 +177,7 @@ class StudioLaunchTest {
         }
 
     @Test
-    fun readyWorkspaceKeepsTheLogoDissolveWithFlowingPaths() =
+    fun readyWorkspaceKeepsTheLogoDissolveWithSwirl() =
         runBlocking<Unit> {
             withContext(Dispatchers.Main) {
                 val scene =
@@ -125,7 +191,7 @@ class StudioLaunchTest {
                         scene.render(500_000_000L + frame * 16_666_667L).use { image ->
                             if (frame == 50) {
                                 val red = image.toComposeImageBitmap().toPixelMap()[8, 8].red
-                                assertTrue(red > StudioTheme.background.red && red < 0.99f)
+                                assertTrue(red > StudioTheme.launchSwirlBack.red && red < 0.99f)
                             }
                         }
                     }

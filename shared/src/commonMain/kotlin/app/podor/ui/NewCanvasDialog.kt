@@ -58,7 +58,7 @@ fun NewCanvasDialog(controller: StudioController, onDismiss: () -> Unit) {
                 Box(
                     Modifier.fillMaxWidth()
                         .height(148.dp)
-                        .background(StudioTheme.background, RoundedCornerShape(18.dp)),
+                        .background(StudioTheme.background, StudioTheme.cardShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     Box(
@@ -105,7 +105,7 @@ fun NewCanvasDialog(controller: StudioController, onDismiss: () -> Unit) {
                                     height == preset.height.toString()
                             Row(
                                 Modifier.weight(1f)
-                                    .clip(RoundedCornerShape(16.dp))
+                                    .clip(StudioTheme.cardShape)
                                     .background(
                                         if (selected) StudioTheme.selection.copy(alpha = 0.25f)
                                         else StudioTheme.elevated
@@ -114,7 +114,7 @@ fun NewCanvasDialog(controller: StudioController, onDismiss: () -> Unit) {
                                         1.dp,
                                         if (selected) StudioTheme.selectionBorder
                                         else Color.Transparent,
-                                        RoundedCornerShape(16.dp),
+                                        StudioTheme.cardShape,
                                     )
                                     .clickable {
                                         width = preset.width.toString()

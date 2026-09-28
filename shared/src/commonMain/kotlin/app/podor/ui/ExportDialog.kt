@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,7 +37,7 @@ fun ExportDialog(controller: StudioController, onDismiss: () -> Unit) {
             ExportSettings(controller, options) { options = it }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(dismiss) { Text(tr("取消"), color = StudioTheme.muted) }
+            StudioTextButton(dismiss) { Text(tr("取消"), color = StudioTheme.muted) }
             Spacer(Modifier.width(10.dp))
             ActionButton(
                 "导出",
@@ -62,7 +61,7 @@ fun ExportSettings(
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Column(
             Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
+                .clip(StudioTheme.cardShape)
                 .background(StudioTheme.background)
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,

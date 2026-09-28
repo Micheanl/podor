@@ -3,6 +3,9 @@ package app.podor.desktop
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
@@ -22,6 +25,8 @@ class GpuRenderingTest {
     fun desktopLaunchUsesHardwareRenderer() =
         runBlocking<Unit> {
             assumeTrue(System.getenv("PODOR_GPU_TEST") == "1")
+            val ready = mutableStateOf(false)
+            val cadence = CompletableDeferred<List<Double>>()
             val window =
                 withContext(Dispatchers.Main) {
                     ComposeWindow().apply {
@@ -29,7 +34,18 @@ class GpuRenderingTest {
                         focusableWindowState = false
                         setBounds(-3000, -2000, 1360, 900)
                         setContent {
-                            StudioLaunch(true) {
+                            LaunchedEffect(Unit) {
+                                repeat(30) { withFrameNanos {} }
+                                val intervals = ArrayList<Double>()
+                                var previous = withFrameNanos { it }
+                                repeat(120) {
+                                    val current = withFrameNanos { it }
+                                    intervals.add((current - previous) / 1_000_000.0)
+                                    previous = current
+                                }
+                                cadence.complete(intervals)
+                            }
+                            StudioLaunch(ready.value) {
                                 Box(Modifier.fillMaxSize().background(StudioTheme.panel))
                             }
                         }
@@ -37,7 +53,9 @@ class GpuRenderingTest {
                     }
                 }
             try {
-                delay((StudioMotion.launchHoldMillis + StudioMotion.revealMillis + 200).toLong())
+                val samples = withTimeout(20_000) { cadence.await() }
+                withContext(Dispatchers.Main) { ready.value = true }
+                delay((StudioMotion.revealMillis + 200).toLong())
                 withContext(Dispatchers.Main) {
                     window.renderImmediately()
                     val api = window.renderApi.toString()
@@ -45,7 +63,7 @@ class GpuRenderingTest {
                     Files.createDirectories(report.parent)
                     Files.writeString(
                         report,
-                        "Renderer: $api\nLogo dissolve exercised in a 1360x900 native window outside the visible desktop. This is not a full-app frame-rate benchmark.\n",
+                        "Renderer: $api\n1360x900 Swirl, 120 Compose frame-clock intervals after 30 warm-up frames.\nMedian: ${samples.sorted()[60]} ms\nP95: ${samples.sorted()[114]} ms\nMaximum: ${samples.max()} ms\nNot a GPU completion or full-app benchmark.\n",
                     )
                     assertTrue(
                         api in listOf("DIRECT3D", "OPENGL", "METAL"),

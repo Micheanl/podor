@@ -71,7 +71,7 @@ fun CanvasBackgroundMenu(controller: StudioController) {
         DropdownMenu(
             expanded,
             { expanded = false },
-            shape = StudioTheme.layerShape,
+            shape = StudioTheme.menuShape,
             containerColor = StudioTheme.panel,
         ) {
             CanvasBackground.entries.forEach { mode ->

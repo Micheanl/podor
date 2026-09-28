@@ -27,7 +27,7 @@ fun SymmetryControls(controller: StudioController) {
         DropdownMenu(
             expanded,
             { expanded = false },
-            shape = StudioTheme.clipboardMenuShape,
+            shape = StudioTheme.menuShape,
             containerColor = StudioTheme.panel,
         ) {
             Column(
@@ -84,7 +84,7 @@ fun SymmetryControls(controller: StudioController) {
                             { controller.symmetry = settings.copy(guides = it) },
                         )
                     }
-                    TextButton({
+                    StudioTextButton({
                         controller.symmetry =
                             settings.copy(
                                 x = StudioDefaults.symmetryAxis,

@@ -11,7 +11,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -79,12 +78,12 @@ fun BrushControls(controller: StudioController) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Column(
                     Modifier.fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp))
+                        .clip(StudioTheme.cardShape)
                         .background(StudioTheme.background)
                         .border(
                             1.dp,
                             StudioTheme.border.copy(alpha = 0.6f),
-                            RoundedCornerShape(18.dp),
+                            StudioTheme.cardShape,
                         )
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
@@ -170,7 +169,7 @@ fun BrushControls(controller: StudioController) {
                         DropdownMenu(
                             collections,
                             { collections = false },
-                            shape = StudioTheme.clipboardMenuShape,
+                            shape = StudioTheme.menuShape,
                             containerColor = StudioTheme.panel,
                         ) {
                             BrushCollection.entries.forEach { collection ->

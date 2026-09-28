@@ -96,7 +96,7 @@ fun ImageSizeSettings(settings: ImageSize, preview: ImageBitmap?, onChange: (Ima
         }
         Row(Modifier.fillMaxWidth()) {
             StudioDefaults.imageScalePresets.forEach { percent ->
-                TextButton({ onChange(settings.scaled(percent)) }, Modifier.weight(1f)) {
+                StudioTextButton({ onChange(settings.scaled(percent)) }, Modifier.weight(1f)) {
                     Text("$percent%")
                 }
             }

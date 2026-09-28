@@ -212,6 +212,8 @@ class StudioRenderingTest {
                     val pixels = controller.frame
                     val viewport = controller.viewport
                     click(1300f, 124f)
+                    assertPaletteVisible()
+                    click(1314f, 32f)
                     scene.render(frame++ * 16_666_667L).use { image ->
                         assertEquals(
                             1f,
@@ -226,7 +228,7 @@ class StudioRenderingTest {
                             )
                         }
                     }
-                    click(1320f, 104f)
+                    click(1314f, 32f)
                     assertPaletteVisible()
                     repeat(3) {
                         click(1314f, 32f)

@@ -19,9 +19,9 @@ import kotlinx.coroutines.*
 import org.jetbrains.skia.EncodedImageFormat
 
 @OptIn(ExperimentalComposeUiApi::class)
-class GradientButtonRenderingTest {
+class ButtonRenderingTest {
     @Test
-    fun gradientButtonsKeepClicksAndDisabledStateAndStopAnimatingAfterHover() = runBlocking {
+    fun nativeButtonsKeepClicksAndDisabledStateAndStopAnimatingAfterHover() = runBlocking {
         withContext(Dispatchers.Main) {
             var clicks = 0
             val scene =
@@ -40,7 +40,7 @@ class GradientButtonRenderingTest {
                                     glyph = Glyph.Plus,
                                 )
                                 ActionButton(
-                                "打开作品",
+                                    "打开作品",
                                     {},
                                     Modifier.width(180.dp),
                                     glyph = Glyph.Folder,
@@ -70,7 +70,7 @@ class GradientButtonRenderingTest {
                 repeat(90) { render().close() }
             }
             fun capture(name: String) {
-                val output = Path.of("build/reports/screenshots/gradient-$name.png")
+                val output = Path.of("build/reports/screenshots/controls-$name.png")
                 Files.createDirectories(output.parent)
                 render().use { image ->
                     image.encodeToData(EncodedImageFormat.PNG)!!.use {
