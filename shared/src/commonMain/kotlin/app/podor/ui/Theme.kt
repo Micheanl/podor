@@ -14,6 +14,14 @@ import androidx.compose.ui.unit.sp
 import app.podor.domain.Language
 
 object StudioTheme {
+    const val launchPathCount = 22
+    const val launchPathAlpha = 0.38f
+    val launchPathWidth = 0.8.dp
+    val launchPathDrift = 70.dp
+    val launchPathColors = listOf(Color(0xFF8E80B7), Color(0xFFC3839A), Color(0xFF819CCA))
+    val launchWordmarkSize = 34.sp
+    val launchWordmarkSpacing = 5.sp
+    val launchWordmarkGap = 20.dp
     val buttonRimWidth = 2.dp
     val buttonGradient = listOf(Color(0xFFE993AF), Color(0xFFE8B773), Color(0xFF84CDBA), Color(0xFF829BE4), Color(0xFFBA91DC), Color(0xFFE993AF))
     const val buttonSecondaryRimAlpha = 0.45f
@@ -208,7 +216,9 @@ object StudioMotion {
     const val iconSelectAngle = -10f
     const val panelMillis = 280
     const val dismissMillis = 180
-    const val launchHoldMillis = 350
+    const val launchHoldMillis = 1600
+    const val launchPathsMillis = 8000
+    const val launchPathsEntranceFraction = 0.065f
     const val revealMillis = 1500
     const val dissolveTextureSize = 96
     const val dissolveSoftness = 0.12f

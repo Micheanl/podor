@@ -24,7 +24,44 @@ import org.jetbrains.skia.EncodedImageFormat
 @OptIn(ExperimentalComposeUiApi::class)
 class StudioLaunchTest {
     @Test
-    fun staticLogoDoesNotAnimateOrRedrawWhileWaitingForStartup() =
+    fun capturePathsPreview() = runBlocking {
+        org.junit.Assume.assumeTrue(System.getenv("PODOR_CAPTURE_STARTUP") == "1")
+        app.podor.desktop.engine.NativeLoader.load()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        val files = object : app.podor.data.ProjectFiles {
+            override suspend fun open(): ByteArray? = null
+            override suspend fun save(bytes: ByteArray, png: Boolean) = false
+        }
+        withContext(Dispatchers.Main) {
+            val controller = app.podor.presentation.StudioController(files, scope)
+            val ready = mutableStateOf(false)
+            val scene = ImageComposeScene(960, 600) {
+                StudioLaunch(ready.value) { app.podor.ui.WorkspaceHome(controller) }
+            }
+            val directory = Path.of("build/reports/startup-paths")
+            Files.createDirectories(directory)
+            try {
+                scene.render(0).close()
+                delay((StudioMotion.launchHoldMillis + 100).toLong())
+                repeat(110) { frame ->
+                    if (frame == 48) ready.value = true
+                    scene.render((frame + 1) * 33_333_333L).use { image ->
+                        image.encodeToData(EncodedImageFormat.PNG)!!.use {
+                            Files.write(directory.resolve("%03d.png".format(frame)), it.bytes)
+                        }
+                    }
+                }
+                assertFalse(scene.hasInvalidations())
+            } finally {
+                scene.close()
+                controller.shutdown()
+                scope.cancel()
+            }
+        }
+    }
+
+    @Test
+    fun flowingPathsStopAfterTheirBoundedEntranceAndDisappearWhenReady() =
         runBlocking<Unit> {
             withContext(Dispatchers.Main) {
                 val ready = mutableStateOf(false)
@@ -57,11 +94,13 @@ class StudioLaunchTest {
                         scene.render(3_000_000_000L).use { image ->
                             image.encodeToData(EncodedImageFormat.PNG)!!.use { it.bytes }
                         }
-                    assertContentEquals(before, after)
+                    assertFalse(before.contentEquals(after))
+                    scene.render(9_000_000_000L).close()
+                    scene.render(10_000_000_000L).close()
                     assertFalse(scene.hasInvalidations())
                     ready.value = true
-                    for (frame in 1..105) scene.render(3_000_000_000L + frame * 16_666_667L).close()
-                    scene.render(4_800_000_000L).use { image ->
+                    for (frame in 1..105) scene.render(10_000_000_000L + frame * 16_666_667L).close()
+                    scene.render(11_800_000_000L).use { image ->
                         assertEquals(1f, image.toComposeImageBitmap().toPixelMap()[8, 8].red, 0.01f)
                     }
                     assertFalse(scene.hasInvalidations())
@@ -72,7 +111,7 @@ class StudioLaunchTest {
         }
 
     @Test
-    fun readyWorkspaceKeepsTheLogoDissolveWithoutRainbow() =
+    fun readyWorkspaceKeepsTheLogoDissolveWithFlowingPaths() =
         runBlocking<Unit> {
             withContext(Dispatchers.Main) {
                 val scene =

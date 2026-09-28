@@ -8,12 +8,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.text.font.FontWeight
 import app.podor.domain.AppIdentity
 import app.podor.presentation.StudioController
 import app.podor.presentation.UpdateController
@@ -84,17 +86,30 @@ fun StudioLaunch(ready: Boolean, content: @Composable () -> Unit) {
                             alpha = 1f - StudioMotion.easing.transform(progress)
                         }
                         .background(StudioTheme.background)
-                )
+                ) {
+                    LaunchPaths(Modifier.fillMaxSize())
+                }
                 val mask = texture
-                Image(
-                    painterResource(Res.drawable.brand),
-                    AppIdentity.name,
-                    Modifier.size(StudioTheme.launchIconSize)
-                        .then(
-                            if (mask != null) Modifier.dissolve(mask) { reveal.value }
-                            else Modifier.graphicsLayer { alpha = 1f - reveal.value }
-                        ),
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Image(
+                        painterResource(Res.drawable.brand),
+                        AppIdentity.name,
+                        Modifier.size(StudioTheme.launchIconSize)
+                            .then(
+                                if (mask != null) Modifier.dissolve(mask) { reveal.value }
+                                else Modifier.graphicsLayer { alpha = 1f - reveal.value }
+                            ),
+                    )
+                    Spacer(Modifier.height(StudioTheme.launchWordmarkGap))
+                    Text(
+                        AppIdentity.name,
+                        color = StudioTheme.text,
+                        fontSize = StudioTheme.launchWordmarkSize,
+                        letterSpacing = StudioTheme.launchWordmarkSpacing,
+                        fontWeight = FontWeight.Light,
+                        modifier = Modifier.graphicsLayer { alpha = (1f - reveal.value / 0.3f).coerceIn(0f, 1f) },
+                    )
+                }
             }
         }
     }
