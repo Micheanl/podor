@@ -74,6 +74,10 @@ enum class ShortcutAction(val label: String, val default: Shortcut) {
     Export("导出图像", Shortcut("E", true)),
     Deselect("取消选区", Shortcut("D", true)),
     New("新建画布", Shortcut("N", true)),
+    Copy("复制当前图层", Shortcut("C", true)),
+    CopyVisible("复制可见画面", Shortcut("C", true, true)),
+    Cut("剪切", Shortcut("X", true)),
+    Paste("粘贴为新图层", Shortcut("V", true)),
 }
 
 @Serializable
@@ -86,14 +90,27 @@ data class Preferences(
 ) {
     fun shortcut(action: ShortcutAction) = shortcuts[action] ?: action.default
 
-    fun withMoveShortcut(): Preferences {
-        val action = ShortcutAction.MoveLayer
-        if (action in shortcuts || action.default !in shortcuts.values) return this
-        val used = ShortcutAction.entries.filter { it != action }.map(::shortcut).toSet()
-        val candidates =
-            sequenceOf(action.default.copy(shift = true), action.default.copy(alt = true)) +
-                ('A'..'Z').asSequence().map { Shortcut(it.toString(), shift = true, alt = true) }
-        return copy(shortcuts = shortcuts + (action to candidates.first { it !in used }))
+    fun withNewShortcuts(): Preferences {
+        var result = this
+        for (action in
+            listOf(
+                ShortcutAction.MoveLayer,
+                ShortcutAction.Copy,
+                ShortcutAction.CopyVisible,
+                ShortcutAction.Cut,
+                ShortcutAction.Paste,
+            )) {
+            if (action in result.shortcuts || action.default !in result.shortcuts.values) continue
+            val used = ShortcutAction.entries.filter { it != action }.map(result::shortcut).toSet()
+            val candidates =
+                sequenceOf(action.default.copy(shift = true), action.default.copy(alt = true)) +
+                    ('A'..'Z').asSequence().map {
+                        Shortcut(it.toString(), command = action.default.command, shift = true, alt = true)
+                    }
+            result =
+                result.copy(shortcuts = result.shortcuts + (action to candidates.first { it !in used }))
+        }
+        return result
     }
 
     fun valid() =

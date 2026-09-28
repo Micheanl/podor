@@ -19,6 +19,7 @@ class DesktopFiles(
 ) : ProjectFiles {
     private val workspace = DesktopWorkspace(storage.root)
     override val exportFormats = ExportFormat.entries
+    override val clipboard = DesktopClipboard()
 
     override suspend fun openImage(): OpenedProject? {
         val path = choose(false, images = true) ?: return null

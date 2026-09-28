@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.sp
 import app.podor.domain.Language
 
 object StudioTheme {
+    val clipboardMenuShape = RoundedCornerShape(18.dp)
+    val clipboardShortcutSize = 10.sp
     val selectionDockPadding = 6.dp
     val selectionDockGap = 4.dp
     val selectionDockBorder = 1.dp

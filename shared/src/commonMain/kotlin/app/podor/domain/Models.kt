@@ -184,6 +184,7 @@ data class BrushSettings(
 data class CanvasPreset(val label: String, val width: Int, val height: Int)
 
 object StudioDefaults {
+    const val maxClipboardBytes = 65 * 1024 * 1024
     val selectionKind = SelectionKind.Rectangle
     const val maxSelectionPoints = 4096
     const val selectionSampleDistance = 0.75f

@@ -75,7 +75,10 @@ compose.desktop {
     }
 }
 
-tasks.test { jvmArgs("--enable-native-access=ALL-UNNAMED") }
+tasks.test {
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+    systemProperty("podor.test.classpath", sourceSets.test.get().runtimeClasspath.asPath)
+}
 
 tasks
     .matching { it.name == "packageMsi" }

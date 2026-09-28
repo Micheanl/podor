@@ -5,20 +5,41 @@ import kotlinx.serialization.json.Json
 
 class PreferencesTest {
     @Test
+    fun addingClipboardActionsKeepsOlderBindingsAndResolvesAllNewConflicts() {
+        val old = Preferences(shortcuts = mapOf(
+            ShortcutAction.Brush to Shortcut("C", true),
+            ShortcutAction.Eraser to Shortcut("C", true, true),
+            ShortcutAction.Picker to Shortcut("X", true),
+            ShortcutAction.Fill to Shortcut("V", true),
+            ShortcutAction.Fit to Shortcut("C", command = true, alt = true),
+        ), language = Language.English)
+        val restored = Json.decodeFromString<Preferences>(Json.encodeToString(old)).withNewShortcuts()
+        assertTrue(restored.valid())
+        old.shortcuts.forEach { (action, key) -> assertEquals(key, restored.shortcut(action)) }
+        assertEquals(Language.English, restored.language)
+        assertEquals(restored, restored.withNewShortcuts())
+        for (action in ClipboardAction.entries) {
+            assertEquals(action.shortcut.default, Preferences().withNewShortcuts().shortcut(action.shortcut))
+        }
+        val assigned = Preferences().assign(ShortcutAction.Copy, Shortcut("P", command = true))
+        assertEquals(assigned, assigned.withNewShortcuts())
+    }
+
+    @Test
     fun addingMoveToolPreservesOlderCustomShortcuts() {
         val old = Preferences(shortcuts = mapOf(
             ShortcutAction.Brush to Shortcut("V"),
             ShortcutAction.Eraser to Shortcut("V", shift = true),
             ShortcutAction.Picker to Shortcut("V", alt = true),
         ), language = Language.English)
-        val restored = Json.decodeFromString<Preferences>(Json.encodeToString(old)).withMoveShortcut()
+        val restored = Json.decodeFromString<Preferences>(Json.encodeToString(old)).withNewShortcuts()
         assertTrue(restored.valid())
         old.shortcuts.forEach { (action, key) -> assertEquals(key, restored.shortcut(action)) }
         assertEquals(Language.English, restored.language)
-        assertEquals(restored, restored.withMoveShortcut())
-        assertEquals(Shortcut("V"), Preferences().withMoveShortcut().shortcut(ShortcutAction.MoveLayer))
+        assertEquals(restored, restored.withNewShortcuts())
+        assertEquals(Shortcut("V"), Preferences().withNewShortcuts().shortcut(ShortcutAction.MoveLayer))
         val assigned = Preferences().assign(ShortcutAction.MoveLayer, Shortcut("T", command = true))
-        assertEquals(assigned, assigned.withMoveShortcut())
+        assertEquals(assigned, assigned.withNewShortcuts())
     }
 
     @Test

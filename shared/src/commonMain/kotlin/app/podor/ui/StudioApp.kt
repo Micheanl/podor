@@ -30,6 +30,18 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
         var dialog by remember { mutableStateOf(StudioDialog.None) }
         val focus = remember { FocusRequester() }
         LaunchedEffect(Unit) { focus.requestFocus() }
+        fun clipboardShortcut(event: KeyEvent): Boolean {
+            if ((event.isCtrlPressed || event.isMetaPressed) && !event.isAltPressed) {
+                when (event.key) {
+                    Key.C, Key.X, Key.V -> return true
+                    else -> Unit
+                }
+            }
+            val binding = event.shortcut() ?: return false
+            return ClipboardAction.entries.any {
+                controller.preferences.shortcut(it.shortcut) == binding
+            }
+        }
         fun handleShortcut(event: KeyEvent): Boolean {
             if (event.type != KeyEventType.KeyDown || dialog != StudioDialog.None) return false
             if (event.key == Key.Escape && controller.tool == Tool.Select) {
@@ -62,6 +74,10 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                 ShortcutAction.Open -> dialog = StudioDialog.Open
                 ShortcutAction.Export -> dialog = StudioDialog.Export
                 ShortcutAction.New -> dialog = StudioDialog.New
+                ShortcutAction.Copy -> controller.clipboard(ClipboardAction.Copy)
+                ShortcutAction.CopyVisible -> controller.clipboard(ClipboardAction.CopyVisible)
+                ShortcutAction.Cut -> controller.clipboard(ClipboardAction.Cut)
+                ShortcutAction.Paste -> controller.clipboard(ClipboardAction.Paste)
             }
             return true
         }
@@ -71,12 +87,18 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                     .safeDrawingPadding()
                     .focusRequester(focus)
                     .onPreviewKeyEvent { event ->
-                        if (event.isCtrlPressed || event.isMetaPressed || event.isAltPressed)
+                        if (
+                            (event.isCtrlPressed || event.isMetaPressed || event.isAltPressed) &&
+                                !clipboardShortcut(event)
+                        )
                             handleShortcut(event)
                         else false
                     }
                     .onKeyEvent { event ->
-                        if (!event.isCtrlPressed && !event.isMetaPressed && !event.isAltPressed)
+                        if (
+                            (!event.isCtrlPressed && !event.isMetaPressed && !event.isAltPressed) ||
+                                clipboardShortcut(event)
+                        )
                             handleShortcut(event)
                         else false
                     }
@@ -84,7 +106,7 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
             ) {
                 val compact = maxWidth < 620.dp || maxHeight < 520.dp
                 val wide = !compact && maxWidth >= 1000.dp
-                val showDocument = maxWidth >= 820.dp
+                val showDocument = maxWidth >= if (controller.clipboardAvailable) 880.dp else 820.dp
                 fun openPanel(next: StudioPanel) {
                     panel = next
                     if (wide) inspectorExpanded = true else showInspector = true

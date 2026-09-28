@@ -97,6 +97,10 @@ fun StudioHeader(
                     leadingIcon = { StudioIcon(Glyph.Copy) },
                 )
                 HorizontalDivider(color = StudioTheme.border)
+                if (compact && controller.clipboardAvailable) {
+                    ClipboardMenuItems(controller) { menu = false }
+                    HorizontalDivider(color = StudioTheme.border)
+                }
                 DropdownMenuItem(
                     { Text(tr("清空当前图层")) },
                     {
@@ -127,6 +131,7 @@ fun StudioHeader(
         }
         ToolButton(Glyph.Home, "作品首页") { controller.home() }
         ToolButton(Glyph.Settings, "设置") { onDialog(StudioDialog.Settings) }
+        if (!compact && controller.clipboardAvailable) ClipboardMenu(controller)
         if (showDocument) {
             Spacer(Modifier.weight(1f))
             Row(

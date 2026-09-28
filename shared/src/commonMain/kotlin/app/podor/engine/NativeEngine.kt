@@ -23,4 +23,6 @@ object EngineOperation {
     const val THUMBNAIL = 7
     const val LAYERS = 8
     const val IMPORT_LAYER = 9
+    const val COPY_SELECTION = 10
+    const val PASTE_IMAGE = 11
 }

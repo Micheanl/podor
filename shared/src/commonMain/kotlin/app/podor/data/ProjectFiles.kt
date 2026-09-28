@@ -6,6 +6,8 @@ import app.podor.domain.ProjectReference
 import app.podor.domain.RecentProject
 
 interface ProjectFiles {
+    val clipboard: ImageClipboard? get() = null
+
     val exportFormats: List<ExportFormat>
         get() = listOf(ExportFormat.Png)
 

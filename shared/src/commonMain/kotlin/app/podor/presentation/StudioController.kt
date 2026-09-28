@@ -49,6 +49,7 @@ class StudioController(
     private var preparingLayerMove = false
 
     val exportFormats = files.exportFormats
+    val clipboardAvailable = files.clipboard != null
 
     var brush by mutableStateOf(BrushSettings())
     var preferences by mutableStateOf(Preferences())
@@ -113,6 +114,8 @@ class StudioController(
         data class File(val kind: FileAction) : Action
 
         data class Export(val options: ExportOptions) : Action
+
+        data class Clipboard(val kind: ClipboardAction) : Action
 
         data object Frame : Action
 
@@ -293,7 +296,7 @@ class StudioController(
                         runCatching {
                             parser
                                 .decodeFromString<Preferences>(bytes.decodeToString())
-                                .withMoveShortcut()
+                                .withNewShortcuts()
                                 .also {
                                     require(it.valid())
                                 }
@@ -520,6 +523,53 @@ class StudioController(
                                                 previews = RenderPreviews(revision, images)
                                             }
                                         }
+                                    }
+                                }
+                                is Action.Clipboard -> {
+                                    val clipboard =
+                                        files.clipboard ?: error("当前平台暂不支持图片剪贴板")
+                                    finishDrawing()
+                                    withContext(Dispatchers.Main) { busy = true }
+                                    if (action.kind == ClipboardAction.Paste) {
+                                        val image = clipboard.read() ?: error("剪贴板中没有图片")
+                                        info =
+                                            parser.decodeFromString(
+                                                engine
+                                                    .call(EngineOperation.PASTE_IMAGE, image.toNativePacket())
+                                                    .decodeToString()
+                                            )
+                                    } else {
+                                        val mode =
+                                            when (action.kind) {
+                                                ClipboardAction.Copy -> 0
+                                                ClipboardAction.CopyVisible -> 1
+                                                ClipboardAction.Cut -> 2
+                                                ClipboardAction.Paste -> error("复制选项无效")
+                                            }
+                                        val image =
+                                            clipboardImage(
+                                                engine.call(
+                                                    EngineOperation.COPY_SELECTION,
+                                                    byteArrayOf(mode.toByte()),
+                                                )
+                                            )
+                                        clipboard.write(image)
+                                        if (action.kind == ClipboardAction.Cut)
+                                            info =
+                                                command(
+                                                    jsonCommand("cut_selection") {
+                                                        put("revision", info.revision)
+                                                    }
+                                                )
+                                    }
+                                    publishFrame()
+                                    withContext(Dispatchers.Main) {
+                                        status =
+                                            when (action.kind) {
+                                                ClipboardAction.Copy, ClipboardAction.CopyVisible -> "已复制图片"
+                                                ClipboardAction.Cut -> "已剪切，可撤销"
+                                                ClipboardAction.Paste -> "已粘贴到新图层"
+                                            }
                                     }
                                 }
                                 is Action.Export -> {
@@ -861,6 +911,12 @@ class StudioController(
             )
         gesture.add(end)
         select(gesture.selection())
+    }
+
+    fun clipboard(action: ClipboardAction) {
+        if (!ready || busy || !clipboardAvailable || !hasCanvas || showWorkspace) return
+        cancelSelectionGesture()
+        scope.launch { actions.send(Action.Clipboard(action)) }
     }
 
     fun select(selection: Selection?) {

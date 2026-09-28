@@ -44,6 +44,8 @@ enum class Glyph(val resource: DrawableResource) {
     Palette(Res.drawable.ic_palette),
     Swap(Res.drawable.ic_swap),
     Copy(Res.drawable.ic_copy),
+    Cut(Res.drawable.ic_cut),
+    Clipboard(Res.drawable.ic_clipboard),
     Merge(Res.drawable.ic_merge),
     Home(Res.drawable.ic_home),
     Search(Res.drawable.ic_search),

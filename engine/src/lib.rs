@@ -1,6 +1,7 @@
 mod adjustments;
 mod blending;
 mod canvas;
+mod clipboard;
 mod ffi;
 mod history;
 mod import_layer;
@@ -17,6 +18,7 @@ mod selection;
 mod stabilizer;
 mod storage;
 mod translation;
+pub use clipboard::CopyMode;
 pub use resample::ResampleFilter;
 pub use selection::{SelectionKind, SelectionPoint, SelectionSpec};
 pub use storage::{ExportFormat, ExportOptions};
@@ -37,6 +39,9 @@ pub enum Command {
     },
     SelectShape {
         selection: SelectionSpec,
+    },
+    CutSelection {
+        revision: u64,
     },
     Fill {
         x: u32,
@@ -319,6 +324,22 @@ impl Engine {
                     }
                     Command::SelectShape { selection } => {
                         self.selection = Some(Selection::new(selection, self.document.bounds())?);
+                    }
+                    Command::CutSelection { revision } => {
+                        if revision != self.revision {
+                            return Err("画布已改变，请重试".into());
+                        }
+                        let (layer, dirty) =
+                            clipboard::cut(&self.document, self.selection.as_ref())?;
+                        if !dirty.is_empty() {
+                            let before = self.document.clone();
+                            *self.document.active_mut() = layer;
+                            self.dirty.extend(dirty);
+                            self.history
+                                .push(before, self.content_id, &self.document, true);
+                            self.revision += 1;
+                            self.content_id = self.revision;
+                        }
                     }
                     Command::New { width, height } => {
                         let document = Document::new(width, height)?;
@@ -692,12 +713,28 @@ impl Engine {
         if self.stroke.is_some() {
             return Err("请先结束当前笔画".into());
         }
+        let layer = import_layer::prepare(&self.document, bytes, name)?;
+        self.insert_image_layer(layer)
+    }
+    pub fn copy_selection(&self, mode: CopyMode) -> Result<Vec<u8>, String> {
+        if self.stroke.is_some() {
+            return Err("请先结束当前笔画".into());
+        }
+        clipboard::copy(&self.document, self.selection.as_ref(), mode)
+    }
+    pub fn paste_image(&mut self, packet: &[u8]) -> Result<(), String> {
+        if self.stroke.is_some() {
+            return Err("请先结束当前笔画".into());
+        }
+        let layer = clipboard::paste(&self.document, packet)?;
+        self.insert_image_layer(layer)
+    }
+    fn insert_image_layer(&mut self, layer: Layer) -> Result<(), String> {
         let next_id = self
             .document
             .next_id
             .checked_add(1)
             .ok_or("图层编号超出限制")?;
-        let layer = import_layer::prepare(&self.document, bytes, name)?;
         let before = self.document.clone();
         let index = self.layer_index(self.document.active)?;
         self.dirty.extend(layer.tiles.keys());

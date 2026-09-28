@@ -1,6 +1,6 @@
 use crate::{
     model::{Sample, MAX_COMMAND_BYTES, MAX_SELECTION_COMMAND_BYTES},
-    Command, Engine,
+    Command, CopyMode, Engine,
 };
 use std::{
     collections::HashMap,
@@ -95,6 +95,19 @@ pub fn dispatch(handle: u64, operation: u32, bytes: &[u8]) -> Result<Vec<u8>, St
             let name = bytes.get(4..4 + length).ok_or("导入图层数据无效")?;
             let name = std::str::from_utf8(name).map_err(|_| "图层属性无效")?;
             engine.import_layer(&bytes[4 + length..], name)?;
+            Ok(engine.state().to_string().into_bytes())
+        }
+        10 => {
+            let mode = match bytes {
+                [0] => CopyMode::Layer,
+                [1] => CopyMode::Visible,
+                [2] => CopyMode::Cut,
+                _ => return Err("复制选项无效".into()),
+            };
+            engine.copy_selection(mode)
+        }
+        11 => {
+            engine.paste_image(bytes)?;
             Ok(engine.state().to_string().into_bytes())
         }
         _ => Err("未知引擎操作".into()),

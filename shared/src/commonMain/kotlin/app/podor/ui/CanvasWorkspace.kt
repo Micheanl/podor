@@ -1,6 +1,7 @@
 package app.podor.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateRotation
@@ -9,6 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -48,6 +51,7 @@ fun CanvasWorkspace(
     endInset: Dp = 0.dp,
 ) {
     var fullSize by remember { mutableStateOf(Size.Zero) }
+    val focus = remember { FocusRequester() }
     val density by rememberUpdatedState(LocalDensity.current.density)
     val inset by rememberUpdatedState(with(LocalDensity.current) { endInset.toPx() })
     val viewSize by remember {
@@ -92,6 +96,8 @@ fun CanvasWorkspace(
     Box(
         modifier
             .clipToBounds()
+            .focusRequester(focus)
+            .focusable()
             .onSizeChanged { fullSize = Size(it.width.toFloat(), it.height.toFloat()) }
             .pointerInput(controller) {
                 var drawing = false
@@ -105,6 +111,8 @@ fun CanvasWorkspace(
                 try {
                     while (currentCoroutineContext().isActive) {
                         val event = awaitPointerEventScope { awaitPointerEvent() }
+                        if (event.changes.any { it.pressed && !it.previousPressed })
+                            focus.requestFocus()
                         if (
                             selectionGesture != null &&
                                 (controller.tool != Tool.Select ||
