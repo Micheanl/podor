@@ -16,6 +16,7 @@ if ($LASTEXITCODE) { exit $LASTEXITCODE }
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
 if ($env:OS -eq 'Windows_NT') {
     & "$PSScriptRoot/test-publish-rollback.ps1"
+    & "$PSScriptRoot/test-download-verification.ps1"
     & "$env:SystemRoot/System32/WindowsPowerShell/v1.0/powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PSScriptRoot/test-update-handoff.ps1"
     if ($LASTEXITCODE) { exit $LASTEXITCODE }
 }

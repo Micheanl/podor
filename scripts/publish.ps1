@@ -83,7 +83,11 @@ function Verify-PublicDownload($Url, $ExpectedHash, $ExpectedSize) {
         try {
             $buffer = [byte[]]::new(65536)
             $received = 0L
-            while (($count = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+            while ($true) {
+                $readTimeout = [Threading.CancellationTokenSource]::new([TimeSpan]::FromSeconds(30))
+                try { $count = $stream.ReadAsync($buffer, 0, $buffer.Length, $readTimeout.Token).GetAwaiter().GetResult() }
+                finally { $readTimeout.Dispose() }
+                if ($count -eq 0) { break }
                 $received += $count
                 if ($received -gt $ExpectedSize) { throw '大小不符' }
                 $hash.AppendData($buffer, 0, $count)
