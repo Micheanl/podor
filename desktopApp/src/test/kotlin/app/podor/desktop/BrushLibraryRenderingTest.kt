@@ -92,31 +92,31 @@ class BrushLibraryRenderingTest {
                     val document = controller.document
                     settle()
                     screenshot("brush-library")
-                    click(149f, 487f)
+                    click(149f, 514f)
                     assertEquals(setOf("ink"), controller.preferences.favoriteBrushes)
                     assertEquals(
                         "marker",
                         controller.brush.preset.id,
                         "Starring must not select the brush",
                     )
-                    click(318f, 371f)
+                    click(318f, 407f)
                     screenshot("brush-library-collections")
-                    click(275f, 473f)
+                    click(275f, 509f)
                     assertEquals(BrushCollection.Favorites, controller.brushCollection)
                     screenshot("brush-library-favorites")
-                    click(65f, 440f)
+                    click(65f, 477f)
                     assertEquals("ink", controller.brush.preset.id)
-                    click(274f, 371f)
+                    click(274f, 407f)
                     controller.brushCollection = BrushCollection.Extensions
                     controller.brushLibraryQuery = " STUDIO "
                     settle()
                     screenshot("brush-library-search")
-                    click(65f, 504f)
+                    click(65f, 540f)
                     assertEquals("plugin:studio/ink", controller.brush.preset.id)
                     controller.brushCollection = BrushCollection.Custom
                     controller.brushLibraryQuery = "My"
                     settle()
-                    click(65f, 504f)
+                    click(65f, 540f)
                     assertEquals("custom-1", controller.brush.preset.id)
                     controller.brushCollection = BrushCollection.All
                     controller.brushLibraryQuery = "no such brush"
@@ -125,6 +125,7 @@ class BrushLibraryRenderingTest {
                     assertSame(pixels, controller.frame)
                     assertEquals(document, controller.document)
                     assertFalse(controller.hasUnsavedChanges)
+                    repeat(200) { scene.render(frame++ * 16_666_667L).close() }
                     assertFalse(scene.hasInvalidations())
                 }
             } finally {

@@ -138,6 +138,7 @@ class LayerTransformTest {
             session.awaitState { controller.ready }
             withContext(Dispatchers.Main) { controller.file(StudioController.FileAction.Open) }
             session.awaitState { controller.hasCanvas && !controller.busy }
+            if (full) withContext(Dispatchers.Main) { scene.openInspector { session.render().close() } }
             session.block {
                 withContext(Dispatchers.Main) {
                     saved = null

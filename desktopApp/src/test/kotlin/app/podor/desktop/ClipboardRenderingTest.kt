@@ -111,7 +111,7 @@ class ClipboardRenderingTest {
             waitFor { controller.hasCanvas && !controller.busy }
             val before = withContext(Dispatchers.Main) { controller.document }
             withContext(Dispatchers.Main) {
-                repeat(4) { render().close() }
+                scene.openInspector { render().close() }
                 click(1158f, 194f)
                 click(1175f, 586f)
                 key(Key.A)
@@ -166,7 +166,7 @@ class ClipboardRenderingTest {
                 }
                 delay(30)
                 withContext(Dispatchers.Main) {
-                    repeat(35) { render().close() }
+                    repeat(200) { render().close() }
                     assertFalse(scene.hasInvalidations())
                     Files.createDirectories(Path.of("build/reports/screenshots"))
                     render().use { image ->

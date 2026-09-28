@@ -30,6 +30,18 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
+fun rememberStudioStartupReady(controller: StudioController): Boolean {
+    var prepared by remember(controller) { mutableStateOf(false) }
+    LaunchedEffect(controller.ready, controller.error) {
+        if (!prepared && (controller.ready || controller.error != null)) {
+            StudioTheme.appearance = controller.preferences.appearance
+            prepared = true
+        }
+    }
+    return prepared
+}
+
+@Composable
 fun PodorApp(
     controller: StudioController,
     updates: UpdateController? = null,

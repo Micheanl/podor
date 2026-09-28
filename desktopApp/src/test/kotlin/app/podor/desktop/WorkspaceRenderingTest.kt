@@ -132,7 +132,7 @@ class WorkspaceRenderingTest {
                             repeat(30) { scene.render((it + 1) * 16_666_667L).close() }
                             capture(scene, name, 600_000_000L)
                             if (name == "workspace") {
-                                val nextPosition = Offset(732f, 808f)
+                                val nextPosition = Offset(732f, 854f)
                                 scene.sendPointerEvent(PointerEventType.Press, nextPosition)
                                 scene.sendPointerEvent(PointerEventType.Release, nextPosition)
                                 repeat(45) { scene.render(700_000_000L + it * 16_666_667L).close() }

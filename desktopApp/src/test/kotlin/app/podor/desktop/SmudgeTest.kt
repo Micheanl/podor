@@ -99,6 +99,7 @@ class SmudgeTest {
         session { controller, scene, original, save ->
             var frame = 2L
             withContext(Dispatchers.Main) {
+                scene.openInspector { scene.render(frame++ * 16_666_667L).close() }
                 assertTrue(scene.sendKeyEvent(KeyEvent(Key.S, KeyEventType.KeyDown)))
                 scene.sendKeyEvent(KeyEvent(Key.S, KeyEventType.KeyUp))
                 assertEquals(Tool.Smudge, controller.tool)
@@ -112,8 +113,8 @@ class SmudgeTest {
                 controller.viewport = Viewport(rotation = 17f, mirrored = true)
                 scene.render(frame++ * 16_666_667L).close()
                 val opacity = controller.brush.opacity
-                scene.sendPointerEvent(PointerEventType.Press, Offset(1200f, 462f))
-                scene.sendPointerEvent(PointerEventType.Release, Offset(1200f, 462f))
+                scene.sendPointerEvent(PointerEventType.Press, Offset(1200f, 486f))
+                scene.sendPointerEvent(PointerEventType.Release, Offset(1200f, 486f))
                 scene.render(frame++ * 16_666_667L).close()
                 assertNotEquals(StudioDefaults.smudgeStrength, controller.smudgeStrength)
                 assertEquals(opacity, controller.brush.opacity)

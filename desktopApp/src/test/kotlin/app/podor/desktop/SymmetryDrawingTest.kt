@@ -84,6 +84,7 @@ class SymmetryDrawingTest {
                 withContext(Dispatchers.Main) { controller.file(StudioController.FileAction.Open) }
                 awaitState { controller.hasCanvas && !controller.busy }
                 withContext(Dispatchers.Main) {
+                    scene.openInspector { render() }
                     controller.viewport = Viewport(rotation = 17f, mirrored = true)
                     controller.brush =
                         controller.brush.copy(
@@ -102,11 +103,11 @@ class SymmetryDrawingTest {
                     assertEquals(SymmetryMode.Quadrant, controller.symmetry.mode)
                     click(1060f, 488f)
                     assertTrue(controller.symmetry.x < 0.4f)
-                    click(1050f, 681f)
+                    click(1050f, 705f)
                     assertEquals(0.5f, controller.symmetry.x)
-                    click(1225f, 620f)
+                    click(1225f, 644f)
                     assertFalse(controller.symmetry.guides)
-                    click(1225f, 620f)
+                    click(1225f, 644f)
                     assertTrue(controller.symmetry.guides)
                     controller.updatePreferences(
                         controller.preferences.copy(language = Language.English)

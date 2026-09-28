@@ -26,6 +26,7 @@ import app.podor.ui.PodorApp
 import app.podor.ui.StudioTheme
 import app.podor.ui.borderTrail
 import app.podor.ui.input.nativeTouchGuard
+import app.podor.ui.rememberStudioStartupReady
 import java.awt.Dimension
 import org.jetbrains.compose.resources.painterResource
 
@@ -52,6 +53,7 @@ fun main() {
                 controller.close()
             }
         }
+        if (!rememberStudioStartupReady(controller)) return@application
         val windowState = rememberWindowState(width = 1360.dp, height = 900.dp)
         val customChrome = remember { System.getProperty("os.name").startsWith("Windows") }
         Window(

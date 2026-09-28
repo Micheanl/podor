@@ -67,9 +67,9 @@ class PressureRenderingTest {
                         assertEquals(0f, brush.value.pressureCurve)
                         click(300f, 356f)
                         assertTrue(brush.value.pressureCurve in 0.3f..0.7f)
-                        click(30f, 432f)
+                        click(37f, 456f)
                         assertEquals(0f, brush.value.sizePressure, 0.03f)
-                        click(390f, 508f)
+                        click(383f, 525f)
                         assertEquals(1f, brush.value.opacityPressure, 0.03f)
                         assertEquals(
                             initial,

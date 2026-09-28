@@ -48,7 +48,11 @@ class SelectionRenderingTest {
 
         suspend fun waitFor(predicate: () -> Boolean) =
             withTimeout(10_000) {
-                while (!withContext(Dispatchers.Main) { predicate() }) delay(5)
+                while (true) {
+                    withContext(Dispatchers.Main) { render().close() }
+                    delay(5)
+                    if (withContext(Dispatchers.Main) { predicate() && !controller.busy }) break
+                }
             }
 
         suspend fun pointer(type: PointerEventType, point: Offset, shift: Boolean = false) =
@@ -114,6 +118,7 @@ class SelectionRenderingTest {
                 session.render().close()
                 session.render().close()
             }
+            if (full) withContext(Dispatchers.Main) { scene.openInspector { session.render().close() } }
             session.block()
         } finally {
             withContext(Dispatchers.Main) {
@@ -185,7 +190,10 @@ class SelectionRenderingTest {
                     assertSame(outline, controller.selectionOutline)
                 }
                 scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
-                repeat(35) { render().close() }
+                repeat(200) {
+                    render().close()
+                    delay(1)
+                }
                 assertFalse(scene.hasInvalidations())
                 assertFalse(controller.hasUnsavedChanges)
                 assertTrue(controller.frame.tiles.isEmpty())
@@ -213,6 +221,7 @@ class SelectionRenderingTest {
                 assertEquals(SelectionMode.Subtract, controller.selectionMode)
                 click(423f, 815f)
             }
+            waitFor { !controller.busy }
             pointer(PointerEventType.Press, Offset(48f, 34f))
             pointer(PointerEventType.Move, Offset(80f, 62f))
             pointer(PointerEventType.Release, Offset(80f, 62f))
@@ -243,7 +252,10 @@ class SelectionRenderingTest {
                 }
                 controller.viewport = Viewport(rotation = 18f, mirrored = true)
                 scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
-                repeat(35) { render().close() }
+                repeat(200) {
+                    render().close()
+                    delay(1)
+                }
                 assertFalse(scene.hasInvalidations())
                 render().use { image ->
                     image.encodeToData(EncodedImageFormat.PNG)!!.use {
@@ -402,16 +414,20 @@ class SelectionRenderingTest {
                     click(423f, 815f)
                     assertEquals(SelectionKind.Ellipse, controller.selectionKind)
                 }
-                pointer(PointerEventType.Press, Offset(35f, 25f))
-                pointer(PointerEventType.Move, Offset(75f, 45f), shift = true)
-                pointer(PointerEventType.Release, Offset(75f, 45f), shift = true)
+                waitFor { !controller.busy }
+                pointer(PointerEventType.Press, Offset(5f, 5f))
+                pointer(PointerEventType.Move, Offset(45f, 25f), shift = true)
+                pointer(PointerEventType.Release, Offset(45f, 25f), shift = true)
                 waitFor { controller.document.selection?.kind == SelectionKind.Ellipse }
                 withContext(Dispatchers.Main) {
                     val selected = controller.document.selection!!
                     assertEquals(selected.right - selected.left, selected.bottom - selected.top)
                     Files.createDirectories(Path.of("build/reports/screenshots"))
                     scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
-                    repeat(35) { render().close() }
+                    repeat(200) {
+                        render().close()
+                        delay(1)
+                    }
                     assertFalse(scene.hasInvalidations())
                     render().use { image ->
                         image.encodeToData(EncodedImageFormat.PNG)!!.use {

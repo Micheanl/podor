@@ -244,18 +244,36 @@ fn translation_keeps_other_layers_and_streams_uncomposited_pixels_once() {
 fn selected_pixels_move_without_moving_the_rest_and_undo_restores_all_pixels() {
     let mut engine = Engine::new(300, 200).unwrap();
     let mut tile = vec![0; TILE_BYTES];
-    for (x, y, color) in [(10u32, 10u32, [210, 50, 80, 255]), (70, 10, [10, 80, 100, 255])] {
+    for (x, y, color) in [
+        (10u32, 10u32, [210, 50, 80, 255]),
+        (70, 10, [10, 80, 100, 255]),
+    ] {
         let i = ((y * TILE_SIZE + x) * 4) as usize;
         tile[i..i + 4].copy_from_slice(&color);
     }
-    engine.document.layers[0].tiles.insert((0, 0), Arc::new(tile));
+    engine.document.layers[0]
+        .tiles
+        .insert((0, 0), Arc::new(tile));
     let before = engine.save().unwrap();
-    engine.command(serde_json::from_str(r#"{"type":"select","rect":{"left":5,"top":5,"right":20,"bottom":20}}"#).unwrap()).unwrap();
+    engine
+        .command(
+            serde_json::from_str(
+                r#"{"type":"select","rect":{"left":5,"top":5,"right":20,"bottom":20}}"#,
+            )
+            .unwrap(),
+        )
+        .unwrap();
     let revision = engine.state()["revision"].as_u64().unwrap();
     let preview = engine.selection_move_frame().unwrap();
     assert_eq!(u32::from_le_bytes(preview[12..16].try_into().unwrap()), 2);
     assert_eq!(engine.save().unwrap(), before);
-    engine.command(Command::TranslateLayer { id: 1, dx: 128, dy: 0 }).unwrap();
+    engine
+        .command(Command::TranslateLayer {
+            id: 1,
+            dx: 128,
+            dy: 0,
+        })
+        .unwrap();
     assert_eq!(pixel(&engine, 10, 10), [0; 4]);
     assert_eq!(pixel(&engine, 138, 10), [210, 50, 80, 255]);
     assert_eq!(pixel(&engine, 70, 10), [10, 80, 100, 255]);

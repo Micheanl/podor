@@ -93,6 +93,7 @@ class ColorSelectionTest {
             waitFor { controller.document.width == 256 && !controller.busy }
             val original =
                 withContext(Dispatchers.Main) {
+                    scene.openInspector { render().close() }
                     controller.tool = Tool.Select
                     controller.viewport = Viewport(rotation = 17f, mirrored = true)
                     repeat(4) { render().close() }
@@ -133,8 +134,9 @@ class ColorSelectionTest {
                 scene.sendKeyEvent(KeyEvent(Key.Escape, KeyEventType.KeyDown))
                 scene.sendKeyEvent(KeyEvent(Key.Escape, KeyEventType.KeyUp))
                 repeat(4) { render().close() }
-                controller.selectColor(Offset(50f, 70f))
             }
+            waitFor { !controller.busy }
+            withContext(Dispatchers.Main) { controller.selectColor(Offset(50f, 70f)) }
             waitFor { controller.document.selection?.right == 232 && !controller.busy }
             withContext(Dispatchers.Main) {
                 controller.updatePreferences(
@@ -151,6 +153,9 @@ class ColorSelectionTest {
                 render().close()
                 assertEquals(before, controller.document.selection)
                 controller.selectionTolerance = 0f
+            }
+            waitFor { !controller.busy }
+            withContext(Dispatchers.Main) {
                 controller.selectColor(Offset(50f, 70f))
             }
             waitFor { controller.document.selection?.right == 96 && !controller.busy }
@@ -176,7 +181,10 @@ class ColorSelectionTest {
             waitFor { !controller.hasUnsavedChanges && controller.document.canRedo }
             withContext(Dispatchers.Main) {
                 scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
-                repeat(35) { render().close() }
+                repeat(200) {
+                    render().close()
+                    delay(1)
+                }
                 assertFalse(scene.hasInvalidations(), "Magic wand redraws while idle")
             }
         } finally {

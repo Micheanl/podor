@@ -119,6 +119,7 @@ class ReferenceRenderingTest {
             val beforeExport = export()
             withContext(Dispatchers.Main) {
                 scene = ImageComposeScene(1360, 900) { StudioApp(controller) }
+                scene!!.openInspector { scene!!.render(tick++ * 16_666_667L).close() }
                 settle()
                 assertTrue(
                     scene!!.sendKeyEvent(

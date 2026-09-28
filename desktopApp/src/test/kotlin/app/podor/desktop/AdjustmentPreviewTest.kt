@@ -152,7 +152,7 @@ class AdjustmentPreviewTest {
             session.waitFor { controller.ready }
             withContext(Dispatchers.Main) { controller.file(StudioController.FileAction.Open) }
             session.waitFor { controller.document.width == 256 && !controller.busy }
-            withContext(Dispatchers.Main) { session.settle() }
+            withContext(Dispatchers.Main) { scene.openInspector { session.render().close() } }
             session.block()
         } finally {
             withContext(Dispatchers.Main) {
