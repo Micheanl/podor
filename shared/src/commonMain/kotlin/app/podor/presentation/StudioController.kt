@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.unit.IntOffset
 import app.podor.data.ProjectFiles
 import app.podor.domain.*
@@ -21,6 +22,8 @@ data class TileImage(val x: Int, val y: Int, val size: Int, val image: ImageBitm
 data class RenderFrame(val tiles: Map<Long, TileImage> = emptyMap())
 
 data class RenderPreviews(val revision: Long = -1, val images: Map<Int, ImageBitmap> = emptyMap())
+
+data class SelectionOutline(val path: Path?, val mask: List<TileImage>)
 
 class StudioController(
     private val files: ProjectFiles,
@@ -94,6 +97,12 @@ class StudioController(
         }
 
     var selectionKind by mutableStateOf(StudioDefaults.selectionKind)
+    var selectionMode by mutableStateOf(StudioDefaults.selectionMode)
+        private set
+
+    var selectionOutline by mutableStateOf<SelectionOutline?>(null)
+        private set
+
     var selectionCancellation by mutableIntStateOf(0)
         private set
     var viewport by mutableStateOf(Viewport())
@@ -195,6 +204,8 @@ class StudioController(
                 var drawing = false
                 var frameDirty = false
                 var previewRevision = -1L
+                var outlineId = -1L
+                var outline: SelectionOutline? = null
                 var savedContentId = 0L
                 var currentReference: ProjectReference? = null
                 val tiles = mutableMapOf<Long, TileImage>()
@@ -261,6 +272,50 @@ class StudioController(
                     return layers
                 }
                 suspend fun publishFrame() {
+                    val selected = info.selection
+                    if (outlineId != (selected?.id ?: 0L)) {
+                        outline = null
+                        if (
+                            selected != null &&
+                                (selected.combined || selected.raster) &&
+                                !selected.empty
+                        ) {
+                            val data = engine!!.call(EngineOperation.SELECTION_OUTLINE)
+                            outline =
+                                if (data.intAt(0) == 0) {
+                                    val path = Path()
+                                    for (offset in 4 until data.size step 16) {
+                                        path.moveTo(
+                                            data.intAt(offset).toFloat(),
+                                            data.intAt(offset + 4).toFloat(),
+                                        )
+                                        path.lineTo(
+                                            data.intAt(offset + 8).toFloat(),
+                                            data.intAt(offset + 12).toFloat(),
+                                        )
+                                    }
+                                    SelectionOutline(path, emptyList())
+                                } else {
+                                    val size = data.intAt(4)
+                                    var offset = 12
+                                    val mask = buildList {
+                                        repeat(data.intAt(8)) {
+                                            add(
+                                                TileImage(
+                                                    data.intAt(offset),
+                                                    data.intAt(offset + 4),
+                                                    size,
+                                                    alphaBitmap(data, offset + 8, size),
+                                                )
+                                            )
+                                            offset += 8 + size * size
+                                        }
+                                    }
+                                    SelectionOutline(null, mask)
+                                }
+                        }
+                        outlineId = selected?.id ?: 0L
+                    }
                     val bytes = engine!!.call(EngineOperation.FRAME)
                     val width = bytes.intAt(0)
                     val height = bytes.intAt(4)
@@ -287,6 +342,7 @@ class StudioController(
                             previews = RenderPreviews()
                         }
                         document = info
+                        selectionOutline = outline
                         hasUnsavedChanges = info.contentId != savedContentId
                         if (updated != null) frame = updated
                         layerMove?.let {
@@ -358,6 +414,7 @@ class StudioController(
                         previews = RenderPreviews()
                         viewport = Viewport()
                         symmetry = SymmetrySettings()
+                        selectionMode = StudioDefaults.selectionMode
                         projectReference = reference
                         hasCanvas = true
                         showWorkspace = false
@@ -665,6 +722,8 @@ class StudioController(
                                                 setOf(
                                                     "fill",
                                                     "select_shape",
+                                                    "combine_selection",
+                                                    "invert_selection",
                                                     "tone",
                                                     "blur",
                                                     "merge_visible",
@@ -674,6 +733,20 @@ class StudioController(
                                         )
                                             withContext(Dispatchers.Main) { busy = true }
                                         info = command(action.json)
+                                        if (
+                                            type in
+                                                setOf(
+                                                    "select_shape",
+                                                    "combine_selection",
+                                                    "invert_selection",
+                                                )
+                                        ) {
+                                            withContext(Dispatchers.Main) {
+                                                status =
+                                                    if (info.selection?.empty == true) "选区为空"
+                                                    else "选区已更新"
+                                            }
+                                        }
                                         if (type == "begin") drawing = true
                                         if (type == "end" || type == "cancel") drawing = false
                                         if (type == "new") {
@@ -1232,8 +1305,24 @@ class StudioController(
     }
 
     fun select(selection: Selection?) {
-        if (selection == null) clearSelection()
-        else command("select_shape") { put("selection", Json.encodeToJsonElement(selection)) }
+        if (selection == null) {
+            if (selectionMode == SelectionMode.Replace) clearSelection()
+        } else
+            command("combine_selection") {
+                put("selection", Json.encodeToJsonElement(selection))
+                put("mode", Json.encodeToJsonElement(selectionMode))
+            }
+    }
+
+    fun changeSelectionMode(mode: SelectionMode) {
+        cancelSelectionGesture()
+        selectionMode = mode
+    }
+
+    fun invertSelection() {
+        if (document.selection == null) return
+        cancelSelectionGesture()
+        command("invert_selection")
     }
 
     fun cancelSelectionGesture() {
@@ -1242,6 +1331,7 @@ class StudioController(
 
     fun clearSelection() {
         cancelSelectionGesture()
+        selectionMode = StudioDefaults.selectionMode
         command("select") { put("rect", JsonNull) }
     }
 

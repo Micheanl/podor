@@ -14,6 +14,14 @@ enum class SelectionKind(val label: String) {
     @SerialName("lasso") Lasso("自由套索"),
 }
 
+@Serializable
+enum class SelectionMode(val label: String) {
+    @SerialName("replace") Replace("新建选区"),
+    @SerialName("add") Add("添加到选区"),
+    @SerialName("subtract") Subtract("从选区减去"),
+    @SerialName("intersect") Intersect("与选区相交"),
+}
+
 @Serializable data class SelectionPoint(val x: Float, val y: Float)
 
 @Serializable
@@ -24,6 +32,10 @@ data class Selection(
     val bottom: Int,
     val kind: SelectionKind = SelectionKind.Rectangle,
     val points: List<SelectionPoint> = emptyList(),
+    val id: Long = 0,
+    val combined: Boolean = false,
+    val raster: Boolean = false,
+    val empty: Boolean = false,
 )
 
 class SelectionGesture(

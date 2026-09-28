@@ -195,6 +195,7 @@ object StudioDefaults {
     const val symmetryGuides = true
     const val maxClipboardBytes = 65 * 1024 * 1024
     val selectionKind = SelectionKind.Rectangle
+    val selectionMode = SelectionMode.Replace
     const val maxSelectionPoints = 4096
     const val selectionSampleDistance = 0.75f
     val resampleFilter = ResampleFilter.Lanczos3

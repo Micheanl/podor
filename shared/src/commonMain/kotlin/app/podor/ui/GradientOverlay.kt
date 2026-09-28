@@ -62,7 +62,7 @@ fun GradientOverlay(
                 }
                 if (frame.layer.id == preview.layerId) {
                     val line = preview.line
-                    if (line != null && line.valid()) {
+                    if (line != null && line.valid() && preview.selection?.empty != true) {
                         val settings = controller.gradient
                         val colors =
                             listOf(

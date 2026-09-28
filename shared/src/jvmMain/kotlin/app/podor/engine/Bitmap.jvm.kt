@@ -14,3 +14,11 @@ actual fun rgbaBitmap(bytes: ByteArray, offset: Int, size: Int): ImageBitmap =
             size * 4,
         )
         .toComposeImageBitmap()
+
+actual fun alphaBitmap(bytes: ByteArray, offset: Int, size: Int): ImageBitmap =
+    Image.makeRaster(
+            ImageInfo(size, size, ColorType.ALPHA_8, ColorAlphaType.PREMUL),
+            bytes.copyOfRange(offset, offset + size * size),
+            size,
+        )
+        .toComposeImageBitmap()

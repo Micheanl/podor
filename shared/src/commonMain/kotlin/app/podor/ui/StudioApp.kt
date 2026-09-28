@@ -120,6 +120,7 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                 ShortcutAction.Undo -> controller.command("undo")
                 ShortcutAction.Redo -> controller.command("redo")
                 ShortcutAction.Deselect -> controller.clearSelection()
+                ShortcutAction.InvertSelection -> controller.invertSelection()
                 ShortcutAction.Save -> controller.file(StudioController.FileAction.Save)
                 ShortcutAction.Open -> dialog = StudioDialog.Open
                 ShortcutAction.Export -> dialog = StudioDialog.Export

@@ -14,6 +14,10 @@ import androidx.compose.ui.unit.sp
 import app.podor.domain.Language
 
 object StudioTheme {
+    val combinedSelectionDash = 5.dp
+    val combinedSelectionHalo = 2.dp
+    val combinedSelectionLine = 1.5.dp
+    val combinedSelectionFill = Color(0x55E9B3C1)
     val paletteShape = RoundedCornerShape(16.dp)
     val palettePadding = 8.dp
     val paletteGap = 8.dp

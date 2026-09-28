@@ -3,6 +3,7 @@ package app.podor.engine
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import java.nio.ByteBuffer
 
 actual fun rgbaBitmap(bytes: ByteArray, offset: Int, size: Int): ImageBitmap {
     val pixels =
@@ -15,3 +16,8 @@ actual fun rgbaBitmap(bytes: ByteArray, offset: Int, size: Int): ImageBitmap {
         }
     return Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888).asImageBitmap()
 }
+
+actual fun alphaBitmap(bytes: ByteArray, offset: Int, size: Int): ImageBitmap =
+    Bitmap.createBitmap(size, size, Bitmap.Config.ALPHA_8)
+        .apply { copyPixelsFromBuffer(ByteBuffer.wrap(bytes, offset, size * size)) }
+        .asImageBitmap()

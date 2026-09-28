@@ -75,7 +75,8 @@ class SelectionPerformanceTest {
                 val slowDispatches = mutableListOf<String>()
                 val eventThread = withContext(Dispatchers.Main) { Thread.currentThread() }
                 var busyTicks = 0
-                var elapsed = 0.0
+                val timings = linkedMapOf<String, Double>()
+                val renders = linkedMapOf<String, Double>()
                 val measuring = AtomicBoolean(true)
                 val heartbeat =
                     launch(Dispatchers.Default) {
@@ -98,16 +99,96 @@ class SelectionPerformanceTest {
                             )
                         }
                     }
-                val start = System.nanoTime()
-                try {
+                suspend fun measure(name: String, change: () -> Unit, ready: () -> Boolean) {
+                    val start = System.nanoTime()
+                    withContext(Dispatchers.Main) { change() }
+                    waitFor { ready() && !controller.busy }
+                    timings[name] = (System.nanoTime() - start) / 1_000_000.0
                     withContext(Dispatchers.Main) {
-                        controller.select(Selection(4, 4, 4092, 4092, SelectionKind.Lasso, points))
+                        val renderStart = System.nanoTime()
+                        nativeWindow.renderImmediately()
+                        renders[name] = (System.nanoTime() - renderStart) / 1_000_000.0
                     }
-                    waitFor {
-                        controller.document.selection?.kind == SelectionKind.Lasso &&
-                            !controller.busy
+                }
+                try {
+                    measure(
+                        "4096-point lasso",
+                        {
+                            controller.select(
+                                Selection(4, 4, 4092, 4092, SelectionKind.Lasso, points)
+                            )
+                        },
+                        { controller.document.selection?.kind == SelectionKind.Lasso },
+                    )
+                    withContext(Dispatchers.Main) {
+                        assertEquals(points.size, controller.document.selection!!.points.size)
+                        assertTrue(controller.document.selection!!.raster)
+                        assertNull(controller.selectionOutline!!.path)
+                        assertTrue(controller.selectionOutline!!.mask.isNotEmpty())
                     }
-                    elapsed = (System.nanoTime() - start) / 1_000_000.0
+                    for (mode in listOf(SelectionMode.Add, SelectionMode.Subtract)) {
+                        val id =
+                            withContext(Dispatchers.Main) { controller.document.selection!!.id }
+                        measure(
+                            mode.name,
+                            {
+                                controller.changeSelectionMode(mode)
+                                controller.select(
+                                    Selection(512, 512, 3584, 3584, SelectionKind.Ellipse)
+                                )
+                            },
+                            { controller.document.selection?.id != id },
+                        )
+                    }
+                    val previous =
+                        withContext(Dispatchers.Main) { controller.document.selection!!.id }
+                    measure(
+                        "Invert",
+                        { controller.invertSelection() },
+                        { controller.document.selection?.id != previous },
+                    )
+                    val comb = buildList {
+                        add(SelectionPoint(0f, 0f))
+                        add(SelectionPoint(4096f, 0f))
+                        add(SelectionPoint(4096f, 4096f))
+                        for (index in 511 downTo 1) {
+                            val x = index * 8f
+                            val (first, last) = if (index % 2 == 1) 4096f to 8f else 8f to 4096f
+                            add(SelectionPoint(x, first))
+                            add(SelectionPoint(x, last))
+                        }
+                        add(SelectionPoint(0f, 8f))
+                    }
+                    measure(
+                        "Vertical strips",
+                        {
+                            controller.changeSelectionMode(SelectionMode.Replace)
+                            controller.select(
+                                Selection(0, 0, 4096, 4096, SelectionKind.Lasso, comb)
+                            )
+                        },
+                        { controller.document.selection?.kind == SelectionKind.Lasso },
+                    )
+                    measure(
+                        "Intersect 512 x 512 strips, cached mask",
+                        {
+                            controller.changeSelectionMode(SelectionMode.Intersect)
+                            controller.select(
+                                Selection(
+                                    0,
+                                    0,
+                                    4096,
+                                    4096,
+                                    SelectionKind.Lasso,
+                                    comb.map { SelectionPoint(it.y, it.x) },
+                                )
+                            )
+                        },
+                        {
+                            controller.document.selection?.combined == true &&
+                                controller.selectionOutline?.mask?.isNotEmpty() == true
+                        },
+                    )
                     delay(250)
                 } finally {
                     measuring.set(false)
@@ -122,7 +203,19 @@ class SelectionPerformanceTest {
                     assertFalse(controller.hasUnsavedChanges)
                     assertFalse(controller.document.canUndo)
                     assertTrue(controller.frame.tiles.isEmpty())
-                    assertEquals(points.size, controller.document.selection!!.points.size)
+                    val outline = assertNotNull(controller.selectionOutline)
+                    assertNull(outline.path)
+                    assertTrue(outline.mask.isNotEmpty())
+                    assertTrue(outline.mask.size <= 64)
+                    val pixels = controller.frame
+                    val rotationRenders = DoubleArray(20) {
+                        val start = System.nanoTime()
+                        controller.viewport = Viewport(rotation = it * 3f)
+                        nativeWindow.renderImmediately()
+                        assertSame(outline, controller.selectionOutline)
+                        assertSame(pixels, controller.frame)
+                        (System.nanoTime() - start) / 1_000_000.0
+                    }
                     val api = nativeWindow.renderApi.toString()
                     assertTrue(api in listOf("DIRECT3D", "OPENGL", "METAL"))
                     waits.sort()
@@ -133,24 +226,30 @@ class SelectionPerformanceTest {
                         """
                     Renderer: $api
                     4096 x 4096 canvas, 4096-point crossing zigzag lasso, antialiased mask.
-                    Selection build and state publication: %.2f ms
-                    Forced synchronous render, measured separately: %.2f ms
+                    Selection build and state publication:
+                    ${timings.entries.joinToString("\n                    ") { (name, time) -> "$name: %.2f ms".format(time) }}
+                    Forced synchronous renders, measured separately:
+                    ${renders.entries.joinToString("\n                    ") { (name, time) -> "$name: %.2f ms".format(time) }}
+                    Repeated cached mask render: %.2f ms
+                    Cached mask rotation, max of 20 forced renders: %.2f ms
                     Main-thread dispatch: median %.2f ms, p95 %.2f ms, max %.2f ms; $busyTicks responses during mask build.
                     Native window is outside the visible desktop. This does not measure presented FPS.
                 """
                             .trimIndent()
                             .format(
-                                elapsed,
                                 renderMillis,
+                                rotationRenders.max(),
                                 waits[waits.size / 2],
                                 waits[waits.size * 95 / 100],
                                 waits.last(),
                             ) + "\n" + slowDispatches.joinToString("\n\n"),
                     )
                     assertTrue(
-                        renderMillis < 250.0,
-                        "Dense selection outline took $renderMillis ms to render",
+                        renders.values.all { it < 250.0 },
+                        "Selection renders: $renders",
                     )
+                    assertTrue(renderMillis < 100.0)
+                    assertTrue(rotationRenders.max() < 100.0, "Rotation renders: ${rotationRenders.toList()}")
                     assertTrue(
                         waits.last() < 250.0,
                         "Dense selection blocked the event thread for ${waits.last()} ms",

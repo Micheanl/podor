@@ -1,4 +1,7 @@
-use crate::model::{Rect, MAX_DIMENSION, MAX_SELECTION_POINTS};
+use crate::model::{
+    Rect, MAX_DIMENSION, MAX_SELECTION_OUTLINE_LENGTH, MAX_SELECTION_OUTLINE_SEGMENTS,
+    MAX_SELECTION_POINTS, SELECTION_PREVIEW_TILE_SIZE,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Default, Deserialize, Serialize, PartialEq, Eq)]
@@ -8,6 +11,15 @@ pub enum SelectionKind {
     Rectangle,
     Ellipse,
     Lasso,
+}
+
+#[derive(Clone, Copy, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SelectionMode {
+    Replace,
+    Add,
+    Subtract,
+    Intersect,
 }
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
@@ -32,6 +44,10 @@ pub struct Selection {
     spec: SelectionSpec,
     #[serde(skip)]
     mask: Vec<u8>,
+    id: u64,
+    combined: bool,
+    raster: bool,
+    empty: bool,
 }
 
 impl Selection {
@@ -86,11 +102,223 @@ impl Selection {
         if !mask.is_empty() && !mask.iter().any(|&value| value != 0) {
             return Err("选区为空".into());
         }
-        Ok(Self { spec, mask })
+        let raster = spec.kind == SelectionKind::Lasso
+            && spec
+                .points
+                .iter()
+                .zip(spec.points.iter().cycle().skip(1))
+                .map(|(a, b)| f64::from(a.x - b.x).hypot(f64::from(a.y - b.y)))
+                .sum::<f64>()
+                > MAX_SELECTION_OUTLINE_LENGTH as f64;
+        Ok(Self {
+            spec,
+            mask,
+            id: 0,
+            combined: false,
+            raster,
+            empty: false,
+        })
+    }
+
+    pub fn combine(
+        previous: Option<&Self>,
+        next: Self,
+        mode: SelectionMode,
+    ) -> Result<Self, String> {
+        if matches!(mode, SelectionMode::Replace) {
+            return Ok(next);
+        }
+        let Some(previous) = previous else {
+            return if matches!(mode, SelectionMode::Add) {
+                Ok(next)
+            } else {
+                Err("请先创建选区".into())
+            };
+        };
+        let a = previous.bounds();
+        let b = next.bounds();
+        let bounds = match mode {
+            SelectionMode::Add => Rect {
+                left: a.left.min(b.left),
+                top: a.top.min(b.top),
+                right: a.right.max(b.right),
+                bottom: a.bottom.max(b.bottom),
+            },
+            SelectionMode::Subtract => a,
+            SelectionMode::Intersect => a.intersect(b).unwrap_or(Rect {
+                left: 0,
+                top: 0,
+                right: 1,
+                bottom: 1,
+            }),
+            SelectionMode::Replace => unreachable!(),
+        };
+        let mut mask = Vec::with_capacity(
+            ((bounds.right - bounds.left) * (bounds.bottom - bounds.top)) as usize,
+        );
+        for y in bounds.top..bounds.bottom {
+            for x in bounds.left..bounds.right {
+                let a = previous.coverage(x, y);
+                let b = next.coverage(x, y);
+                mask.push(match mode {
+                    SelectionMode::Add => a.max(b),
+                    SelectionMode::Subtract => a.saturating_sub(b),
+                    SelectionMode::Intersect => a.min(b),
+                    SelectionMode::Replace => unreachable!(),
+                });
+            }
+        }
+        Ok(Self::from_mask(bounds, mask))
+    }
+
+    pub fn invert(&self, canvas: Rect) -> Self {
+        let mut mask = Vec::with_capacity((canvas.right * canvas.bottom) as usize);
+        for y in canvas.top..canvas.bottom {
+            for x in canvas.left..canvas.right {
+                mask.push(255 - self.coverage(x, y));
+            }
+        }
+        Self::from_mask(canvas, mask)
+    }
+
+    fn from_mask(area: Rect, mut mask: Vec<u8>) -> Self {
+        let width = (area.right - area.left) as usize;
+        let mut bounds = Rect {
+            left: area.right,
+            top: area.bottom,
+            right: 0,
+            bottom: 0,
+        };
+        for (y, row) in mask.chunks_exact(width).enumerate() {
+            if let Some(left) = row.iter().position(|&value| value != 0) {
+                let right = row.iter().rposition(|&value| value != 0).unwrap() + 1;
+                bounds.left = bounds.left.min(area.left + left as u32);
+                bounds.right = bounds.right.max(area.left + right as u32);
+                bounds.top = bounds.top.min(area.top + y as u32);
+                bounds.bottom = area.top + y as u32 + 1;
+            }
+        }
+        let empty = bounds.right == 0;
+        if empty {
+            bounds = Rect {
+                left: 0,
+                top: 0,
+                right: 1,
+                bottom: 1,
+            };
+            mask.clear();
+            mask.push(0);
+        } else if bounds != area {
+            let cropped_width = (bounds.right - bounds.left) as usize;
+            for (row, y) in (bounds.top..bounds.bottom).enumerate() {
+                let start = (y - area.top) as usize * width + (bounds.left - area.left) as usize;
+                mask.copy_within(start..start + cropped_width, row * cropped_width);
+            }
+            mask.truncate(cropped_width * (bounds.bottom - bounds.top) as usize);
+        }
+        Self {
+            spec: SelectionSpec {
+                bounds,
+                kind: SelectionKind::Rectangle,
+                points: Vec::new(),
+            },
+            mask,
+            id: 0,
+            combined: true,
+            raster: false,
+            empty,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.empty
+    }
+
+    pub fn identify(&mut self, id: u64) {
+        self.id = if self.combined || self.raster { id } else { 0 };
+    }
+
+    pub fn outline(&self) -> Option<Vec<[u32; 4]>> {
+        if self.raster {
+            return None;
+        }
+        let bounds = self.bounds();
+        let mut lines = Vec::new();
+        let mut length = 0;
+        if self.empty {
+            return Some(lines);
+        }
+        for horizontal in [true, false] {
+            let (from, to, start, end) = if horizontal {
+                (bounds.top, bounds.bottom, bounds.left, bounds.right)
+            } else {
+                (bounds.left, bounds.right, bounds.top, bounds.bottom)
+            };
+            for axis in from..=to {
+                let mut run = None;
+                for position in start..=end {
+                    let edge = position < end
+                        && if horizontal {
+                            (self.coverage(position, axis) > 0)
+                                != (axis > 0 && self.coverage(position, axis - 1) > 0)
+                        } else {
+                            (self.coverage(axis, position) > 0)
+                                != (axis > 0 && self.coverage(axis - 1, position) > 0)
+                        };
+                    if edge {
+                        run.get_or_insert(position);
+                    } else if let Some(first) = run.take() {
+                        length += u64::from(position - first);
+                        if lines.len() == MAX_SELECTION_OUTLINE_SEGMENTS
+                            || length > MAX_SELECTION_OUTLINE_LENGTH
+                        {
+                            return None;
+                        }
+                        lines.push(if horizontal {
+                            [first, axis, position, axis]
+                        } else {
+                            [axis, first, axis, position]
+                        });
+                    }
+                }
+            }
+        }
+        Some(lines)
     }
 
     pub fn bounds(&self) -> Rect {
         self.spec.bounds
+    }
+
+    pub fn outline_mask(&self) -> Vec<u8> {
+        let size = SELECTION_PREVIEW_TILE_SIZE;
+        let mut bytes = vec![0; 8];
+        bytes[..4].copy_from_slice(&size.to_le_bytes());
+        let bounds = self.bounds();
+        let mut count = 0u32;
+        for ty in bounds.top / size..bounds.bottom.div_ceil(size) {
+            for tx in bounds.left / size..bounds.right.div_ceil(size) {
+                let mut tile = vec![0; (size * size) as usize];
+                let mut nonzero = false;
+                for y in bounds.top.max(ty * size)..bounds.bottom.min((ty + 1) * size) {
+                    let left = bounds.left.max(tx * size);
+                    let right = bounds.right.min((tx + 1) * size);
+                    let row = &self.row(y).unwrap()
+                        [(left - bounds.left) as usize..(right - bounds.left) as usize];
+                    let offset = ((y % size) * size + left % size) as usize;
+                    tile[offset..offset + row.len()].copy_from_slice(row);
+                    nonzero |= row.iter().any(|&value| value != 0);
+                }
+                if nonzero {
+                    bytes.extend(tx.to_le_bytes());
+                    bytes.extend(ty.to_le_bytes());
+                    bytes.extend(tile);
+                    count += 1;
+                }
+            }
+        }
+        bytes[4..8].copy_from_slice(&count.to_le_bytes());
+        bytes
     }
 
     pub fn row(&self, y: u32) -> Option<&[u8]> {

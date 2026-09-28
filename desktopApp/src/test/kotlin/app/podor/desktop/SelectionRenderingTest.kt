@@ -7,6 +7,7 @@ import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.*
@@ -68,9 +69,14 @@ class SelectionRenderingTest {
         }
     }
 
-    private suspend fun withSession(full: Boolean = false, block: suspend Session.() -> Unit) {
+    private suspend fun withSession(
+        full: Boolean = false,
+        width: Int = 128,
+        height: Int = 96,
+        block: suspend Session.() -> Unit,
+    ) {
         NativeLoader.load()
-        val native = createNativeEngine(128, 96)
+        val native = createNativeEngine(width, height)
         val project =
             try {
                 native.call(EngineOperation.SAVE)
@@ -98,7 +104,11 @@ class SelectionRenderingTest {
         try {
             session.waitFor { controller.ready }
             withContext(Dispatchers.Main) { controller.file(StudioController.FileAction.Open) }
-            session.waitFor { controller.document.width == 128 && !controller.busy }
+            session.waitFor {
+                controller.document.width == width &&
+                    controller.document.height == height &&
+                    !controller.busy
+            }
             withContext(Dispatchers.Main) {
                 controller.tool = Tool.Select
                 session.render().close()
@@ -111,6 +121,217 @@ class SelectionRenderingTest {
                 controller.shutdown()
             }
             scope.cancel()
+        }
+    }
+
+    @Test
+    fun denseSelectionUsesCachedMaskAndLeavesHolesTransparent() = runBlocking {
+        withSession(width = 512, height = 512) {
+            val comb = buildList {
+                add(SelectionPoint(0f, 0f))
+                add(SelectionPoint(512f, 0f))
+                add(SelectionPoint(512f, 512f))
+                for (x in 511 downTo 1) {
+                    val (first, last) = if (x % 2 == 1) 512f to 1f else 1f to 512f
+                    add(SelectionPoint(x.toFloat(), first))
+                    add(SelectionPoint(x.toFloat(), last))
+                }
+                add(SelectionPoint(0f, 1f))
+            }
+            withContext(Dispatchers.Main) {
+                controller.select(Selection(0, 0, 512, 512, SelectionKind.Lasso, comb))
+            }
+            waitFor {
+                controller.document.selection?.kind == SelectionKind.Lasso && !controller.busy
+            }
+            withContext(Dispatchers.Main) {
+                controller.changeSelectionMode(SelectionMode.Intersect)
+                controller.select(
+                    Selection(
+                        0,
+                        0,
+                        512,
+                        512,
+                        SelectionKind.Lasso,
+                        comb.map { SelectionPoint(it.y, it.x) },
+                    )
+                )
+            }
+            waitFor {
+                controller.document.selection?.combined == true &&
+                    controller.selectionOutline?.mask?.isNotEmpty() == true &&
+                    !controller.busy
+            }
+            withContext(Dispatchers.Main) {
+                val outline = assertNotNull(controller.selectionOutline)
+                assertNull(outline.path)
+                assertEquals(1, outline.mask.size)
+                val mask = outline.mask.first { it.x == 0 && it.y == 0 }.image.toPixelMap()
+                assertEquals(1f, mask[3, 3].alpha)
+                assertEquals(0f, mask[2, 3].alpha)
+                assertEquals(0f, mask[3, 2].alpha)
+                controller.viewport = Viewport(zoom = 8f)
+                repeat(3) { render().close() }
+                render().use { image ->
+                    val pixels = image.toComposeImageBitmap().toPixelMap()
+                    val selected = position(Offset(257.5f, 257.5f))
+                    val hole = position(Offset(256.5f, 257.5f))
+                    assertTrue(pixels[selected.x.toInt(), selected.y.toInt()].green < 0.95f)
+                    assertEquals(1f, pixels[hole.x.toInt(), hole.y.toInt()].green, 0.005f)
+                }
+                repeat(30) {
+                    scene.sendPointerEvent(PointerEventType.Move, Offset(100f + it, 200f))
+                    render().close()
+                    assertSame(outline, controller.selectionOutline)
+                }
+                scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
+                repeat(35) { render().close() }
+                assertFalse(scene.hasInvalidations())
+                assertFalse(controller.hasUnsavedChanges)
+                assertTrue(controller.frame.tiles.isEmpty())
+            }
+        }
+    }
+
+    @Test
+    fun combinedSelectionControlsRetainHolesAndCacheTheirOutline() = runBlocking {
+        withSession(full = true) {
+            withContext(Dispatchers.Main) { controller.select(Selection(12, 12, 112, 84)) }
+            waitFor { controller.document.selection != null && !controller.busy }
+            withContext(Dispatchers.Main) {
+                click(548f, 815f)
+                render().use { image ->
+                    image.encodeToData(EncodedImageFormat.PNG)!!.use {
+                        Files.createDirectories(Path.of("build/reports/screenshots"))
+                        Files.write(
+                            Path.of("build/reports/screenshots/selection-mode-menu.png"),
+                            it.bytes,
+                        )
+                    }
+                }
+                click(600f, 715f)
+                assertEquals(SelectionMode.Subtract, controller.selectionMode)
+                click(447f, 815f)
+            }
+            pointer(PointerEventType.Press, Offset(48f, 34f))
+            pointer(PointerEventType.Move, Offset(80f, 62f))
+            pointer(PointerEventType.Release, Offset(80f, 62f))
+            waitFor {
+                controller.document.selection?.combined == true &&
+                    controller.selectionOutline != null &&
+                    !controller.busy
+            }
+            val outline = withContext(Dispatchers.Main) { controller.selectionOutline }
+            val revision = withContext(Dispatchers.Main) { controller.document.revision }
+            withContext(Dispatchers.Main) {
+                assertFalse(controller.hasUnsavedChanges)
+                controller.brush = controller.brush.copy(color = 0xFF8B2942, opacity = 1f)
+                controller.fill(Offset(20f, 20f))
+            }
+            waitFor { controller.document.revision > revision && !controller.busy }
+            withContext(Dispatchers.Main) {
+                val frame = controller.frame
+                val pixels = frame.tiles.values.single().image.toPixelMap()
+                assertEquals(139f / 255f, pixels[20, 20].red, 0.005f)
+                assertEquals(1f, pixels[64, 48].red, 0.005f)
+                assertEquals(1f, pixels[4, 4].red, 0.005f)
+                repeat(40) {
+                    scene.sendPointerEvent(PointerEventType.Move, Offset(300f + it, 400f))
+                    render().close()
+                    assertSame(outline, controller.selectionOutline)
+                    assertSame(frame, controller.frame)
+                }
+                controller.viewport = Viewport(rotation = 18f, mirrored = true)
+                scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
+                repeat(35) { render().close() }
+                assertFalse(scene.hasInvalidations())
+                render().use { image ->
+                    image.encodeToData(EncodedImageFormat.PNG)!!.use {
+                        Files.write(
+                            Path.of("build/reports/screenshots/selection-combined.png"),
+                            it.bytes,
+                        )
+                    }
+                }
+                controller.changeSelectionMode(SelectionMode.Add)
+            }
+            val original = withContext(Dispatchers.Main) { controller.document.selection }
+            pointer(PointerEventType.Press, Offset(8f, 8f))
+            pointer(PointerEventType.Release, Offset(8f, 8f))
+            delay(50)
+            withContext(Dispatchers.Main) {
+                assertEquals(original, controller.document.selection)
+                assertTrue(
+                    scene.sendKeyEvent(
+                        KeyEvent(
+                            Key.I,
+                            KeyEventType.KeyDown,
+                            isCtrlPressed = true,
+                            isShiftPressed = true,
+                        )
+                    )
+                )
+                scene.sendKeyEvent(
+                    KeyEvent(Key.I, KeyEventType.KeyUp, isCtrlPressed = true, isShiftPressed = true)
+                )
+            }
+            waitFor { controller.document.selection?.id != original?.id && !controller.busy }
+            withContext(Dispatchers.Main) {
+                controller.changeSelectionMode(SelectionMode.Intersect)
+                controller.select(Selection(56, 40, 72, 56))
+            }
+            waitFor { controller.document.selection?.left == 56 && !controller.busy }
+            withContext(Dispatchers.Main) {
+                controller.changeSelectionMode(SelectionMode.Subtract)
+                controller.select(Selection(56, 40, 72, 56))
+            }
+            waitFor { controller.document.selection?.empty == true && !controller.busy }
+            withContext(Dispatchers.Main) {
+                assertNull(controller.selectionOutline)
+                assertEquals("选区为空", controller.status)
+                click(649f, 815f)
+            }
+            waitFor { controller.document.selection == null }
+            withContext(Dispatchers.Main) {
+                assertEquals(SelectionMode.Replace, controller.selectionMode)
+                assertNull(controller.error)
+            }
+        }
+    }
+
+    @Test
+    fun emptySelectionDoesNotPreviewOrCommitAGradient() = runBlocking {
+        withSession {
+            withContext(Dispatchers.Main) { controller.select(Selection(10, 10, 40, 40)) }
+            waitFor { controller.document.selection != null }
+            withContext(Dispatchers.Main) {
+                controller.changeSelectionMode(SelectionMode.Subtract)
+                controller.select(Selection(10, 10, 40, 40))
+            }
+            waitFor { controller.document.selection?.empty == true && !controller.busy }
+            val revision = withContext(Dispatchers.Main) { controller.document.revision }
+            withContext(Dispatchers.Main) {
+                controller.tool = Tool.Gradient
+                render().close()
+            }
+            waitFor { controller.gradientPreview != null && !controller.busy }
+            withContext(Dispatchers.Main) {
+                controller.gradient = controller.gradient.copy(from = 0xFF8B2942, to = 0xFF8B2942)
+                controller.previewGradient(GradientLine(Offset(20f, 20f), Offset(90f, 70f)))
+                repeat(3) { render().close() }
+                render().use { image ->
+                    val point = position(Offset(0.5f, 0.5f))
+                    val pixels = image.toComposeImageBitmap().toPixelMap()
+                    assertEquals(1f, pixels[point.x.toInt(), point.y.toInt()].green, 0.005f)
+                }
+                controller.commitGradient()
+            }
+            waitFor { controller.gradientPreview == null && !controller.busy }
+            withContext(Dispatchers.Main) {
+                assertEquals(revision, controller.document.revision)
+                assertFalse(controller.hasUnsavedChanges)
+                assertNull(controller.error)
+            }
         }
     }
 
@@ -173,7 +394,7 @@ class SelectionRenderingTest {
                 withContext(Dispatchers.Main) {
                     controller.updatePreferences(controller.preferences.copy(language = language))
                     repeat(4) { render().close() }
-                    click(495f, 815f)
+                    click(447f, 815f)
                     assertEquals(SelectionKind.Ellipse, controller.selectionKind)
                 }
                 pointer(PointerEventType.Press, Offset(35f, 25f))
@@ -201,7 +422,7 @@ class SelectionRenderingTest {
                 }
                 waitFor { controller.document.selection == original }
                 withContext(Dispatchers.Main) {
-                    click(543f, 815f)
+                    click(495f, 815f)
                     assertEquals(SelectionKind.Lasso, controller.selectionKind)
                 }
                 pointer(PointerEventType.Press, Offset(35f, 25f))
@@ -238,7 +459,7 @@ class SelectionRenderingTest {
                     assertEquals(original, controller.document.selection)
                 }
             }
-            withContext(Dispatchers.Main) { click(601f, 815f) }
+            withContext(Dispatchers.Main) { click(649f, 815f) }
             waitFor { controller.document.selection == null }
             withContext(Dispatchers.Main) {
                 assertFalse(controller.hasUnsavedChanges)

@@ -12,6 +12,8 @@ expect fun createNativeEngine(width: Int, height: Int): NativeEngine
 
 expect fun rgbaBitmap(bytes: ByteArray, offset: Int, size: Int): ImageBitmap
 
+expect fun alphaBitmap(bytes: ByteArray, offset: Int, size: Int): ImageBitmap
+
 object EngineOperation {
     const val COMMAND = 0
     const val SAMPLES = 1
@@ -28,4 +30,5 @@ object EngineOperation {
     const val LAYER_BOUNDS = 12
     const val SELECTION_FRAME = 13
     const val PALETTE = 14
+    const val SELECTION_OUTLINE = 15
 }

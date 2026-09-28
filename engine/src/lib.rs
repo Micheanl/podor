@@ -26,7 +26,7 @@ mod translation;
 pub use clipboard::CopyMode;
 pub use gradient::{Gradient, GradientShape};
 pub use resample::ResampleFilter;
-pub use selection::{SelectionKind, SelectionPoint, SelectionSpec};
+pub use selection::{SelectionKind, SelectionMode, SelectionPoint, SelectionSpec};
 pub use storage::{ExportFormat, ExportOptions};
 pub use transform::LayerTransform;
 
@@ -52,6 +52,11 @@ pub enum Command {
     SelectShape {
         selection: SelectionSpec,
     },
+    CombineSelection {
+        selection: SelectionSpec,
+        mode: SelectionMode,
+    },
+    InvertSelection,
     CutSelection {
         revision: u64,
     },
@@ -243,6 +248,7 @@ pub struct Engine {
     revision: u64,
     content_id: u64,
     selection: Option<Selection>,
+    selection_id: u64,
     preview_revision: Option<u64>,
     preview_job: Option<std::thread::JoinHandle<(u64, Vec<u8>)>>,
 }
@@ -257,6 +263,7 @@ impl Engine {
             revision: 0,
             content_id: 0,
             selection: None,
+            selection_id: 0,
             preview_revision: None,
             preview_job: None,
         })
@@ -329,7 +336,10 @@ impl Engine {
                     }
                 }
                 if let Some(stroke) = self.stroke.take() {
-                    if stroke.changed && (stroke.smudge.is_none() || stroke.modified) {
+                    if stroke.changed
+                        && (stroke.smudge.is_none() || stroke.modified)
+                        && !self.selection.as_ref().is_some_and(Selection::is_empty)
+                    {
                         self.history
                             .push(stroke.before, self.content_id, &self.document, true);
                         self.revision += 1;
@@ -390,12 +400,28 @@ impl Engine {
                         }
                     }
                     Command::Select { rect } => {
-                        self.selection = rect
+                        let selection = rect
                             .map(|rect| Selection::rectangle(rect, self.document.bounds()))
                             .transpose()?;
+                        self.set_selection(selection);
                     }
                     Command::SelectShape { selection } => {
-                        self.selection = Some(Selection::new(selection, self.document.bounds())?);
+                        self.set_selection(Some(Selection::new(
+                            selection,
+                            self.document.bounds(),
+                        )?));
+                    }
+                    Command::CombineSelection { selection, mode } => {
+                        let next = Selection::new(selection, self.document.bounds())?;
+                        self.set_selection(Some(Selection::combine(
+                            self.selection.as_ref(),
+                            next,
+                            mode,
+                        )?));
+                    }
+                    Command::InvertSelection => {
+                        let selection = self.selection.as_ref().ok_or("请先创建选区")?;
+                        self.set_selection(Some(selection.invert(self.document.bounds())));
                     }
                     Command::CutSelection { revision } => {
                         if revision != self.revision {
@@ -584,6 +610,14 @@ impl Engine {
                         }
                     }
                     command => {
+                        if self.selection.as_ref().is_some_and(Selection::is_empty)
+                            && matches!(
+                                command,
+                                Command::Fill { .. } | Command::Tone { .. } | Command::Blur { .. }
+                            )
+                        {
+                            return Ok(self.state());
+                        }
                         let pixels_changed = !matches!(command, Command::SetProtection { .. });
                         let before = self.document.clone();
                         if let Err(error) = self
@@ -849,6 +883,34 @@ impl Engine {
     }
     pub fn selection_frame(&self) -> Vec<u8> {
         gradient::selection_frame(self.selection.as_ref())
+    }
+    fn set_selection(&mut self, mut selection: Option<Selection>) {
+        self.selection_id += 1;
+        if let Some(selection) = selection.as_mut() {
+            selection.identify(self.selection_id);
+        }
+        self.selection = selection;
+    }
+    pub fn selection_outline(&self) -> Vec<u8> {
+        let Some(selection) = &self.selection else {
+            return 0u32.to_le_bytes().to_vec();
+        };
+        match selection.outline() {
+            Some(lines) => {
+                let mut bytes = 0u32.to_le_bytes().to_vec();
+                for line in lines {
+                    for value in line {
+                        bytes.extend(value.to_le_bytes());
+                    }
+                }
+                bytes
+            }
+            None => {
+                let mut bytes = 1u32.to_le_bytes().to_vec();
+                bytes.extend(selection.outline_mask());
+                bytes
+            }
+        }
     }
     pub fn layer_bounds(&self) -> Result<Rect, String> {
         let layer = self

@@ -42,6 +42,7 @@ pub fn dispatch(handle: u64, operation: u32, bytes: &[u8]) -> Result<Vec<u8>, St
     let mut map = engines().lock().map_err(|_| "引擎状态异常")?;
     let engine = map.get_mut(&handle).ok_or("画布已关闭")?;
     match operation {
+        15 => Ok(engine.selection_outline()),
         14 => {
             let [count] = bytes else {
                 return Err("色卡数量无效".into());
@@ -58,7 +59,12 @@ pub fn dispatch(handle: u64, operation: u32, bytes: &[u8]) -> Result<Vec<u8>, St
                 return Err("命令过长".into());
             }
             let command = serde_json::from_slice(bytes).map_err(|_| "命令格式无效")?;
-            if bytes.len() > MAX_COMMAND_BYTES && !matches!(command, Command::SelectShape { .. }) {
+            if bytes.len() > MAX_COMMAND_BYTES
+                && !matches!(
+                    command,
+                    Command::SelectShape { .. } | Command::CombineSelection { .. }
+                )
+            {
                 return Err("命令过长".into());
             }
             Ok(engine.command(command)?.to_string().into_bytes())

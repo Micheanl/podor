@@ -33,6 +33,7 @@ import app.podor.domain.GradientGesture
 import app.podor.domain.GradientHandle
 import app.podor.domain.SelectionGesture
 import app.podor.domain.SelectionKind
+import app.podor.domain.SelectionMode
 import app.podor.domain.StudioDefaults
 import app.podor.domain.SymmetryMode
 import app.podor.domain.Tool
@@ -705,6 +706,8 @@ fun CanvasWorkspace(
             GradientOverlay(controller, it, viewSize, Modifier.matchParentSize())
         }
         SymmetryGuides(controller, viewSize, Modifier.matchParentSize())
+        if (selectionGesture == null || controller.selectionMode != SelectionMode.Replace)
+            CachedSelectionOverlay(controller, viewSize, Modifier.matchParentSize())
         Canvas(Modifier.matchParentSize().graphicsLayer()) {
             val document = controller.document
             val scale = controller.viewport.scale(viewSize, document)
@@ -714,7 +717,7 @@ fun CanvasWorkspace(
             val selected =
                 if (draft != null) {
                     if (draft.kind == SelectionKind.Lasso) null else draft.selection()
-                } else document.selection
+                } else document.selection?.takeUnless { it.combined || it.raster || it.empty }
             val kind = draft?.kind ?: selected?.kind
             selectionPath.reset()
             var outlineLength = 0f
