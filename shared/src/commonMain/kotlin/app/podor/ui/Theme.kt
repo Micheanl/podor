@@ -14,6 +14,12 @@ import androidx.compose.ui.unit.sp
 import app.podor.domain.Language
 
 object StudioTheme {
+    val referenceHandle = 7.dp
+    val referenceHitRadius = 12.dp
+    val referenceOutline = 1.dp
+    val referenceToolbarGap = 10.dp
+    val repositoryLinkGap = 10.dp
+    val repositoryLinkLabelSize = 12.sp
     val curveGap = 8.dp
     val curveLabelSize = 11.sp
     val curveInset = 12.dp

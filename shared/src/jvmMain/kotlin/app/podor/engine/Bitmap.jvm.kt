@@ -7,10 +7,10 @@ import org.jetbrains.skia.ColorType
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.ImageInfo
 
-actual fun rgbaBitmap(bytes: ByteArray, offset: Int, size: Int): ImageBitmap =
+actual fun rgbaBitmap(bytes: ByteArray, offset: Int, size: Int, height: Int): ImageBitmap =
     Image.makeRaster(
-            ImageInfo(size, size, ColorType.RGBA_8888, ColorAlphaType.PREMUL),
-            bytes.copyOfRange(offset, offset + size * size * 4),
+            ImageInfo(size, height, ColorType.RGBA_8888, ColorAlphaType.PREMUL),
+            bytes.copyOfRange(offset, offset + size * height * 4),
             size * 4,
         )
         .toComposeImageBitmap()

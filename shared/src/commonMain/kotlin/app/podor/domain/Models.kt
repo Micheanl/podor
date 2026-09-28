@@ -187,6 +187,11 @@ data class BrushSettings(
 data class CanvasPreset(val label: String, val width: Int, val height: Int)
 
 object StudioDefaults {
+    const val maxReferenceImages = 8
+    const val maxReferenceEdge = 2048
+    const val referenceInitialFraction = 0.42f
+    const val referenceMinZoom = 0.25f
+    const val referenceMaxZoom = 8f
     const val maxCurvePoints = 16
     val canvasBackground = CanvasBackground.White
     const val layerOpacity = 1f

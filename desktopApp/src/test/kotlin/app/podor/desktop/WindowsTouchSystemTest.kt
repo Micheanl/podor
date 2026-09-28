@@ -227,6 +227,7 @@ class WindowsTouchSystemTest {
                             "Single-finger painting was lost",
                         )
                         val cancelled = first + Offset(0f, 60f)
+                        withContext(Dispatchers.Main) { controller.references.visible = true }
                         inject(Contact(1, cancelled, down))
                         inject(Contact(1, cancelled + Offset(25f, 0f), update))
                         api.SendMessageW(handle, 0x001F, 0, 0)

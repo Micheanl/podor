@@ -5,9 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -15,10 +16,14 @@ import app.podor.domain.*
 import app.podor.presentation.UpdateController
 import app.podor.resources.Res
 import app.podor.resources.brand
+import app.podor.resources.ic_gitee
+import app.podor.resources.ic_github
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun UpdateSettings(controller: UpdateController?, onInstall: (AppRelease, String) -> Unit) {
+    val links = LocalUriHandler.current
+    var linkFailed by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -34,6 +39,31 @@ fun UpdateSettings(controller: UpdateController?, onInstall: (AppRelease, String
                 )
             }
         }
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(StudioTheme.repositoryLinkGap),
+        ) {
+            listOf(
+                    Triple("GitHub", AppIdentity.githubUrl, Res.drawable.ic_github),
+                    Triple("Gitee", AppIdentity.giteeUrl, Res.drawable.ic_gitee),
+                )
+                .forEach { (label, url, icon) ->
+                    OutlinedButton(
+                        { linkFailed = runCatching { links.openUri(url) }.isFailure },
+                        Modifier.weight(1f),
+                    ) {
+                        Image(painterResource(icon), null, Modifier.size(StudioTheme.iconSize))
+                        Spacer(Modifier.width(StudioTheme.repositoryLinkGap))
+                        Text(label, color = StudioTheme.text)
+                    }
+                }
+        }
+        if (linkFailed)
+            Text(
+                tr("无法打开浏览器"),
+                color = StudioTheme.accent,
+                fontSize = StudioTheme.repositoryLinkLabelSize,
+            )
         if (controller == null) return@Column
         val state = controller.state
         Column(
@@ -69,7 +99,11 @@ fun UpdateSettings(controller: UpdateController?, onInstall: (AppRelease, String
             }
             state.problem?.let { Text(tr(it.label), color = StudioTheme.accent, fontSize = 12.sp) }
             if (state.phase == UpdatePhase.Downloaded)
-                Text(tr("安装前会退出 podor，完成后重新打开，不会自动重启电脑。"), color = StudioTheme.muted, fontSize = 12.sp)
+                Text(
+                    tr("安装前会退出 podor，完成后重新打开，不会自动重启电脑。"),
+                    color = StudioTheme.muted,
+                    fontSize = 12.sp,
+                )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 when (state.phase) {
                     UpdatePhase.Checking,
@@ -80,7 +114,9 @@ fun UpdateSettings(controller: UpdateController?, onInstall: (AppRelease, String
                             val release = state.release
                             val installer = state.installer
                             if (release != null && installer != null) onInstall(release, installer)
-                        }) { Text(tr("安装并打开")) }
+                        }) {
+                            Text(tr("安装并打开"))
+                        }
                     }
                     UpdatePhase.Available -> Button(controller::download) { Text(tr("下载更新")) }
                     UpdatePhase.Failed -> {

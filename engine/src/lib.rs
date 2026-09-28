@@ -19,6 +19,7 @@ mod palette;
 mod previews;
 mod psd;
 mod raster;
+mod reference;
 mod resample;
 mod selection;
 mod smudge;

@@ -10,7 +10,7 @@ interface NativeEngine {
 
 expect fun createNativeEngine(width: Int, height: Int): NativeEngine
 
-expect fun rgbaBitmap(bytes: ByteArray, offset: Int, size: Int): ImageBitmap
+expect fun rgbaBitmap(bytes: ByteArray, offset: Int, size: Int, height: Int = size): ImageBitmap
 
 expect fun alphaBitmap(bytes: ByteArray, offset: Int, size: Int): ImageBitmap
 
@@ -33,4 +33,5 @@ object EngineOperation {
     const val SELECTION_OUTLINE = 15
     const val ADJUSTMENT_PREVIEW = 16
     const val CURVE_HISTOGRAM = 17
+    const val REFERENCE_IMAGE = 18
 }

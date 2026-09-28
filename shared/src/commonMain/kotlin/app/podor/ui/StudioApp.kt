@@ -47,6 +47,16 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
         }
         fun handleShortcut(event: KeyEvent): Boolean {
             if (event.type != KeyEventType.KeyDown || dialog != StudioDialog.None) return false
+            if (controller.references.visible && controller.references.selected != null) {
+                if (event.key == Key.Escape || event.key == Key.Enter) {
+                    controller.references.select(null)
+                    return true
+                }
+                if (event.key == Key.Delete || event.key == Key.Backspace) {
+                    controller.references.remove()
+                    return true
+                }
+            }
             if (controller.adjustmentPreview != null) {
                 if (event.key == Key.Enter) {
                     controller.commitAdjustment()
@@ -142,6 +152,7 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                 ShortcutAction.Copy -> controller.clipboard(ClipboardAction.Copy)
                 ShortcutAction.CopyVisible -> controller.clipboard(ClipboardAction.CopyVisible)
                 ShortcutAction.Cut -> controller.clipboard(ClipboardAction.Cut)
+                ShortcutAction.PasteReference -> controller.references.load(true, controller.document)
                 ShortcutAction.Paste -> controller.clipboard(ClipboardAction.Paste)
             }
             return true

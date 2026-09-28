@@ -70,6 +70,7 @@ enum class Glyph(val resource: DrawableResource) {
     Smudge(Res.drawable.ic_smudge),
     MirrorVertical(Res.drawable.ic_mirrorvertical),
     ImportImage(Res.drawable.ic_importimage),
+    Reference(Res.drawable.ic_reference),
 }
 
 @Composable

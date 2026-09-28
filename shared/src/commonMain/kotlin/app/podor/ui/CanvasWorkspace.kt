@@ -60,6 +60,7 @@ fun CanvasWorkspace(
     val checker = rememberCanvasChecker()
     var fullSize by remember { mutableStateOf(Size.Zero) }
     val focus = remember { FocusRequester() }
+    val referenceInput = remember { ReferenceInput() }
     val density by rememberUpdatedState(LocalDensity.current.density)
     val inset by rememberUpdatedState(with(LocalDensity.current) { endInset.toPx() })
     val viewSize by remember {
@@ -168,6 +169,10 @@ fun CanvasWorkspace(
                             moveAnchor = null
                             controller.cancelLayerMove()
                             touchGesture.reset()
+                            continue
+                        }
+                        if (referenceInput.consumed(event)) {
+                            cursor = null
                             continue
                         }
                         val pressed = event.changes.filter { it.pressed }
@@ -822,5 +827,6 @@ fun CanvasWorkspace(
                 }
             }
         }
+        CanvasReferences(controller, viewSize, Modifier.matchParentSize(), referenceInput)
     }
 }

@@ -28,6 +28,8 @@ interface ProjectFiles {
 
     suspend fun openImage(): OpenedProject? = openDocument()
 
+    suspend fun openReference(): OpenedProject? = openImage()
+
     suspend fun save(bytes: ByteArray, png: Boolean): Boolean
 
     suspend fun openDocument(reference: ProjectReference? = null): OpenedProject? {

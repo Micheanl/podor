@@ -26,6 +26,14 @@ class DesktopFiles(
         return openDocument(reference(path))
     }
 
+    override suspend fun openReference(): OpenedProject? {
+        val path = choose(false, images = true) ?: return null
+        return withContext(Dispatchers.IO) {
+            require(Files.size(path) <= app.podor.domain.StudioDefaults.maxClipboardBytes) { "参考图文件过大" }
+            OpenedProject(Files.readAllBytes(path), reference(path))
+        }
+    }
+
     override suspend fun openDocument(reference: ProjectReference?): OpenedProject? {
         val path = reference?.let { Path.of(it.id) } ?: choose(false) ?: return null
         return withContext(Dispatchers.IO) {

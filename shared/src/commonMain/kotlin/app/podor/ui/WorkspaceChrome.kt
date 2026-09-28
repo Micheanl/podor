@@ -97,6 +97,7 @@ fun StudioHeader(
                     leadingIcon = { StudioIcon(Glyph.Copy) },
                 )
                 HorizontalDivider(color = StudioTheme.border)
+                if (compact) ReferenceMenuItems(controller) { menu = false }
                 if (compact && controller.clipboardAvailable) {
                     ClipboardMenuItems(controller) { menu = false }
                     HorizontalDivider(color = StudioTheme.border)
@@ -132,6 +133,7 @@ fun StudioHeader(
         ToolButton(Glyph.Home, "作品首页") { controller.home() }
         ToolButton(Glyph.Settings, "设置") { onDialog(StudioDialog.Settings) }
         if (!compact && controller.clipboardAvailable) ClipboardMenu(controller)
+        if (!compact) ReferenceMenu(controller)
         if (showDocument) {
             Spacer(Modifier.weight(1f))
             Row(

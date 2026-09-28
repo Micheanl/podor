@@ -36,6 +36,7 @@ class StudioController(
         CoroutineScope(
             parentScope.coroutineContext + SupervisorJob(parentScope.coroutineContext[Job])
         )
+    val references = ReferenceController(files, scope)
     private val actions = Channel<Action>(StudioDefaults.inputQueueCapacity)
     private val parser = Json { ignoreUnknownKeys = true }
     var document by mutableStateOf(DocumentInfo())
@@ -427,6 +428,7 @@ class StudioController(
                     savedContentId = info.contentId
                     tiles.clear()
                     withContext(Dispatchers.Main) {
+                        references.clear()
                         frame = RenderFrame()
                         previews = RenderPreviews()
                         viewport = Viewport()

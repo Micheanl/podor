@@ -25,6 +25,23 @@ fun trValue(value: String, language: Language): String {
 
 private val english =
     mapOf(
+        "参考图" to "References",
+        "导入参考图" to "Import reference",
+        "粘贴参考图" to "Paste reference",
+        "收起参考图" to "Hide references",
+        "显示参考图" to "Show references",
+        "导入图片或粘贴参考图" to "Import or paste a reference",
+        "取消读取参考图" to "Cancel loading",
+        "镜像参考图" to "Mirror reference",
+        "适合参考图" to "Fit reference",
+        "移除参考图" to "Remove reference",
+        "参考图视图" to "Reference view",
+        "剪贴板图片" to "Clipboard image",
+        "参考图文件过大" to "Reference file is too large",
+        "参考图数据无效" to "Invalid reference image",
+        "无法读取参考图" to "Could not read the reference image",
+        "参考图支持 PNG、JPEG 和静态 WebP" to "References support PNG, JPEG and static WebP",
+        "无法打开浏览器" to "Could not open the browser",
         "曲线" to "Curves",
         "曲线编辑器" to "Curve editor",
         "曲线控制点无效" to "Invalid curve points",

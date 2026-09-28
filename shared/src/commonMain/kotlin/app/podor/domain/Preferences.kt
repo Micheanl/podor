@@ -83,6 +83,7 @@ enum class ShortcutAction(val label: String, val default: Shortcut) {
     Smudge("涂抹", Shortcut("S")),
     InvertSelection("反选", Shortcut("I", command = true, shift = true)),
     MagicWand("魔棒选区", Shortcut("W")),
+    PasteReference("粘贴参考图", Shortcut("V", command = true, shift = true)),
 }
 
 @Serializable
@@ -120,6 +121,7 @@ data class Preferences(
                 ShortcutAction.Smudge,
                 ShortcutAction.InvertSelection,
                 ShortcutAction.MagicWand,
+                ShortcutAction.PasteReference,
             )) {
             if (action in result.shortcuts || action.default !in result.shortcuts.values) continue
             val used = ShortcutAction.entries.filter { it != action }.map(result::shortcut).toSet()

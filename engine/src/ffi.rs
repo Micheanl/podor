@@ -39,6 +39,9 @@ pub fn dispatch(handle: u64, operation: u32, bytes: &[u8]) -> Result<Vec<u8>, St
     if bytes.len() > MAX_REQUEST {
         return Err("请求超出大小限制".into());
     }
+    if operation == 18 {
+        return crate::reference::decode(bytes);
+    }
     let mut map = engines().lock().map_err(|_| "引擎状态异常")?;
     let engine = map.get_mut(&handle).ok_or("画布已关闭")?;
     match operation {
@@ -228,6 +231,18 @@ mod tests {
     use super::*;
     use crate::model::MAX_SELECTION_POINTS;
     use serde_json::json;
+
+    #[test]
+    fn decoding_references_does_not_wait_for_the_canvas_engine_lock() {
+        let image = Engine::new(16, 16).unwrap().export_png().unwrap();
+        let guard = engines().lock().unwrap();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let worker = std::thread::spawn(move || sender.send(dispatch(0, 18, &image)).unwrap());
+        let result = receiver.recv_timeout(std::time::Duration::from_secs(2));
+        drop(guard);
+        worker.join().unwrap();
+        assert_eq!(result.unwrap().unwrap().len(), 16 + 16 * 16 * 4);
+    }
 
     #[test]
     fn frame_options_preserve_alpha_and_reject_unknown_encodings() {
