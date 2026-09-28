@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -224,6 +225,18 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                                     Modifier.fillMaxSize(),
                                     onCollapse = { inspectorExpanded = false },
                                 )
+                            }
+                        } else if (wide) {
+                            Box(
+                                Modifier.align(Alignment.TopEnd)
+                                    .padding(StudioTheme.inspectorMargin)
+                                    .clip(CircleShape)
+                                    .background(StudioTheme.panel)
+                                    .border(1.dp, StudioTheme.border, CircleShape)
+                            ) {
+                                ToolButton(Glyph.Sidebar, "展开面板") {
+                                    inspectorExpanded = true
+                                }
                             }
                         }
                     }

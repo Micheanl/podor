@@ -226,7 +226,7 @@ class StudioRenderingTest {
                             )
                         }
                     }
-                    click(1314f, 32f)
+                    click(1320f, 104f)
                     assertPaletteVisible()
                     repeat(3) {
                         click(1314f, 32f)
@@ -237,13 +237,20 @@ class StudioRenderingTest {
                     assertEquals(viewport, controller.viewport)
                     assertSame(pixels, controller.frame)
                     assertEquals(revision, controller.document.revision)
-                    scene.sendPointerEvent(PointerEventType.Press, Offset(1200f, 70f))
-                    scene.sendPointerEvent(PointerEventType.Release, Offset(1200f, 70f))
+                    assertFalse(scene.hasInvalidations(), "Panel toggle keeps rendering while idle")
                 }
-                withTimeout(5_000) {
-                    while (
-                        !withContext(Dispatchers.Main) { controller.document.revision > revision }
-                    ) delay(10)
+                for (point in listOf(Offset(1200f, 70f), Offset(1200f, 890f))) {
+                    val before = withContext(Dispatchers.Main) {
+                        val currentRevision = controller.document.revision
+                        scene.sendPointerEvent(PointerEventType.Press, point)
+                        scene.sendPointerEvent(PointerEventType.Release, point)
+                        currentRevision
+                    }
+                    withTimeout(5_000) {
+                        while (
+                            !withContext(Dispatchers.Main) { controller.document.revision > before }
+                        ) delay(10)
+                    }
                 }
             } finally {
                 withContext(Dispatchers.Main) {
