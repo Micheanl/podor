@@ -21,7 +21,7 @@ object StudioTheme {
     val launchWordmarkSpacing = 5.sp
     val launchWordmarkGap = 20.dp
     val hairline = 0.75.dp
-    val buttonShape = RoundedCornerShape(12.dp)
+    val buttonShape = RoundedCornerShape(50)
     val cardShape = RoundedCornerShape(16.dp)
     val menuShape = RoundedCornerShape(12.dp)
     val modalShape = RoundedCornerShape(22.dp)
@@ -96,11 +96,11 @@ object StudioTheme {
     val elevated = Color(0xFF303033)
     val border = Color(0xFF404044)
     val muted = Color(0xFFAAAAAF)
-    val accent = Color(0xFFE5B5C3)
-    val selection = Color(0xFF55323F)
-    val selectionBorder = Color(0xFF956779)
-    val onAccent = Color(0xFF381621)
-    val onSelection = Color(0xFFFFE8EE)
+    val accent = Color(0xFFE4E5E9)
+    val selection = Color(0xFF424449)
+    val selectionBorder = Color(0xFF74777E)
+    val onAccent = Color(0xFF202124)
+    val onSelection = Color(0xFFF5F5F7)
     val text = Color(0xFFF5F5F7)
     val hoverLight = 0.055f
     val pressLight = 0.085f
@@ -198,6 +198,8 @@ object StudioTheme {
 }
 
 object StudioMotion {
+    const val letterSwapMillis = 480
+    const val letterSwapStagger = 0.45f
     const val pressMillis = 90
     const val feedbackMillis = 160
     const val releaseMillis = 220

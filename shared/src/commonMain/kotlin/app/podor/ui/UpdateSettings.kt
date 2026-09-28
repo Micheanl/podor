@@ -54,7 +54,7 @@ fun UpdateSettings(controller: UpdateController?, onInstall: (AppRelease, String
                     ) {
                         Image(painterResource(icon), null, Modifier.size(StudioTheme.iconSize))
                         Spacer(Modifier.width(StudioTheme.repositoryLinkGap))
-                        Text(label, color = StudioTheme.text)
+                        ButtonLabel(label, color = StudioTheme.text)
                     }
                 }
         }
@@ -107,28 +107,28 @@ fun UpdateSettings(controller: UpdateController?, onInstall: (AppRelease, String
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 when (state.phase) {
                     UpdatePhase.Checking,
-                    UpdatePhase.Downloading -> StudioTextButton(controller::cancel) { Text(tr("取消")) }
+                    UpdatePhase.Downloading -> StudioTextButton(controller::cancel) { ButtonLabel(tr("取消")) }
                     UpdatePhase.Downloaded -> {
-                        StudioTextButton(controller::reveal) { Text(tr("下载文件夹")) }
+                        StudioTextButton(controller::reveal) { ButtonLabel(tr("下载文件夹")) }
                         StudioButton({
                             val release = state.release
                             val installer = state.installer
                             if (release != null && installer != null) onInstall(release, installer)
                         }) {
-                            Text(tr("安装并打开"))
+                            ButtonLabel(tr("安装并打开"))
                         }
                     }
-                    UpdatePhase.Available -> StudioButton(controller::download) { Text(tr("下载更新")) }
+                    UpdatePhase.Available -> StudioButton(controller::download) { ButtonLabel(tr("下载更新")) }
                     UpdatePhase.Failed -> {
                         if (state.release != null)
-                            StudioTextButton(controller::check) { Text(tr("重新检查")) }
+                            StudioTextButton(controller::check) { ButtonLabel(tr("重新检查")) }
                         StudioButton(
                             if (state.release != null) controller::download else controller::check
                         ) {
-                            Text(tr("重试"))
+                            ButtonLabel(tr("重试"))
                         }
                     }
-                    else -> StudioButton(controller::check) { Text(tr("检查更新")) }
+                    else -> StudioButton(controller::check) { ButtonLabel(tr("检查更新")) }
                 }
             }
         }

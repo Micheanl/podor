@@ -141,7 +141,7 @@ fun StudioAlertDialog(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (showCancel) StudioTextButton(dismiss) { Text(tr(cancelLabel), color = StudioTheme.muted) }
+            if (showCancel) StudioTextButton(dismiss) { ButtonLabel(tr(cancelLabel), color = StudioTheme.muted) }
             Spacer(Modifier.width(10.dp))
             ActionButton(
                 confirmLabel,

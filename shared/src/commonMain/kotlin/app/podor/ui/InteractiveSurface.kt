@@ -92,7 +92,7 @@ fun ActionButton(
             StudioIcon(glyph, LocalContentColor.current, Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
         }
-        Text(tr(label))
+        ButtonLabel(tr(label))
     }
 }
 
@@ -106,7 +106,10 @@ fun StudioButton(
     content: @Composable RowScope.() -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    CompositionLocalProvider(LocalRippleConfiguration provides null) {
+    CompositionLocalProvider(
+        LocalRippleConfiguration provides null,
+        LocalButtonInteraction provides if (enabled) interaction else null,
+    ) {
         Button(
             onClick,
             modifier
@@ -190,7 +193,10 @@ fun StudioTextButton(
     content: @Composable RowScope.() -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    CompositionLocalProvider(LocalRippleConfiguration provides null) {
+    CompositionLocalProvider(
+        LocalRippleConfiguration provides null,
+        LocalButtonInteraction provides if (enabled) interaction else null,
+    ) {
         TextButton(
             onClick,
             modifier.controlFeedback(interaction, StudioTheme.buttonShape, enabled),

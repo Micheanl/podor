@@ -91,7 +91,7 @@ fun SymmetryControls(controller: StudioController) {
                                 y = StudioDefaults.symmetryAxis,
                             )
                     }) {
-                        Text(tr("对称轴居中"))
+                        ButtonLabel(tr("对称轴居中"))
                     }
                 }
             }

@@ -21,6 +21,56 @@ import org.jetbrains.skia.EncodedImageFormat
 @OptIn(ExperimentalComposeUiApi::class)
 class ButtonRenderingTest {
     @Test
+    fun captureLetterSwapPreview() = runBlocking {
+        org.junit.Assume.assumeTrue(System.getenv("PODOR_CAPTURE_BUTTONS") == "1")
+        withContext(Dispatchers.Main) {
+            val scene =
+                ImageComposeScene(680, 260) {
+                    Column(
+                        Modifier.fillMaxSize().background(StudioTheme.background).padding(32.dp)
+                    ) {
+                        Text("podor", color = StudioTheme.text, fontSize = 24.sp)
+                        Spacer(Modifier.height(20.dp))
+                        for (language in listOf(Language.English, Language.Chinese)) {
+                            PodorTheme(language) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                                    ActionButton("新建画布", {}, Modifier.width(280.dp))
+                                    ActionButton(
+                                        "打开作品",
+                                        {},
+                                        Modifier.width(280.dp),
+                                        primary = false,
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(20.dp))
+                        }
+                    }
+                }
+            val directory = Path.of("build/reports/letter-swap")
+            Files.createDirectories(directory)
+            try {
+                repeat(240) { frame ->
+                    when (frame) {
+                        30 -> scene.sendPointerEvent(PointerEventType.Move, Offset(150f, 104f))
+                        85 -> scene.sendPointerEvent(PointerEventType.Move, Offset(460f, 104f))
+                        140 -> scene.sendPointerEvent(PointerEventType.Move, Offset(150f, 170f))
+                        195 -> scene.sendPointerEvent(PointerEventType.Move, Offset(670f, 250f))
+                    }
+                    scene.render(frame * 16_666_667L).use { image ->
+                        image.encodeToData(EncodedImageFormat.PNG)!!.use {
+                            Files.write(directory.resolve("%03d.png".format(frame)), it.bytes)
+                        }
+                    }
+                }
+                assertFalse(scene.hasInvalidations())
+            } finally {
+                scene.close()
+            }
+        }
+    }
+
+    @Test
     fun nativeButtonsKeepClicksAndDisabledStateAndStopAnimatingAfterHover() = runBlocking {
         withContext(Dispatchers.Main) {
             var clicks = 0

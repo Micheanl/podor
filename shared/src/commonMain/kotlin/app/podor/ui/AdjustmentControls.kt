@@ -138,7 +138,7 @@ fun AdjustmentControls(controller: StudioController) {
         }
     }
     if (controller.document.selection != null)
-        StudioTextButton({ controller.clearSelection() }) { Text(tr("取消选区"), fontSize = 12.sp) }
+        StudioTextButton({ controller.clearSelection() }) { ButtonLabel(tr("取消选区"), fontSize = 12.sp) }
 }
 
 private fun Float.percent() = (this * 100).roundToInt().toString()

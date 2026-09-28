@@ -19,7 +19,7 @@ fun ViewportControls(viewport: Viewport, fitLabel: String, onChange: (Viewport) 
     val rotationLabel = tr("旋转视图")
     Row(verticalAlignment = Alignment.CenterVertically) {
         StudioTextButton({ onChange(Viewport()) }, contentPadding = PaddingValues(horizontal = 7.dp)) {
-            Text(
+            ButtonLabel(
                 "${(viewport.zoom * 100).roundToInt()}%",
                 fontSize = 11.sp,
                 color = StudioTheme.muted,
@@ -33,7 +33,7 @@ fun ViewportControls(viewport: Viewport, fitLabel: String, onChange: (Viewport) 
             ) {
                 StudioIcon(Glyph.Rotate, StudioTheme.muted, Modifier.size(16.dp))
                 Spacer(Modifier.width(5.dp))
-                Text(
+                ButtonLabel(
                     "${viewport.rotation.roundToInt()}°",
                     fontSize = 11.sp,
                     color = if (viewport.rotation == 0f) StudioTheme.muted else StudioTheme.accent,
@@ -58,7 +58,7 @@ fun ViewportControls(viewport: Viewport, fitLabel: String, onChange: (Viewport) 
                         ToolButton(Glyph.Undo, "向左旋转") {
                             onChange(viewport.rotateBy(-StudioDefaults.rotationStep))
                         }
-                        StudioTextButton({ onChange(viewport.copy(rotation = 0f)) }) { Text(tr("回正")) }
+                        StudioTextButton({ onChange(viewport.copy(rotation = 0f)) }) { ButtonLabel(tr("回正")) }
                         ToolButton(Glyph.Redo, "向右旋转") {
                             onChange(viewport.rotateBy(StudioDefaults.rotationStep))
                         }

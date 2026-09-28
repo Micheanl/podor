@@ -189,7 +189,7 @@ fun SettingsDialog(controller: StudioController, onDismiss: () -> Unit, updates:
                                 )
                                 recording = null
                             }) {
-                                Text(tr("恢复默认"))
+                                ButtonLabel(tr("恢复默认"))
                             }
                         }
                         2 -> {

@@ -203,7 +203,7 @@ fun WorkspaceHome(controller: StudioController, updates: UpdateController? = nul
                                 shape = StudioTheme.cardShape,
                             )
                             StudioTextButton({ byName = !byName }) {
-                                Text(tr(if (byName) "名称" else "最近"))
+                                ButtonLabel(tr(if (byName) "名称" else "最近"))
                             }
                         }
                     }
@@ -351,14 +351,14 @@ fun UnsavedChangesDialog(controller: StudioController) {
                     { controller.resolveUnsaved(UnsavedChoice.Discard) },
                     enabled = !controller.busy,
                 ) {
-                    Text(tr("不保存"), color = StudioTheme.muted)
+                    ButtonLabel(tr("不保存"), color = StudioTheme.muted)
                 }
                 Spacer(Modifier.weight(1f))
                 StudioTextButton(
                     { controller.resolveUnsaved(UnsavedChoice.Cancel) },
                     enabled = !controller.busy,
                 ) {
-                    Text(tr("取消"))
+                    ButtonLabel(tr("取消"))
                 }
                 ActionButton(
                     "保存",

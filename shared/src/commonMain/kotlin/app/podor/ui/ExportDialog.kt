@@ -37,7 +37,7 @@ fun ExportDialog(controller: StudioController, onDismiss: () -> Unit) {
             ExportSettings(controller, options) { options = it }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            StudioTextButton(dismiss) { Text(tr("取消"), color = StudioTheme.muted) }
+            StudioTextButton(dismiss) { ButtonLabel(tr("取消"), color = StudioTheme.muted) }
             Spacer(Modifier.width(10.dp))
             ActionButton(
                 "导出",
