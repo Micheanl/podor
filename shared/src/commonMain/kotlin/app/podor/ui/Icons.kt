@@ -38,6 +38,7 @@ enum class Glyph(val resource: DrawableResource) {
     Selection(Res.drawable.ic_selection),
     EllipseSelection(Res.drawable.ic_ellipseselection),
     Lasso(Res.drawable.ic_lasso),
+    MagicWand(Res.drawable.ic_magicwand),
     SelectionAdd(Res.drawable.ic_selectionadd),
     SelectionSubtract(Res.drawable.ic_selectionsubtract),
     SelectionIntersect(Res.drawable.ic_selectionintersect),

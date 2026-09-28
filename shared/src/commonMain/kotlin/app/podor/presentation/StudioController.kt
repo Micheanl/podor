@@ -102,6 +102,9 @@ class StudioController(
         }
 
     var selectionKind by mutableStateOf(StudioDefaults.selectionKind)
+    var selectionTolerance by mutableStateOf(StudioDefaults.selectionTolerance)
+    var selectionContiguous by mutableStateOf(StudioDefaults.selectionContiguous)
+    var selectionMerged by mutableStateOf(StudioDefaults.selectionMerged)
     var selectionMode by mutableStateOf(StudioDefaults.selectionMode)
         private set
 
@@ -1441,6 +1444,10 @@ class StudioController(
     }
 
     fun select(start: Offset, end: Offset) {
+        if (selectionKind == SelectionKind.MagicWand) {
+            selectColor(start)
+            return
+        }
         val gesture =
             SelectionGesture(
                 selectionKind,
@@ -1468,6 +1475,30 @@ class StudioController(
                 put("selection", Json.encodeToJsonElement(selection))
                 put("mode", Json.encodeToJsonElement(selectionMode))
             }
+    }
+
+    fun selectColor(point: Offset) {
+        if (
+            !point.x.isFinite() ||
+                !point.y.isFinite() ||
+                point.x < 0 ||
+                point.y < 0 ||
+                point.x >= document.width ||
+                point.y >= document.height ||
+                !selectionTolerance.isFinite() ||
+                selectionTolerance !in 0f..255f
+        )
+            return
+        command("select_color") {
+            putJsonObject("settings") {
+                put("x", point.x.toInt())
+                put("y", point.y.toInt())
+                put("tolerance", selectionTolerance.toInt())
+                put("contiguous", selectionContiguous)
+                put("merged", selectionMerged)
+            }
+            put("mode", Json.encodeToJsonElement(selectionMode))
+        }
     }
 
     fun changeSelectionMode(mode: SelectionMode) {

@@ -82,6 +82,7 @@ enum class ShortcutAction(val label: String, val default: Shortcut) {
     Gradient("渐变", Shortcut("G", shift = true)),
     Smudge("涂抹", Shortcut("S")),
     InvertSelection("反选", Shortcut("I", command = true, shift = true)),
+    MagicWand("魔棒选区", Shortcut("W")),
 }
 
 @Serializable
@@ -108,6 +109,7 @@ data class Preferences(
                 ShortcutAction.Gradient,
                 ShortcutAction.Smudge,
                 ShortcutAction.InvertSelection,
+                ShortcutAction.MagicWand,
             )) {
             if (action in result.shortcuts || action.default !in result.shortcuts.values) continue
             val used = ShortcutAction.entries.filter { it != action }.map(result::shortcut).toSet()

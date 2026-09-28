@@ -3,6 +3,7 @@ mod adjustments;
 mod blending;
 mod canvas;
 mod clipboard;
+mod color_selection;
 mod dab;
 mod ffi;
 mod gradient;
@@ -26,6 +27,7 @@ mod transform;
 mod translation;
 pub use adjustment_preview::{AdjustmentKind, AdjustmentRequest, AdjustmentSettings};
 pub use clipboard::CopyMode;
+pub use color_selection::ColorSelection;
 pub use gradient::{Gradient, GradientShape};
 pub use resample::ResampleFilter;
 pub use selection::{SelectionKind, SelectionMode, SelectionPoint, SelectionSpec};
@@ -59,6 +61,10 @@ pub enum Command {
         mode: SelectionMode,
     },
     InvertSelection,
+    SelectColor {
+        settings: ColorSelection,
+        mode: SelectionMode,
+    },
     CutSelection {
         revision: u64,
     },
@@ -427,6 +433,14 @@ impl Engine {
                     Command::InvertSelection => {
                         let selection = self.selection.as_ref().ok_or("请先创建选区")?;
                         self.set_selection(Some(selection.invert(self.document.bounds())));
+                    }
+                    Command::SelectColor { settings, mode } => {
+                        let next = color_selection::select(&self.document, settings)?;
+                        self.set_selection(Some(Selection::combine(
+                            self.selection.as_ref(),
+                            next,
+                            mode,
+                        )?));
                     }
                     Command::CutSelection { revision } => {
                         if revision != self.revision {

@@ -14,6 +14,10 @@ import androidx.compose.ui.unit.sp
 import app.podor.domain.Language
 
 object StudioTheme {
+    val colorSelectionWidth = 280.dp
+    val colorSelectionPadding = 16.dp
+    val colorSelectionGap = 8.dp
+    val colorSelectionLabelSize = 12.sp
     val adjustmentGap = 18.dp
     val adjustmentHintSize = 11.sp
     val adjustmentStatusSize = 14.dp

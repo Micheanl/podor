@@ -13,6 +13,7 @@ import app.podor.domain.SelectionKind
 import app.podor.domain.SelectionMode
 import app.podor.domain.ShortcutAction
 import app.podor.presentation.StudioController
+import kotlin.math.roundToInt
 
 @Composable
 fun SelectionDock(controller: StudioController, modifier: Modifier = Modifier) {
@@ -31,13 +32,17 @@ fun SelectionDock(controller: StudioController, modifier: Modifier = Modifier) {
                     SelectionKind.Rectangle -> Glyph.Selection
                     SelectionKind.Ellipse -> Glyph.EllipseSelection
                     SelectionKind.Lasso -> Glyph.Lasso
+                    SelectionKind.MagicWand -> Glyph.MagicWand
                 },
-                kind.label,
+                if (kind == SelectionKind.MagicWand)
+                    controller.shortcutLabel(ShortcutAction.MagicWand)
+                else kind.label,
                 selected = controller.selectionKind == kind,
             ) {
                 controller.selectionKind = kind
             }
         }
+        if (controller.selectionKind == SelectionKind.MagicWand) ColorSelectionOptions(controller)
         Box(
             Modifier.width(StudioTheme.selectionDockBorder)
                 .height(StudioTheme.iconSize)
@@ -97,6 +102,51 @@ fun SelectionDock(controller: StudioController, modifier: Modifier = Modifier) {
             enabled = controller.document.selection != null,
         ) {
             controller.clearSelection()
+        }
+    }
+}
+
+@Composable
+private fun ColorSelectionOptions(controller: StudioController) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        ToolButton(Glyph.Adjustments, "魔棒设置", selected = expanded) { expanded = !expanded }
+        DropdownMenu(
+            expanded,
+            { expanded = false },
+            shape = StudioTheme.clipboardMenuShape,
+            containerColor = StudioTheme.panel,
+        ) {
+            Column(
+                Modifier.width(StudioTheme.colorSelectionWidth)
+                    .padding(StudioTheme.colorSelectionPadding),
+                verticalArrangement = Arrangement.spacedBy(StudioTheme.colorSelectionGap),
+            ) {
+                LabeledSlider(
+                    "容差",
+                    controller.selectionTolerance,
+                    0f..255f,
+                    controller.selectionTolerance.roundToInt().toString(),
+                ) {
+                    controller.selectionTolerance = it.roundToInt().toFloat()
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        tr("仅连续区域"),
+                        Modifier.weight(1f),
+                        fontSize = StudioTheme.colorSelectionLabelSize,
+                    )
+                    Switch(controller.selectionContiguous, { controller.selectionContiguous = it })
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        tr("取样所有可见图层"),
+                        Modifier.weight(1f),
+                        fontSize = StudioTheme.colorSelectionLabelSize,
+                    )
+                    Switch(controller.selectionMerged, { controller.selectionMerged = it })
+                }
+            }
         }
     }
 }

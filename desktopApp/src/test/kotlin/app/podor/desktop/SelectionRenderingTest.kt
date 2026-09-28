@@ -199,7 +199,7 @@ class SelectionRenderingTest {
             withContext(Dispatchers.Main) { controller.select(Selection(12, 12, 112, 84)) }
             waitFor { controller.document.selection != null && !controller.busy }
             withContext(Dispatchers.Main) {
-                click(548f, 815f)
+                click(572f, 815f)
                 render().use { image ->
                     image.encodeToData(EncodedImageFormat.PNG)!!.use {
                         Files.createDirectories(Path.of("build/reports/screenshots"))
@@ -211,7 +211,7 @@ class SelectionRenderingTest {
                 }
                 click(600f, 715f)
                 assertEquals(SelectionMode.Subtract, controller.selectionMode)
-                click(447f, 815f)
+                click(423f, 815f)
             }
             pointer(PointerEventType.Press, Offset(48f, 34f))
             pointer(PointerEventType.Move, Offset(80f, 62f))
@@ -289,7 +289,7 @@ class SelectionRenderingTest {
             withContext(Dispatchers.Main) {
                 assertNull(controller.selectionOutline)
                 assertEquals("选区为空", controller.status)
-                click(649f, 815f)
+                click(673f, 815f)
             }
             waitFor { controller.document.selection == null }
             withContext(Dispatchers.Main) {
@@ -337,7 +337,12 @@ class SelectionRenderingTest {
 
     @Test
     fun allSelectionShapesFollowRotatedMirroredViewsAndClipNativeFill() = runBlocking {
-        for (kind in SelectionKind.entries) withSession {
+        for (kind in
+            listOf(
+                SelectionKind.Rectangle,
+                SelectionKind.Ellipse,
+                SelectionKind.Lasso,
+            )) withSession {
             withContext(Dispatchers.Main) {
                 controller.selectionKind = kind
                 controller.viewport = Viewport(rotation = 23f, mirrored = true)
@@ -394,7 +399,7 @@ class SelectionRenderingTest {
                 withContext(Dispatchers.Main) {
                     controller.updatePreferences(controller.preferences.copy(language = language))
                     repeat(4) { render().close() }
-                    click(447f, 815f)
+                    click(423f, 815f)
                     assertEquals(SelectionKind.Ellipse, controller.selectionKind)
                 }
                 pointer(PointerEventType.Press, Offset(35f, 25f))
@@ -422,7 +427,7 @@ class SelectionRenderingTest {
                 }
                 waitFor { controller.document.selection == original }
                 withContext(Dispatchers.Main) {
-                    click(495f, 815f)
+                    click(471f, 815f)
                     assertEquals(SelectionKind.Lasso, controller.selectionKind)
                 }
                 pointer(PointerEventType.Press, Offset(35f, 25f))

@@ -403,7 +403,9 @@ fun CanvasWorkspace(
                                     Offset(sample.first, sample.second),
                                     event.keyboardModifiers.isShiftPressed,
                                 )
-                                controller.select(draft.selection())
+                                if (draft.kind == SelectionKind.MagicWand)
+                                    controller.selectColor(draft.start)
+                                else controller.select(draft.selection())
                             }
                             selectionGesture = null
                             if (drawing) {
@@ -583,6 +585,10 @@ fun CanvasWorkspace(
                                 controller.document,
                             )
                         if (selectionGesture != null) {
+                            if (selectionGesture?.kind == SelectionKind.MagicWand) {
+                                primary.consume()
+                                continue
+                            }
                             for (sample in samples()) selectionGesture?.add(
                                 Offset(sample.first, sample.second),
                                 event.keyboardModifiers.isShiftPressed,
@@ -710,7 +716,11 @@ fun CanvasWorkspace(
             GradientOverlay(controller, it, viewSize, Modifier.matchParentSize())
         }
         SymmetryGuides(controller, viewSize, Modifier.matchParentSize())
-        if (selectionGesture == null || controller.selectionMode != SelectionMode.Replace)
+        if (
+            selectionGesture == null ||
+                selectionGesture?.kind == SelectionKind.MagicWand ||
+                controller.selectionMode != SelectionMode.Replace
+        )
             CachedSelectionOverlay(controller, viewSize, Modifier.matchParentSize())
         Canvas(Modifier.matchParentSize().graphicsLayer()) {
             val document = controller.document

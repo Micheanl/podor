@@ -5,6 +5,16 @@ import kotlinx.serialization.json.Json
 
 class SelectionModeTest {
     @Test
+    fun magicWandShortcutPreservesExistingUserBinding() {
+        val old = Preferences(shortcuts = mapOf(ShortcutAction.Brush to Shortcut("W")))
+        val updated = old.withNewShortcuts()
+        assertTrue(updated.valid())
+        assertEquals(Shortcut("W"), updated.shortcut(ShortcutAction.Brush))
+        assertNotEquals(Shortcut("W"), updated.shortcut(ShortcutAction.MagicWand))
+        assertEquals(updated, updated.withNewShortcuts())
+    }
+
+    @Test
     fun legacyShapesAndCompoundSelectionStateRoundTrip() {
         val legacy =
             Json.decodeFromString<Selection>("""{"left":1,"top":2,"right":10,"bottom":20}""")

@@ -12,6 +12,7 @@ enum class SelectionKind(val label: String) {
     @SerialName("rectangle") Rectangle("矩形选区"),
     @SerialName("ellipse") Ellipse("椭圆选区"),
     @SerialName("lasso") Lasso("自由套索"),
+    @SerialName("wand") MagicWand("魔棒选区"),
 }
 
 @Serializable
@@ -88,6 +89,7 @@ class SelectionGesture(
     }
 
     fun selection(): Selection? {
+        if (kind == SelectionKind.MagicWand) return null
         val samples =
             if (kind == SelectionKind.Lasso) path + SelectionPoint(end.x, end.y)
             else listOf(SelectionPoint(start.x, start.y), SelectionPoint(end.x, end.y))

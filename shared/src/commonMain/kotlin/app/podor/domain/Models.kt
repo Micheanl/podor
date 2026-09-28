@@ -200,6 +200,9 @@ object StudioDefaults {
     const val maxClipboardBytes = 65 * 1024 * 1024
     val selectionKind = SelectionKind.Rectangle
     val selectionMode = SelectionMode.Replace
+    const val selectionTolerance = 24f
+    const val selectionContiguous = true
+    const val selectionMerged = false
     const val maxSelectionPoints = 4096
     const val selectionSampleDistance = 0.75f
     val resampleFilter = ResampleFilter.Lanczos3

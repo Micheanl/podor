@@ -181,7 +181,7 @@ impl Selection {
         Self::from_mask(canvas, mask)
     }
 
-    fn from_mask(area: Rect, mut mask: Vec<u8>) -> Self {
+    pub(crate) fn from_mask(area: Rect, mut mask: Vec<u8>) -> Self {
         let width = (area.right - area.left) as usize;
         let mut bounds = Rect {
             left: area.right,
