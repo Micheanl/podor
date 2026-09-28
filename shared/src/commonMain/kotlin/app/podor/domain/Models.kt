@@ -57,6 +57,8 @@ data class BrushPreset(
     val pressureCurve: Float = StudioDefaults.pressureCurve,
     val sizePressure: Float = StudioDefaults.sizePressure,
     val opacityPressure: Float = StudioDefaults.opacityPressure,
+    val mix: Float = 0f,
+    val paper: Float = 0f,
 ) {
     fun valid(): Boolean =
         id.matches(Regex("[a-zA-Z0-9._-]{1,64}")) &&
@@ -83,7 +85,11 @@ data class BrushPreset(
             sizePressure.isFinite() &&
             sizePressure in 0f..1f &&
             opacityPressure.isFinite() &&
-            opacityPressure in 0f..1f
+            opacityPressure in 0f..1f &&
+            mix.isFinite() &&
+            mix in 0f..1f &&
+            paper.isFinite() &&
+            paper in 0f..1f
 
     companion object {
         val Ink = BrushPreset("ink", "墨水笔", 0.9f, 1f, 12f)
@@ -139,11 +145,12 @@ data class BrushPreset(
                     "排线笔",
                     1f,
                     1f,
-                    30f,
-                    BrushTip.Flat,
-                    0.1f,
-                    90f,
-                    spacing = 0.5f,
+                    34f,
+                    BrushTip.Comb,
+                    0.12f,
+                    0f,
+                    spacing = 0.06f,
+                    stabilization = StudioDefaults.lineStabilization,
                     followDirection = true,
                 ),
                 BrushPreset("stipple", "点描", 1f, 1f, 5f, spacing = 0.95f),
@@ -167,6 +174,70 @@ data class BrushPreset(
                     sizePressure = 0.2f,
                     opacityPressure = 1f,
                 ),
+                BrushPreset(
+                    "lance",
+                    "柳叶笔",
+                    0.95f,
+                    1f,
+                    34f,
+                    BrushTip.Leaf,
+                    0.42f,
+                    spacing = 0.05f,
+                    stabilization = StudioDefaults.lineStabilization,
+                    followDirection = true,
+                ),
+                BrushPreset(
+                    "willow",
+                    "柳条笔",
+                    0.9f,
+                    0.85f,
+                    52f,
+                    BrushTip.Leaf,
+                    0.22f,
+                    spacing = 0.04f,
+                    stabilization = StudioDefaults.lineStabilization,
+                    followDirection = true,
+                    opacityPressure = 0.3f,
+                ),
+                BrushPreset(
+                    "mixing",
+                    "混合笔",
+                    0.6f,
+                    0.8f,
+                    56f,
+                    spacing = 0.05f,
+                    stabilization = 0.2f,
+                ),
+                BrushPreset(
+                    "oily",
+                    "油彩笔",
+                    0.4f,
+                    0.75f,
+                    64f,
+                    grain = 0.35f,
+                    spacing = 0.05f,
+                    stabilization = 0.2f,
+                    paper = 0.5f,
+                ),
+                BrushPreset(
+                    "rough-paper",
+                    "纸纹笔",
+                    0.75f,
+                    0.7f,
+                    72f,
+                    grain = 0.2f,
+                    paper = 0.85f,
+                ),
+                BrushPreset(
+                    "watercolor-paper",
+                    "水彩纸",
+                    0.15f,
+                    0.1f,
+                    110f,
+                    grain = 0.3f,
+                    spacing = 0.05f,
+                    paper = 0.6f,
+                ),
             )
     }
 }
@@ -175,6 +246,8 @@ data class BrushPreset(
 enum class BrushTip {
     Round,
     Flat,
+    Leaf,
+    Comb,
 }
 
 data class BrushSettings(

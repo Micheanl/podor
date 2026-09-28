@@ -218,6 +218,10 @@ pub struct Brush {
     pub size_pressure: f32,
     #[serde(default)]
     pub opacity_pressure: f32,
+    #[serde(default)]
+    pub mix: f32,
+    #[serde(default)]
+    pub paper: f32,
 }
 
 #[derive(Clone, Copy, Default, Deserialize, PartialEq)]
@@ -226,6 +230,8 @@ pub enum BrushTip {
     #[default]
     Round,
     Flat,
+    Leaf,
+    Comb,
 }
 
 fn default_aspect() -> f32 {
@@ -258,6 +264,8 @@ impl Default for Brush {
             pressure_curve: 0.0,
             size_pressure: 1.0,
             opacity_pressure: 0.0,
+            mix: 0.0,
+            paper: 0.0,
         }
     }
 }
@@ -296,6 +304,10 @@ impl Brush {
             || !(0.0..=1.0).contains(&self.size_pressure)
             || !self.opacity_pressure.is_finite()
             || !(0.0..=1.0).contains(&self.opacity_pressure)
+            || !self.mix.is_finite()
+            || !(0.0..=1.0).contains(&self.mix)
+            || !self.paper.is_finite()
+            || !(0.0..=1.0).contains(&self.paper)
             || (self.smudge && self.eraser)
         {
             return Err("画笔参数无效".into());

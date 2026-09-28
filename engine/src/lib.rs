@@ -168,7 +168,10 @@ struct Stroke {
     brush: Brush,
     stabilizer: Stabilizer,
     last: Option<Sample>,
-    direction: f32,
+    origin: Option<Sample>,
+    direction: Option<f32>,
+    travel: f32,
+    travel_base: f32,
     distance: f32,
     changed: bool,
     smudge: Option<smudge::Smudge>,
@@ -194,10 +197,26 @@ impl Stroke {
     }
 
     fn stamp_brush(&self) -> Brush {
-        Brush {
-            angle: self.brush.angle + self.direction,
-            ..self.brush
+        let mut brush = match self.direction {
+            Some(direction) => Brush {
+                angle: self.brush.angle + direction,
+                ..self.brush
+            },
+            None if self.brush.follow_direction => Brush {
+                tip: BrushTip::Round,
+                aspect: 1.0,
+                ..self.brush
+            },
+            None => self.brush,
+        };
+        if self.brush.tip == BrushTip::Leaf && self.brush.follow_direction {
+            let ramp = self.brush.size * 1.2;
+            let t = (self.travel / ramp).clamp(0.0, 1.0);
+            let swell = t * t * (3.0 - 2.0 * t);
+            let floor = (self.brush.spacing * 2.0).clamp(0.04, 0.4);
+            brush.size *= floor + (1.0 - floor) * swell;
         }
+        brush
     }
 
     fn paint(
@@ -214,9 +233,17 @@ impl Stroke {
             let length = dx.hypot(dy);
             if length > f32::EPSILON {
                 if self.brush.follow_direction {
-                    self.direction = dy.atan2(dx).to_degrees();
+                    let settled = self.direction.is_some()
+                        || self.origin.is_some_and(|origin| {
+                            (point.x - origin.x).hypot(point.y - origin.y)
+                                >= (self.brush.size * 0.08).clamp(2.0, 24.0)
+                        });
+                    if settled {
+                        self.direction = Some(dy.atan2(dx).to_degrees());
+                    }
                 }
                 if !self.changed {
+                    self.travel = self.travel_base;
                     self.stamp(document, selection, last, dirty, remaining)?;
                     self.changed = true;
                 }
@@ -228,6 +255,7 @@ impl Stroke {
                 let mut cursor = spacing - self.distance.min(spacing);
                 while cursor <= length {
                     let t = cursor / length;
+                    self.travel = self.travel_base + cursor;
                     self.stamp(
                         document,
                         selection,
@@ -242,11 +270,16 @@ impl Stroke {
                     self.changed = true;
                     cursor += spacing;
                 }
+                self.travel_base = self.travel_base + length;
+                self.travel = self.travel_base;
                 self.distance = (self.distance + length) % spacing;
             }
-        } else if !self.brush.follow_direction {
-            self.stamp(document, selection, point, dirty, remaining)?;
-            self.changed = true;
+        } else {
+            self.origin = Some(point);
+            if !self.brush.follow_direction {
+                self.stamp(document, selection, point, dirty, remaining)?;
+                self.changed = true;
+            }
         }
         self.last = Some(point);
         Ok(())
@@ -310,7 +343,10 @@ impl Engine {
                     brush,
                     stabilizer: Stabilizer::new(brush.stabilization),
                     last: None,
-                    direction: 0.0,
+                    origin: None,
+                    direction: None,
+                    travel: 0.0,
+                    travel_base: 0.0,
                     distance: 0.0,
                     changed: false,
                     smudge: if brush.smudge {
@@ -342,6 +378,7 @@ impl Engine {
                                 || stroke.brush.smudge)
                                 && stroke.distance > f32::EPSILON)
                         {
+                            stroke.travel = f32::INFINITY;
                             stroke.stamp(
                                 &mut self.document,
                                 self.selection.as_ref(),

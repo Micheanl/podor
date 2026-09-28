@@ -22,10 +22,7 @@ impl Stabilizer {
                 let dy = point.y - input.y;
                 let length = dx.hypot(dy);
                 if length <= f32::EPSILON {
-                    Sample {
-                        pressure: point.pressure,
-                        ..filtered
-                    }
+                    filtered
                 } else {
                     let ratio = length / self.distance;
                     let blend = -(-ratio).exp_m1();
@@ -38,7 +35,9 @@ impl Stabilizer {
                     Sample {
                         x: filtered.x + (input.x - filtered.x) * blend + dx * advance,
                         y: filtered.y + (input.y - filtered.y) * blend + dy * advance,
-                        pressure: point.pressure,
+                        pressure: filtered.pressure
+                            + (input.pressure - filtered.pressure) * blend
+                            + (point.pressure - input.pressure) * advance,
                     }
                 }
             }
@@ -105,7 +104,7 @@ mod tests {
     }
 
     #[test]
-    fn repeated_stationary_input_preserves_the_path_and_updates_pressure() {
+    fn repeated_stationary_input_preserves_the_path_and_keeps_pressure_steady() {
         let mut filter = Stabilizer::new(1.0);
         filter.push(point(0.0, 0.0));
         let before = filter.push(point(100.0, 0.0));
@@ -115,9 +114,99 @@ mod tests {
                 ..point(100.0, 0.0)
             });
             assert_eq!((before.x, before.y), (output.x, output.y));
-            assert_eq!(output.pressure, 0.2);
+            assert_eq!(output.pressure, before.pressure);
         }
         let finish = filter.finish().unwrap();
         assert_eq!((finish.x, finish.y, finish.pressure), (100.0, 0.0, 0.2));
+    }
+
+    #[test]
+    fn pressure_jitter_is_damped_the_same_way_at_any_sampling_rate() {
+        fn triangle(distance: f32) -> f32 {
+            if distance <= 100.0 {
+                0.5 + distance * 0.004
+            } else if distance <= 300.0 {
+                0.9 - (distance - 100.0) * 0.004
+            } else {
+                0.1 + (distance - 300.0) * 0.004
+            }
+        }
+        let mut expected = None;
+        for steps in [4, 40, 400, 4000] {
+            let mut filter = Stabilizer::new(0.6);
+            filter.push(Sample {
+                x: 10.0,
+                y: 10.0,
+                pressure: 0.5,
+            });
+            let mut output = Sample {
+                x: 10.0,
+                y: 10.0,
+                pressure: 0.5,
+            };
+            for i in 1..=steps {
+                let distance = i as f32 * 400.0 / steps as f32;
+                output = filter.push(Sample {
+                    x: 10.0 + distance,
+                    y: 10.0,
+                    pressure: triangle(distance),
+                });
+            }
+            if expected.is_none() {
+                expected = Some(output);
+            }
+            assert!((output.pressure - expected.unwrap().pressure).abs() < 0.01);
+            assert!((0.1..=0.9).contains(&output.pressure));
+        }
+    }
+
+    #[test]
+    fn alternating_pressure_flattens_into_a_steady_weight() {
+        let mut filter = Stabilizer::new(0.6);
+        filter.push(Sample {
+            x: 0.0,
+            y: 0.0,
+            pressure: 0.5,
+        });
+        let mut swing = 0.0f32;
+        let mut output = Sample {
+            x: 0.0,
+            y: 0.0,
+            pressure: 0.5,
+        };
+        for i in 1..=2000 {
+            output = filter.push(Sample {
+                x: i as f32 * 0.2,
+                y: 0.0,
+                pressure: if i % 2 == 0 { 0.9 } else { 0.1 },
+            });
+            swing = swing.max((output.pressure - 0.5).abs());
+        }
+        assert!(swing < 0.1);
+        assert!((0.4..=0.6).contains(&output.pressure));
+    }
+
+    #[test]
+    fn held_pressure_converges_while_the_stroke_moves_on() {
+        let mut filter = Stabilizer::new(0.4);
+        filter.push(Sample {
+            x: 0.0,
+            y: 0.0,
+            pressure: 0.1,
+        });
+        let mut output = Sample {
+            x: 0.0,
+            y: 0.0,
+            pressure: 0.1,
+        };
+        for i in 1..=400 {
+            output = filter.push(Sample {
+                x: i as f32 * 2.0,
+                y: 30.0,
+                pressure: 1.0,
+            });
+        }
+        assert!(output.pressure > 0.99);
+        assert!(output.x > 700.0);
     }
 }

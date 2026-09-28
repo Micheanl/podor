@@ -1383,6 +1383,8 @@ class StudioController(
                         put("pressure_curve", settings.preset.pressureCurve)
                         put("size_pressure", settings.preset.sizePressure)
                         put("opacity_pressure", settings.preset.opacityPressure)
+                        put("mix", if (smudge) settings.preset.mix else 0f)
+                        put("paper", settings.preset.paper)
                         put("eraser", tool == Tool.Eraser || stylusEraser)
                         putJsonArray("color") {
                             add((settings.color shr 16 and 255).toInt())
@@ -1448,6 +1450,11 @@ class StudioController(
     fun selectPreset(preset: BrushPreset) {
         if (previewPending()) return
         brush = brush.copy(preset = preset, size = preset.size, opacity = preset.opacity)
+        if (preset.mix > 0f) {
+            tool = Tool.Smudge
+            smudgeStrength = preset.mix
+            return
+        }
         if (tool != Tool.Smudge) tool = Tool.Brush
     }
 

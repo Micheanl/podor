@@ -152,6 +152,14 @@ impl Smudge {
                                 ) else {
                                     continue;
                                 };
+                                if brush.mix > 0.0 {
+                                    let mix = brush.mix;
+                                    for channel in 0..3 {
+                                        source[channel] = source[channel] * (1.0 - mix)
+                                            + f32::from(brush.color[channel]) * mix;
+                                    }
+                                    source[3] = source[3] * (1.0 - mix) + 255.0 * mix;
+                                }
                                 if layer.alpha_locked {
                                     if source[3] <= f32::EPSILON {
                                         continue;

@@ -110,6 +110,61 @@ fn smearing_crosses_tiles_ignores_foreground_and_undo_restores_every_pixel() {
 }
 
 #[test]
+fn mixing_paints_the_brush_color_into_the_smear() {
+    let samples: Vec<_> = (0..41).map(|i| point(108.0 + i as f32 * 0.5, 80.0)).collect();
+    let results: Vec<[u8; 4]> = [0.0, 0.5, 1.0]
+        .into_iter()
+        .map(|mix| {
+            let mut e = colors();
+            stroke(
+                &mut e,
+                Brush {
+                    mix,
+                    color: [10, 200, 30],
+                    hardness: 1.0,
+                    ..brush()
+                },
+                &samples,
+                3,
+            );
+            pixel(&e, 116, 80)
+        })
+        .collect();
+    let plain = results[0];
+    let half = results[1];
+    let painted = results[2];
+    assert!(plain[1] < 120, "smear without paint should keep the canvas");
+    assert!(half[1] > plain[1], "half mix should move toward the paint");
+    assert!(half[1] < painted[1], "half mix should not reach full paint");
+    assert!(painted[1] > 160, "full mix should dominate with the paint");
+    assert_eq!(painted[3], 255);
+    assert_eq!(plain[3], 255);
+}
+
+#[test]
+fn mixing_on_bare_canvas_uses_the_painterly_alpha_of_the_brush() {
+    let mut e = Engine::new(64, 32).unwrap();
+    let samples: Vec<_> = (0..9).map(|i| point(12.0 + i as f32, 16.0)).collect();
+    stroke(
+        &mut e,
+        Brush {
+            mix: 1.0,
+            color: [0, 90, 0],
+            hardness: 1.0,
+            ..brush()
+        },
+        &samples,
+        3,
+    );
+    let value = pixel(&e, 15, 16);
+    assert!(value[3] > 0);
+    assert!(
+        (i32::from(value[1]) - i32::from(value[3]) * 90 / 255).abs() <= 1,
+        "green {value:?} should track alpha at the 90/255 paint ratio"
+    );
+}
+
+#[test]
 fn short_drags_apply_the_final_segment_when_the_pen_lifts() {
     let mut e = colors();
     let before = e.save().unwrap();

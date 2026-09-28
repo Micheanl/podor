@@ -33,6 +33,7 @@ import app.podor.domain.*
 import app.podor.presentation.StudioController
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlin.random.Random
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -313,7 +314,11 @@ fun BrushStrokePreview(
             val stroke =
                 Stroke(
                     thickness,
-                    cap = if (preset.tip == BrushTip.Flat) StrokeCap.Butt else StrokeCap.Round,
+                    cap =
+                        when (preset.tip) {
+                            BrushTip.Flat, BrushTip.Comb -> StrokeCap.Butt
+                            else -> StrokeCap.Round
+                        },
                     pathEffect =
                         if (preset.spacing >= 0.5f)
                             PathEffect.dashPathEffect(
@@ -326,14 +331,78 @@ fun BrushStrokePreview(
                             )
                         else null,
                 )
+            val leaf = preset.tip == BrushTip.Leaf
+            val ribbon =
+                if (leaf) {
+                    val steps = 48
+                    val pts = (0..steps).map { point(it / steps.toFloat()) }
+                    val half = thickness * (0.35f + 0.65f * preset.aspect) * 0.5f
+                    fun halfWidth(t: Float) =
+                        (half * sin(t * 3.14159f).coerceAtLeast(0.08f)).coerceAtLeast(0.5f)
+                    val top = mutableListOf<Offset>()
+                    val bottom = mutableListOf<Offset>()
+                    for (i in pts.indices) {
+                        val a = pts[(i - 1).coerceAtLeast(0)]
+                        val b = pts[(i + 1).coerceAtMost(steps)]
+                        val dx = b.x - a.x
+                        val dy = b.y - a.y
+                        val len = sqrt(dx * dx + dy * dy).coerceAtLeast(0.001f)
+                        val w = halfWidth(i / steps.toFloat())
+                        top.add(Offset(pts[i].x - dy / len * w, pts[i].y + dx / len * w))
+                        bottom.add(Offset(pts[i].x + dy / len * w, pts[i].y - dx / len * w))
+                    }
+                    Path().apply {
+                        moveTo(top.first().x, top.first().y)
+                        top.drop(1).forEach { lineTo(it.x, it.y) }
+                        bottom.reversed().forEach { lineTo(it.x, it.y) }
+                        close()
+                    }
+                } else {
+                    null
+                }
+            val combLines =
+                if (preset.tip == BrushTip.Comb) {
+                    listOf(-1.6f, -0.55f, 0.55f, 1.6f).map { shift ->
+                        Path().apply {
+                            for (i in 0..48) {
+                                val base = point(i / 48f)
+                                val p = Offset(base.x, base.y + shift * thickness)
+                                if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
+                            }
+                        }
+                    }
+                } else {
+                    emptyList()
+                }
             val random = Random(17)
             val grain =
                 List((preset.grain * 100).toInt()) {
                     val p = point(random.nextFloat())
                     Offset(p.x, p.y + (random.nextFloat() - 0.5f) * thickness)
                 }
+            val paperDots =
+                List((preset.paper * 110).toInt()) {
+                    val p = point(random.nextFloat())
+                    Offset(
+                        p.x + (random.nextFloat() - 0.5f) * thickness * 1.8f,
+                        p.y + (random.nextFloat() - 0.5f) * thickness * 1.8f,
+                    )
+                }
+            val swipe =
+                if (preset.mix > 0f) {
+                    val a = point(0.4f)
+                    val c = point(0.52f)
+                    val b = point(0.64f)
+                    Path().apply {
+                        moveTo(a.x, a.y - thickness * 1.6f)
+                        quadraticTo(c.x, c.y, b.x, b.y + thickness * 1.6f)
+                    }
+                } else {
+                    null
+                }
+            val alpha = 0.4f + preset.opacity * 0.5f
             onDrawBehind {
-                if (preset.hardness < 0.5f) {
+                if (!leaf && preset.hardness < 0.5f) {
                     drawPath(
                         path,
                         tint.copy(alpha = 0.07f),
@@ -345,9 +414,26 @@ fun BrushStrokePreview(
                         style = Stroke(thickness * 1.3f, cap = StrokeCap.Round),
                     )
                 }
-                drawPath(path, tint.copy(alpha = 0.4f + preset.opacity * 0.5f), style = stroke)
+                when {
+                    ribbon != null -> drawPath(ribbon, tint.copy(alpha = alpha))
+                    combLines.isNotEmpty() ->
+                        combLines.forEach { line ->
+                            drawPath(line, tint.copy(alpha = alpha), style = stroke)
+                        }
+                    else -> drawPath(path, tint.copy(alpha = alpha), style = stroke)
+                }
                 grain.forEach {
                     drawCircle(StudioTheme.panel.copy(alpha = 0.65f), 0.65.dp.toPx(), it)
+                }
+                paperDots.forEach {
+                    drawCircle(StudioTheme.panel.copy(alpha = 0.8f), 0.8.dp.toPx(), it)
+                }
+                swipe?.let {
+                    drawPath(
+                        it,
+                        tint.copy(alpha = 0.4f),
+                        style = Stroke(thickness * 0.85f, cap = StrokeCap.Round),
+                    )
                 }
             }
         }
@@ -415,7 +501,18 @@ private fun BrushEditor(controller: StudioController, onDismiss: () -> Unit) {
                             FilterChip(
                                 preset.tip == tip,
                                 { update(preset.copy(tip = tip)) },
-                                label = { Text(tr(if (tip == BrushTip.Round) "圆形" else "扁平")) },
+                                label = {
+                                    Text(
+                                        tr(
+                                            when (tip) {
+                                                BrushTip.Round -> "圆形"
+                                                BrushTip.Flat -> "扁平"
+                                                BrushTip.Leaf -> "柳叶"
+                                                BrushTip.Comb -> "排齿"
+                                            }
+                                        )
+                                    )
+                                },
                             )
                         }
                     }
@@ -457,6 +554,22 @@ private fun BrushEditor(controller: StudioController, onDismiss: () -> Unit) {
                         "${(preset.grain*100).roundToInt()}%",
                     ) {
                         update(preset.copy(grain = it))
+                    }
+                    LabeledSlider(
+                        "纸纹",
+                        preset.paper,
+                        0f..1f,
+                        "${(preset.paper*100).roundToInt()}%",
+                    ) {
+                        update(preset.copy(paper = it))
+                    }
+                    LabeledSlider(
+                        "调色混合",
+                        preset.mix,
+                        0f..1f,
+                        "${(preset.mix*100).roundToInt()}%",
+                    ) {
+                        update(preset.copy(mix = it))
                     }
                     LabeledSlider(
                         "间距",
