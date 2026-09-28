@@ -53,30 +53,30 @@ fn textured_tip_is_repeatable_and_has_real_grain() {
     assert!(values.iter().max().unwrap() - values.iter().min().unwrap() > 100);
 }
 
-    #[test]
-    fn invalid_brush_extension_cannot_start_a_stroke() {
-        for brush in [
-            Brush {
-                aspect: 0.0,
-                ..Brush::default()
-            },
-            Brush {
-                grain: f32::NAN,
-                ..Brush::default()
-            },
-            Brush {
-                spacing: 0.0,
-                ..Brush::default()
-            },
-            Brush {
-                mix: 1.5,
-                ..Brush::default()
-            },
-            Brush {
-                paper: -0.1,
-                ..Brush::default()
-            },
-        ] {
+#[test]
+fn invalid_brush_extension_cannot_start_a_stroke() {
+    for brush in [
+        Brush {
+            aspect: 0.0,
+            ..Brush::default()
+        },
+        Brush {
+            grain: f32::NAN,
+            ..Brush::default()
+        },
+        Brush {
+            spacing: 0.0,
+            ..Brush::default()
+        },
+        Brush {
+            mix: 1.5,
+            ..Brush::default()
+        },
+        Brush {
+            paper: -0.1,
+            ..Brush::default()
+        },
+    ] {
         let mut engine = Engine::new(128, 128).unwrap();
         assert!(engine.command(Command::Begin { brush }).is_err());
         assert_eq!(engine.document.tile_count(), 0);
@@ -94,8 +94,11 @@ fn leaf_tip_runs_along_the_stroke_and_tapers_to_points() {
         follow_direction: true,
         ..Brush::default()
     };
-    let vertical =
-        stroke(brush, &[point(64.0, 30.0), point(64.0, 96.7), point(64.0, 96.7)], 1);
+    let vertical = stroke(
+        brush,
+        &[point(64.0, 30.0), point(64.0, 96.7), point(64.0, 96.7)],
+        1,
+    );
     assert!(alpha(&vertical, 64, 31) > 0);
     assert_eq!(alpha(&vertical, 70, 34), 0);
     assert!(alpha(&vertical, 71, 90) > 0);

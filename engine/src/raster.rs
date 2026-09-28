@@ -13,7 +13,10 @@ pub fn stamp(
     dirty: &mut BTreeSet<TileKey>,
     remaining: &mut usize,
 ) -> Result<(), String> {
-    let simple = brush.tip == BrushTip::Round && brush.aspect == 1.0 && brush.grain == 0.0 && brush.paper == 0.0;
+    let simple = brush.tip == BrushTip::Round
+        && brush.aspect == 1.0
+        && brush.grain == 0.0
+        && brush.paper == 0.0;
     match (simple, brush.symmetry.mode != SymmetryMode::Off) {
         (true, false) => stamp_impl::<true, false>(doc, selection, brush, point, dirty, remaining),
         (false, false) => {

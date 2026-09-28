@@ -111,7 +111,9 @@ fn smearing_crosses_tiles_ignores_foreground_and_undo_restores_every_pixel() {
 
 #[test]
 fn mixing_paints_the_brush_color_into_the_smear() {
-    let samples: Vec<_> = (0..41).map(|i| point(108.0 + i as f32 * 0.5, 80.0)).collect();
+    let samples: Vec<_> = (0..41)
+        .map(|i| point(108.0 + i as f32 * 0.5, 80.0))
+        .collect();
     let results: Vec<[u8; 4]> = [0.0, 0.5, 1.0]
         .into_iter()
         .map(|mix| {
