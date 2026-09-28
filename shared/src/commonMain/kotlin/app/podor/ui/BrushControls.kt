@@ -444,6 +444,7 @@ fun BrushStrokePreview(
 private fun BrushEditor(controller: StudioController, onDismiss: () -> Unit) {
     var pressure by remember { mutableStateOf(false) }
     var saveCopy by remember { mutableStateOf(false) }
+    var confirmingDelete by remember { mutableStateOf(false) }
     val custom = controller.preferences.brushes.any { it.id == controller.brush.preset.id }
     val replace = custom && !saveCopy
     var name by remember {
@@ -482,6 +483,21 @@ private fun BrushEditor(controller: StudioController, onDismiss: () -> Unit) {
                     if (custom)
                         ToolButton(Glyph.Copy, "另存笔刷副本", selected = saveCopy) {
                             saveCopy = !saveCopy
+                            confirmingDelete = false
+                        }
+                    if (custom)
+                        ToolButton(
+                            Glyph.Trash,
+                            if (confirmingDelete) "确认删除笔刷" else "删除笔刷",
+                            selected = confirmingDelete,
+                        ) {
+                            if (confirmingDelete) {
+                                controller.deleteBrush(preset.id)
+                                onDismiss()
+                            } else {
+                                confirmingDelete = true
+                                saveCopy = false
+                            }
                         }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(StudioTheme.brushSettingsGap)) {

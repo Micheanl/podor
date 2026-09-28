@@ -4,6 +4,23 @@ import kotlin.test.*
 import kotlinx.serialization.json.Json
 
 class PreferencesTest {
+    @Test
+    fun deletingACustomBrushKeepsPreferencesValidAndClearsItsFavorite() {
+        val brush = BrushPreset(id = "custom-1", label = "Mine", hardness = 1f, opacity = 1f, size = 12f)
+        val preferences =
+            Preferences(brushes = listOf(brush), favoriteBrushes = setOf("custom-1", "ink"))
+        assertTrue(preferences.valid())
+        val updated =
+            preferences.copy(
+                brushes = preferences.brushes.filterNot { it.id == "custom-1" },
+                favoriteBrushes = preferences.favoriteBrushes - "custom-1",
+            )
+        assertTrue(updated.valid())
+        assertEquals(emptyList(), updated.brushes)
+        assertEquals(setOf("ink"), updated.favoriteBrushes)
+        assertEquals(setOf("ink"), updated.withAvailableBrushFavorites().favoriteBrushes)
+    }
+
     @Test fun addingSmudgePreservesAnOlderSBinding() {
         val previous = Preferences(shortcuts = mapOf(ShortcutAction.Brush to Shortcut("S")))
         val restored = previous.withNewShortcuts()

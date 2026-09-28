@@ -1531,6 +1531,17 @@ class StudioController(
         selectPreset(saved)
     }
 
+    fun deleteBrush(id: String) {
+        if (preferences.brushes.none { it.id == id } || previewPending()) return
+        updatePreferences(
+            preferences.copy(
+                brushes = preferences.brushes.filterNot { it.id == id },
+                favoriteBrushes = preferences.favoriteBrushes - id,
+            )
+        )
+        if (brush.preset.id == id) selectPreset(BrushPreset.Ink)
+    }
+
     fun reportError(message: String) {
         error = message
     }

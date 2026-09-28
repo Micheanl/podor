@@ -209,9 +209,10 @@ impl Stroke {
             },
             None => self.brush,
         };
-        if self.brush.tip == BrushTip::Leaf && self.brush.follow_direction {
-            let ramp = self.brush.size * 1.2;
-            let t = (self.travel / ramp).clamp(0.0, 1.0);
+        if self.brush.follow_direction
+            && (self.direction.is_none() || self.brush.tip == BrushTip::Leaf)
+        {
+            let t = (self.travel / (self.brush.size * 0.7)).clamp(0.0, 1.0);
             let swell = t * t * (3.0 - 2.0 * t);
             let floor = (self.brush.spacing * 2.0).clamp(0.04, 0.4);
             brush.size *= floor + (1.0 - floor) * swell;
@@ -387,6 +388,39 @@ impl Engine {
                                 &mut remaining,
                             )?;
                             stroke.changed = true;
+                        }
+                    }
+                    if stroke.changed
+                        && stroke.smudge.is_none()
+                        && stroke.brush.tip == BrushTip::Leaf
+                        && stroke.brush.follow_direction
+                    {
+                        if let (Some(direction), Some(last)) = (stroke.direction, stroke.last) {
+                            let (sin, cos) = direction.to_radians().sin_cos();
+                            let reach = stroke.brush.size * 0.75;
+                            let nib = stroke.stamp_brush();
+                            let pressure = last.pressure;
+                            let steps = 24;
+                            for i in 1..=steps {
+                                let t = i as f32 / steps as f32;
+                                let size = nib.size * (1.0 - t);
+                                if size < 2.0 {
+                                    break;
+                                }
+                                let flick = Brush { size, ..nib };
+                                raster::stamp(
+                                    &mut self.document,
+                                    self.selection.as_ref(),
+                                    flick,
+                                    Sample {
+                                        x: last.x + cos * reach * t,
+                                        y: last.y + sin * reach * t,
+                                        pressure,
+                                    },
+                                    &mut self.dirty,
+                                    &mut remaining,
+                                )?;
+                            }
                         }
                     }
                 }

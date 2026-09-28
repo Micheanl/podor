@@ -104,15 +104,20 @@ fn leaf_tip_runs_along_the_stroke_and_tapers_to_points() {
     assert!(alpha(&vertical, 71, 90) > 0);
     assert_eq!(alpha(&vertical, 77, 90), 0);
     assert!(alpha(&vertical, 64, 104) > 0);
-    assert_eq!(alpha(&vertical, 64, 122), 0);
+    assert!(alpha(&vertical, 64, 122) > 0);
+    assert_eq!(alpha(&vertical, 64, 127), 0);
     assert_eq!(alpha(&vertical, 70, 15), 0);
+    for y in 31..=125 {
+        assert!(alpha(&vertical, 64, y) > 0, "gap at {y}");
+    }
     let horizontal = stroke(brush, &[point(30.0, 64.0), point(96.7, 64.0)], 2);
     assert!(alpha(&horizontal, 31, 64) > 0);
     assert_eq!(alpha(&horizontal, 34, 70), 0);
     assert!(alpha(&horizontal, 90, 71) > 0);
     assert_eq!(alpha(&horizontal, 90, 77), 0);
     assert!(alpha(&horizontal, 104, 64) > 0);
-    assert_eq!(alpha(&horizontal, 122, 64), 0);
+    assert!(alpha(&horizontal, 122, 64) > 0);
+    assert_eq!(alpha(&horizontal, 127, 64), 0);
 }
 
 #[test]
@@ -128,12 +133,27 @@ fn hesitant_heads_stay_round_until_the_direction_settles() {
     };
     let mut engine = Engine::new(128, 128).unwrap();
     engine.command(Command::Begin { brush }).unwrap();
-    engine.samples(&[point(64.0, 20.0)]).unwrap();
-    engine.samples(&[point(65.4, 20.8)]).unwrap();
+    engine
+        .samples(&[point(64.0, 20.0), point(65.4, 20.8), point(70.0, 40.0)])
+        .unwrap();
+    engine.samples(&[point(70.0, 90.0)]).unwrap();
     engine.command(Command::End).unwrap();
-    assert!(alpha(&engine, 84, 20) > 0);
-    assert!(alpha(&engine, 65, 33) > 0);
+    assert_eq!(alpha(&engine, 80, 20), 0);
     assert_eq!(alpha(&engine, 90, 20), 0);
+    assert!(alpha(&engine, 70, 60) > 0);
+    assert!(alpha(&engine, 66, 22) > 0);
+}
+
+#[test]
+fn hard_edges_are_antialiased_on_the_pixel_grid() {
+    let engine = stamp(Brush {
+        size: 20.0,
+        hardness: 1.0,
+        ..Brush::default()
+    });
+    assert!(alpha(&engine, 64, 64) > 240);
+    let edge = alpha(&engine, 73, 67);
+    assert!(edge > 0 && edge < 255, "edge alpha {edge}");
 }
 
 #[test]
@@ -148,6 +168,8 @@ fn comb_tip_draws_four_parallel_tines_along_the_stroke() {
         ..Brush::default()
     };
     let vertical = stroke(brush, &[point(64.0, 20.0), point(64.0, 100.0)], 2);
+    assert_eq!(alpha(&vertical, 88, 20), 0);
+    assert_eq!(alpha(&vertical, 40, 20), 0);
     assert!(alpha(&vertical, 58, 60) > 0);
     assert!(alpha(&vertical, 70, 60) > 0);
     assert!(alpha(&vertical, 82, 60) > 0);

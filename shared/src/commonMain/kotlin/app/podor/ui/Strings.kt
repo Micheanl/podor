@@ -367,6 +367,8 @@ private val english =
         "颗粒" to "Grain",
         "间距" to "Spacing",
         "保存为新笔刷" to "Save as new brush",
+        "删除笔刷" to "Delete brush",
+        "确认删除笔刷" to "Confirm brush deletion",
         "完成" to "Done",
         "取消" to "Cancel",
         "按下快捷键" to "Press a shortcut",

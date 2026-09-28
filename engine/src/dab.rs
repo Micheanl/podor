@@ -139,9 +139,9 @@ impl Dab {
         along.min(across)
     }
 
-    pub fn coverage<const SIMPLE: bool>(&self, x: u32, y: u32) -> f32 {
-        let dx = x as f32 + 0.5 - self.point.x;
-        let dy = y as f32 + 0.5 - self.point.y;
+    fn shape_at<const SIMPLE: bool>(&self, px: f32, py: f32) -> f32 {
+        let dx = px - self.point.x;
+        let dy = py - self.point.y;
         let squared = if SIMPLE || self.circular {
             dx * dx + dy * dy
         } else {
@@ -167,8 +167,33 @@ impl Dab {
         if squared >= reach * reach {
             return 0.0;
         }
-        let mut coverage = ((reach - squared.sqrt()) / self.feather).clamp(0.0, 1.0);
-        if !SIMPLE && (self.brush.grain > 0.0 || self.brush.paper > 0.0) {
+        ((reach - squared.sqrt()) / self.feather).clamp(0.0, 1.0)
+    }
+
+    pub fn coverage<const SIMPLE: bool>(&self, x: u32, y: u32) -> f32 {
+        let px = x as f32 + 0.5;
+        let py = y as f32 + 0.5;
+        let dx = px - self.point.x;
+        let dy = py - self.point.y;
+        let far = self.radius * 1.5 + 0.5;
+        if dx * dx + dy * dy > far * far {
+            return 0.0;
+        }
+        let core = self.shape_at::<SIMPLE>(px, py);
+        let shape = if core >= 1.0 {
+            1.0
+        } else {
+            let mut sum = 0.0;
+            for (ox, oy) in [(-0.25, -0.25), (0.25, -0.25), (-0.25, 0.25), (0.25, 0.25)] {
+                sum += self.shape_at::<SIMPLE>(px + ox, py + oy);
+            }
+            sum * 0.25
+        };
+        if shape <= 0.0 {
+            return 0.0;
+        }
+        let mut coverage = shape;
+        if self.brush.grain > 0.0 || self.brush.paper > 0.0 {
             let x = if self.grain_mirror[0] {
                 (self.grain_axis[0] - x as f32 - 1.0) as i64 as u32
             } else {

@@ -31,7 +31,7 @@ fn alpha(engine: &Engine, x: u32, y: u32) -> u8 {
 
 #[test]
 fn pressure_curve_changes_the_footprint_and_opacity_independently() {
-    for (curve, width, opacity) in [(-1.0, 15, 64), (0.0, 31, 128), (1.0, 47, 191)] {
+    for (curve, width, opacity) in [(-1.0, 17, 64), (0.0, 33, 128), (1.0, 49, 191)] {
         let brush = Brush {
             size: 64.0,
             hardness: 1.0,
@@ -54,7 +54,7 @@ fn pressure_curve_changes_the_footprint_and_opacity_independently() {
             (0..128)
                 .filter(|&x| alpha(&opacity_only, x, 64) > 0)
                 .count(),
-            63
+            65
         );
     }
     let partial = dot(
@@ -68,7 +68,7 @@ fn pressure_curve_changes_the_footprint_and_opacity_independently() {
         0.5,
     );
     assert_eq!(alpha(&partial, 64, 64), 191);
-    assert_eq!((0..128).filter(|&x| alpha(&partial, x, 64) > 0).count(), 47);
+    assert_eq!((0..128).filter(|&x| alpha(&partial, x, 64) > 0).count(), 49);
 }
 
 #[test]
@@ -123,10 +123,10 @@ fn legacy_brushes_keep_linear_size_and_constant_opacity() {
     for (pressure, width) in [
         (-1.0, 3),
         (0.0, 3),
-        (0.25, 15),
-        (0.5, 31),
-        (1.0, 63),
-        (2.0, 63),
+        (0.25, 17),
+        (0.5, 33),
+        (1.0, 65),
+        (2.0, 65),
     ] {
         let painted = dot(legacy, pressure);
         assert_eq!(

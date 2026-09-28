@@ -181,7 +181,7 @@ data class BrushPreset(
                     1f,
                     34f,
                     BrushTip.Leaf,
-                    0.42f,
+                    0.35f,
                     spacing = 0.05f,
                     stabilization = StudioDefaults.lineStabilization,
                     followDirection = true,
