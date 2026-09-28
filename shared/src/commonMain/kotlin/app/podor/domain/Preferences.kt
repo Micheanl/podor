@@ -52,7 +52,7 @@ data class Shortcut(
     val shift: Boolean = false,
     val alt: Boolean = false,
 ) {
-    fun valid() = key.matches(Regex("[A-Z0-9]"))
+    fun valid() = key.matches(Regex("[A-Z0-9]")) || key in setOf("+", "-", "[", "]")
 
     fun display() =
         listOfNotNull(
@@ -74,6 +74,10 @@ enum class ShortcutAction(val label: String, val default: Shortcut) {
     Select("选区", Shortcut("M")),
     Fill("填充", Shortcut("G")),
     Fit("适合窗口", Shortcut("0")),
+    ZoomIn("放大画布", Shortcut("+", true)),
+    ZoomOut("缩小画布", Shortcut("-", true)),
+    BrushSmaller("减小笔刷", Shortcut("[")),
+    BrushLarger("增大笔刷", Shortcut("]")),
     Undo("撤销", Shortcut("Z", true)),
     Redo("重做", Shortcut("Z", true, true)),
     Save("保存工程", Shortcut("S", true)),
@@ -130,6 +134,10 @@ data class Preferences(
                 ShortcutAction.InvertSelection,
                 ShortcutAction.MagicWand,
                 ShortcutAction.PasteReference,
+                ShortcutAction.ZoomIn,
+                ShortcutAction.ZoomOut,
+                ShortcutAction.BrushSmaller,
+                ShortcutAction.BrushLarger,
             )) {
             if (action in result.shortcuts || action.default !in result.shortcuts.values) continue
             val used = ShortcutAction.entries.filter { it != action }.map(result::shortcut).toSet()

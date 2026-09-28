@@ -265,6 +265,10 @@ object StudioDefaults {
     const val nativeTouchContacts = 32
     const val nativeTabletDevices = 64
     const val maxBatchSamples = 256
+    const val zoomStep = 1.2f
+    const val brushSizeStep = 1.12f
+    const val minBrushSize = 1f
+    const val maxBrushSize = 256f
     const val minZoom = 0.1f
     const val maxZoom = 8f
     const val rotationStep = 15f

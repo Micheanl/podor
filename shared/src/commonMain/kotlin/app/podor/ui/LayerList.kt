@@ -1,5 +1,6 @@
 package app.podor.ui
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -119,10 +120,33 @@ internal fun LayerList(
                             down.position.y >= it.offset + rowPadding &&
                                 down.position.y < it.offset + rowPadding + previewEnd - previewStart
                         }
-                    if (item == null || down.position.x !in previewStart..previewEnd)
+                    val controlsStart = size.width - StudioTheme.controlSize.toPx()
+                    if (item == null || down.position.x !in previewStart..controlsStart)
                         return@awaitEachGesture
                     val id = item.key as Int
-                    down.consume()
+                    if (down.position.x > previewEnd) {
+                        val cancelled =
+                            withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                    val change = event.changes.firstOrNull { it.id == down.id }
+                                    if (
+                                        change == null ||
+                                            !change.pressed ||
+                                            event.changes.count { it.pressed } > 1 ||
+                                            (change.position - down.position).getDistance() >
+                                                viewConfiguration.touchSlop ||
+                                            event.platformPenInput()?.cancelled == true ||
+                                            event.platformTouchInput()?.let {
+                                                it.cancelled || it.gesturing
+                                            } == true
+                                    )
+                                        return@withTimeoutOrNull true
+                                }
+                            }
+                        if (cancelled == true) return@awaitEachGesture
+                        drag = LayerDrag(id, down.position.y - item.offset, down.position)
+                    } else down.consume()
                     try {
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -197,13 +221,21 @@ internal fun LayerList(
         }
         drag?.let { active ->
             val layer = layers.firstOrNull { it.id == active.id } ?: return@let
+            val lift = remember(active.id) { Animatable(1f) }
+            LaunchedEffect(active.id) {
+                lift.animateTo(StudioTheme.layerLiftScale, tween(StudioMotion.feedbackMillis))
+            }
             LayerRow(
                 controller,
                 layer,
                 true,
                 false,
                 Modifier.fillMaxWidth()
-                    .graphicsLayer { translationY = active.position.y - active.grabY }
+                    .graphicsLayer {
+                        translationY = active.position.y - active.grabY
+                        scaleX = lift.value
+                        scaleY = lift.value
+                    }
                     .shadow(StudioTheme.layerDragShadow, StudioTheme.layerShape)
                     .background(StudioTheme.panel, StudioTheme.layerShape),
             )

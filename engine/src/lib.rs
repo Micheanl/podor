@@ -570,10 +570,8 @@ impl Engine {
                         }
                     }
                     Command::TranslateLayer { id, dx, dy } => {
-                        if self.selection.is_some() {
-                            return Err("请先取消选区，再移动图层".into());
-                        }
-                        let tiles = translation::translate(&self.document, id, dx, dy)?;
+                        if self.selection.is_some() && id != self.document.active { return Err("请先选择当前图层".into()); }
+                        let tiles = translation::translate(&self.document, id, dx, dy, self.selection.as_ref())?;
                         let index = self.layer_index(id)?;
                         if tiles != self.document.layers[index].tiles {
                             let before = self.document.clone();
@@ -584,6 +582,7 @@ impl Engine {
                                 .push(before, self.content_id, &self.document, true);
                             self.revision += 1;
                             self.content_id = self.revision;
+                            self.set_selection(None);
                         }
                     }
                     Command::TransformLayer {
@@ -961,6 +960,9 @@ impl Engine {
     }
     pub fn layer_frame(&self) -> Vec<u8> {
         translation::frame(&self.document)
+    }
+    pub fn selection_move_frame(&self) -> Result<Vec<u8>, String> {
+        translation::selection_frame(&self.document, self.selection.as_ref().ok_or("请先创建选区")?)
     }
     pub fn selection_frame(&self) -> Vec<u8> {
         gradient::selection_frame(self.selection.as_ref())

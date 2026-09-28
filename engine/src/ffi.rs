@@ -122,7 +122,13 @@ pub fn dispatch(handle: u64, operation: u32, bytes: &[u8]) -> Result<Vec<u8>, St
         }
         6 => engine.previews(),
         7 => Ok(engine.thumbnail()),
-        8 => Ok(engine.layer_frame()),
+        8 => {
+            if bytes == [1] {
+                engine.selection_move_frame()
+            } else {
+                Ok(engine.layer_frame())
+            }
+        }
         9 => {
             let size = bytes.get(..4).ok_or("导入图层数据无效")?;
             let length = u32::from_le_bytes(size.try_into().unwrap()) as usize;

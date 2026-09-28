@@ -66,6 +66,8 @@ fun CanvasWorkspace(
     val viewSize by remember {
         derivedStateOf { Size((fullSize.width - inset).coerceAtLeast(0f), fullSize.height) }
     }
+    var quickAnchor by remember { mutableStateOf<Offset?>(null) }
+    var secondaryHeld by remember { mutableStateOf(false) }
     var cursor by remember { mutableStateOf<Offset?>(null) }
     var selectionGesture by remember { mutableStateOf<SelectionGesture?>(null) }
     var selectionVersion by remember { mutableIntStateOf(0) }
@@ -81,9 +83,14 @@ fun CanvasWorkspace(
         controller.tool,
         controller.document.revision,
         controller.document.active,
+        controller.document.selection,
         controller.busy,
     ) {
-        if (controller.tool == Tool.MoveLayer || controller.tool == Tool.TransformLayer)
+        if (
+            controller.tool == Tool.MoveLayer ||
+                controller.tool == Tool.TransformLayer ||
+                (controller.tool == Tool.Select && controller.document.selection != null)
+        )
             controller.prepareLayerMove()
         else controller.cancelLayerMove(exit = true)
     }
@@ -187,6 +194,14 @@ fun CanvasWorkspace(
                                 ?: event.changes.first()
                         val mouse =
                             primary.type == PointerType.Mouse && pen == null && touch == null
+                        if (mouse && (event.buttons.isSecondaryPressed || secondaryHeld)) {
+                            if (event.buttons.isSecondaryPressed && !secondaryHeld && !drawing)
+                                quickAnchor = primary.position
+                            secondaryHeld = event.buttons.isSecondaryPressed
+                            primary.consume()
+                            continue
+                        }
+                        if (mouse && primary.pressed && !event.buttons.isPrimaryPressed) continue
                         if (touch != null) {
                             val transform =
                                 touchGesture.update(
@@ -274,7 +289,9 @@ fun CanvasWorkspace(
                             }
                         }
                         cursor =
-                            if ((mouse || pen != null) && event.type != PointerEventType.Exit) position else null
+                            if ((mouse || pen != null) && event.type != PointerEventType.Exit)
+                                position
+                            else null
                         if (event.type == PointerEventType.Scroll) {
                             if (
                                 drawing ||
@@ -385,7 +402,8 @@ fun CanvasWorkspace(
                             transformDrag = null
                             moveAnchor?.let { anchor ->
                                 if (
-                                    controller.tool == Tool.MoveLayer &&
+                                    (controller.tool == Tool.MoveLayer ||
+                                        controller.tool == Tool.Select) &&
                                         controller.layerMove === movePreview
                                 ) {
                                     val end =
@@ -429,9 +447,24 @@ fun CanvasWorkspace(
                             continue
                         }
                         if (gesture) continue
-                        if (pen?.barrel == true && !drawing && primary.pressed && !primary.previousPressed) {
-                            val picked = controller.viewport.toDocument(position, viewSize, controller.document)
-                            if (picked.x >= 0 && picked.y >= 0 && picked.x < controller.document.width && picked.y < controller.document.height) {
+                        if (
+                            pen?.barrel == true &&
+                                !drawing &&
+                                primary.pressed &&
+                                !primary.previousPressed
+                        ) {
+                            val picked =
+                                controller.viewport.toDocument(
+                                    position,
+                                    viewSize,
+                                    controller.document,
+                                )
+                            if (
+                                picked.x >= 0 &&
+                                    picked.y >= 0 &&
+                                    picked.x < controller.document.width &&
+                                    picked.y < controller.document.height
+                            ) {
                                 controller.command("pick") {
                                     put("x", picked.x.toInt())
                                     put("y", picked.y.toInt())
@@ -543,7 +576,19 @@ fun CanvasWorkspace(
                             primary.consume()
                             continue
                         }
-                        if (controller.tool == Tool.MoveLayer) {
+                        val selection = controller.document.selection
+                        val selectionPoint =
+                            controller.viewport.toDocument(position, viewSize, controller.document)
+                        val movingSelection =
+                            controller.tool == Tool.Select &&
+                                selection != null &&
+                                controller.selectionMode == SelectionMode.Replace &&
+                                (moveAnchor != null ||
+                                    (selectionPoint.x >= selection.left &&
+                                        selectionPoint.x < selection.right &&
+                                        selectionPoint.y >= selection.top &&
+                                        selectionPoint.y < selection.bottom))
+                        if (controller.tool == Tool.MoveLayer || movingSelection) {
                             if (
                                 (primary.type == PointerType.Touch || touch != null) &&
                                     !controller.fingerDrawing
@@ -661,7 +706,8 @@ fun CanvasWorkspace(
                         } else if (
                             drawing &&
                                 primary.id == activePointer &&
-                                (pen != null || position != primary.previousPosition ||
+                                (pen != null ||
+                                    position != primary.previousPosition ||
                                     (pen?.samples?.size ?: touch?.samples?.size ?: 0) > 1)
                         ) {
                             controller.points(samples())
@@ -697,8 +743,18 @@ fun CanvasWorkspace(
                 scale(scale * viewport.horizontalSign, scale, Offset.Zero)
             }) {
                 clipRect(0f, 0f, document.width.toFloat(), document.height.toFloat()) {
-                    drawCanvasBackground(controller.preferences.canvasBackground, checker, paper, scale)
-                    if (controller.layerMove == null && controller.gradientPreview == null)
+                    drawCanvasBackground(
+                        controller.preferences.canvasBackground,
+                        checker,
+                        paper,
+                        scale,
+                    )
+                    if (
+                        (controller.layerMove == null ||
+                            (controller.layerMove?.selection != null &&
+                                controller.layerMove?.offset == IntOffset.Zero)) &&
+                            controller.gradientPreview == null
+                    )
                         (controller.adjustmentPreview?.takeUnless { it.comparing }?.frame
                                 ?: controller.frame)
                             .tiles
@@ -725,11 +781,13 @@ fun CanvasWorkspace(
                 }
             }
         }
-        controller.layerMove?.let {
-            LayerMoveOverlay(controller, it, viewSize, Modifier.matchParentSize())
-            if (it.transform != null)
-                LayerTransformHandles(controller, it, viewSize, Modifier.matchParentSize())
-        }
+        controller.layerMove
+            ?.takeUnless { it.selection != null && it.offset == IntOffset.Zero }
+            ?.let {
+                LayerMoveOverlay(controller, it, viewSize, Modifier.matchParentSize())
+                if (it.transform != null)
+                    LayerTransformHandles(controller, it, viewSize, Modifier.matchParentSize())
+            }
         controller.gradientPreview?.let {
             GradientOverlay(controller, it, viewSize, Modifier.matchParentSize())
         }
@@ -794,28 +852,32 @@ fun CanvasWorkspace(
                     scale(scale * viewport.horizontalSign, scale, Offset.Zero)
                 }) {
                     clipRect(0f, 0f, document.width.toFloat(), document.height.toFloat()) {
-                        drawPath(selectionPath, Color.Black, style = Stroke(2f / scale))
-                        drawPath(
-                            selectionPath,
-                            Color.White,
-                            style =
-                                Stroke(
-                                    1.5f / scale,
-                                    pathEffect =
-                                        if (
-                                            outlineLength * scale <=
-                                                StudioTheme.selectionDashLengthLimit
-                                        )
-                                            selectionDash
-                                        else null,
-                                ),
-                        )
+                        val move = controller.layerMove?.offset
+                        translate((move?.x ?: 0).toFloat(), (move?.y ?: 0).toFloat()) {
+                            drawPath(selectionPath, Color.Black, style = Stroke(2f / scale))
+                            drawPath(
+                                selectionPath,
+                                Color.White,
+                                style =
+                                    Stroke(
+                                        1.5f / scale,
+                                        pathEffect =
+                                            if (
+                                                outlineLength * scale <=
+                                                    StudioTheme.selectionDashLengthLimit
+                                            )
+                                                selectionDash
+                                            else null,
+                                    ),
+                            )
+                        }
                     }
                 }
             }
             cursor?.let { position ->
                 if (
-                    controller.tool == Tool.Brush || controller.tool == Tool.Eraser ||
+                    controller.tool == Tool.Brush ||
+                        controller.tool == Tool.Eraser ||
                         controller.tool == Tool.Smudge
                 ) {
                     val radius = (controller.brush.size * scale * 0.5f).coerceAtLeast(2f)
@@ -828,7 +890,10 @@ fun CanvasWorkspace(
                         )
                         drawCircle(Color.White.copy(alpha = 0.9f), radius, at, style = Stroke(1f))
                     }
-                    if (controller.tool == Tool.Smudge || controller.symmetry.mode == SymmetryMode.Off)
+                    if (
+                        controller.tool == Tool.Smudge ||
+                            controller.symmetry.mode == SymmetryMode.Off
+                    )
                         cursor(position)
                     else {
                         val point = controller.viewport.toDocument(position, viewSize, document)
@@ -840,5 +905,11 @@ fun CanvasWorkspace(
             }
         }
         CanvasReferences(controller, viewSize, Modifier.matchParentSize(), referenceInput)
+        quickAnchor?.let {
+            QuickBrushPopup(controller, it) {
+                quickAnchor = null
+                secondaryHeld = false
+            }
+        }
     }
 }

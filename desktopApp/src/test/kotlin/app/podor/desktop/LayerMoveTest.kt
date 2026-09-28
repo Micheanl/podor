@@ -94,7 +94,7 @@ class LayerMoveTest {
 
         suspend fun pointer(type: PointerEventType, point: Offset) =
             withContext(Dispatchers.Main) {
-                val area = if (fullStudio) Size(1042f, 836f) else view
+                val area = if (fullStudio) Size(1360f, 836f) else view
                 val origin = if (fullStudio) Offset(0f, 64f) else Offset.Zero
                 scene.sendPointerEvent(
                     type,
@@ -144,6 +144,45 @@ class LayerMoveTest {
                 controller.shutdown()
             }
             scope.cancel()
+        }
+    }
+
+    @Test
+    fun selectedRegionCanBeDraggedWithSelectionToolAndUndone() = runBlocking {
+        withSession(LayerBlendMode.Normal) {
+            val before = save()
+            withContext(Dispatchers.Main) {
+                controller.tool = Tool.Select
+                controller.command("select") {
+                    put(
+                        "rect",
+                        kotlinx.serialization.json.buildJsonObject {
+                            put("left", kotlinx.serialization.json.JsonPrimitive(24))
+                            put("top", kotlinx.serialization.json.JsonPrimitive(20))
+                            put("right", kotlinx.serialization.json.JsonPrimitive(50))
+                            put("bottom", kotlinx.serialization.json.JsonPrimitive(50))
+                        },
+                    )
+                }
+            }
+            awaitState {
+                controller.document.selection != null &&
+                    controller.layerMove?.selection != null &&
+                    !controller.busy
+            }
+            val revision = withContext(Dispatchers.Main) { controller.document.revision }
+            pointer(PointerEventType.Press, Offset(32f, 30f))
+            pointer(PointerEventType.Move, Offset(58f, 40f))
+            withContext(Dispatchers.Main) {
+                assertEquals(IntOffset(26, 10), controller.layerMove?.offset)
+                assertEquals(revision, controller.document.revision)
+            }
+            pointer(PointerEventType.Release, Offset(58f, 40f))
+            awaitState { controller.document.revision > revision && !controller.busy }
+            assertFalse(before.contentEquals(save()))
+            withContext(Dispatchers.Main) { controller.command("undo") }
+            awaitState { controller.document.revision > revision + 1 && !controller.busy }
+            assertContentEquals(before, save())
         }
     }
 

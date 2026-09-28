@@ -1,11 +1,14 @@
 package app.podor.ui
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -23,6 +26,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -30,6 +35,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+internal val LocalHeaderButtons = staticCompositionLocalOf { false }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,11 +46,14 @@ fun ToolButton(
     selected: Boolean = false,
     enabled: Boolean = true,
     prominent: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     val translatedLabel = tr(label)
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
+    val header = LocalHeaderButtons.current
+    val shape = CircleShape
     val filled = selected || prominent
     val tint =
         animateColorAsState(
@@ -67,15 +77,20 @@ fun ToolButton(
     ) {
         Box(
             Modifier.size(StudioTheme.controlSize)
-                .clickable(
+                .combinedClickable(
                     interactionSource = interaction,
                     indication = null,
                     enabled = enabled,
                     role = Role.Button,
+                    onLongClick = onLongClick,
                     onClick = onClick,
                 )
-                .controlFeedback(interaction, CircleShape, enabled)
-                .buttonSurface(filled, enabled, CircleShape)
+                .then(
+                    if (header) Modifier
+                    else
+                        Modifier.controlFeedback(interaction, shape, enabled)
+                            .buttonSurface(filled, enabled, shape)
+                )
                 .semantics {
                     contentDescription = translatedLabel
                     this.selected = selected
@@ -83,6 +98,14 @@ fun ToolButton(
             contentAlignment = Alignment.Center,
         ) {
             StudioIcon(glyph, tint.value)
+            if (header && selected)
+                Box(
+                    Modifier.align(Alignment.BottomCenter)
+                        .padding(bottom = 5.dp)
+                        .width(12.dp)
+                        .height(2.dp)
+                        .background(StudioTheme.text, CircleShape)
+                )
         }
     }
 }
@@ -109,15 +132,27 @@ fun LabeledSlider(
     range: ClosedFloatingPointRange<Float>,
     display: String,
     onChangeFinished: (() -> Unit)? = null,
+    trackColors: List<Color>? = null,
     onChange: (Float) -> Unit,
 ) {
     val translatedLabel = tr(label)
     val interaction = remember { MutableInteractionSource() }
     val dragging by interaction.collectIsDraggedAsState()
     val focused by interaction.collectIsFocusedAsState()
+    var scrubbing by remember { mutableStateOf(false) }
+    val currentValue by rememberUpdatedState(value)
+    val change by rememberUpdatedState(onChange)
+    val finished by rememberUpdatedState(onChangeFinished)
+    val scrubDistance = with(LocalDensity.current) { StudioTheme.sliderFineDistance.toPx() }
+    val trackHeight by
+        animateDpAsState(
+            if (trackColors != null) StudioTheme.colorSliderHeight
+            else if (dragging || scrubbing) 6.dp else 4.dp,
+            tween(StudioMotion.feedbackMillis),
+        )
     val thumbScale =
         animateFloatAsState(
-            if (dragging || focused) StudioMotion.sliderActiveScale else 1f,
+            if (dragging || focused || scrubbing) StudioMotion.sliderActiveScale else 1f,
             tween(StudioMotion.feedbackMillis, easing = StudioMotion.easing),
         )
     Column {
@@ -129,8 +164,42 @@ fun LabeledSlider(
             Text(translatedLabel, fontSize = 12.sp, color = StudioTheme.muted)
             Text(
                 display,
+                modifier =
+                    Modifier.pointerInput(range, scrubDistance) {
+                            var start = 0f
+                            var pixels = 0f
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = {
+                                    start = currentValue
+                                    pixels = 0f
+                                    scrubbing = true
+                                },
+                                onDragEnd = {
+                                    scrubbing = false
+                                    finished?.invoke()
+                                },
+                                onDragCancel = {
+                                    if (scrubbing) {
+                                        scrubbing = false
+                                        change(start)
+                                        finished?.invoke()
+                                    }
+                                },
+                            ) { event, amount ->
+                                event.consume()
+                                pixels += amount.x
+                                change(
+                                    (start +
+                                            pixels / scrubDistance *
+                                                (range.endInclusive - range.start))
+                                        .coerceIn(range)
+                                )
+                            }
+                        }
+                        .padding(vertical = 6.dp),
                 fontSize = 12.sp,
-                color = if (dragging || focused) StudioTheme.accent else StudioTheme.text,
+                color =
+                    if (dragging || focused || scrubbing) StudioTheme.accent else StudioTheme.text,
             )
         }
         Slider(
@@ -140,28 +209,48 @@ fun LabeledSlider(
             onValueChangeFinished = onChangeFinished,
             interactionSource = interaction,
             thumb = {
-                Box(
-                    Modifier.size(StudioTheme.sliderThumbSize)
-                        .graphicsLayer {
+                if (trackColors != null)
+                    ColorSliderThumb(
+                        colorOnTrack(
+                            trackColors,
+                            (value - range.start) / (range.endInclusive - range.start),
+                        ),
+                        Modifier.size(StudioTheme.quickThumbSize).graphicsLayer {
                             scaleX = thumbScale.value
                             scaleY = thumbScale.value
-                        }
-                        .shadow(3.dp, CircleShape)
-                        .background(StudioTheme.text, CircleShape)
-                )
+                        },
+                    )
+                else
+                    Box(
+                        Modifier.size(StudioTheme.sliderThumbSize)
+                            .graphicsLayer {
+                                scaleX = thumbScale.value
+                                scaleY = thumbScale.value
+                            }
+                            .shadow(3.dp, CircleShape)
+                            .background(StudioTheme.text, CircleShape)
+                    )
             },
             track = { state ->
-                SliderDefaults.Track(
-                    state,
-                    modifier = Modifier.height(4.dp),
-                    thumbTrackGapSize = 0.dp,
-                    drawStopIndicator = null,
-                    colors =
-                        SliderDefaults.colors(
-                            activeTrackColor = StudioTheme.accent,
-                            inactiveTrackColor = StudioTheme.border,
-                        ),
-                )
+                if (trackColors != null)
+                    Box(
+                        Modifier.fillMaxWidth()
+                            .height(trackHeight)
+                            .clip(CircleShape)
+                            .background(Brush.horizontalGradient(trackColors))
+                    )
+                else
+                    SliderDefaults.Track(
+                        state,
+                        modifier = Modifier.height(trackHeight),
+                        thumbTrackGapSize = 0.dp,
+                        drawStopIndicator = null,
+                        colors =
+                            SliderDefaults.colors(
+                                activeTrackColor = StudioTheme.accent,
+                                inactiveTrackColor = StudioTheme.border,
+                            ),
+                    )
             },
             modifier = Modifier.height(40.dp).semantics { contentDescription = translatedLabel },
         )

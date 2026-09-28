@@ -8,13 +8,18 @@ import androidx.compose.ui.unit.IntOffset
 import app.podor.domain.LayerInfo
 import app.podor.domain.LayerTransform
 
-data class LayerFrame(val layer: LayerInfo, val tiles: List<TileImage>)
+data class LayerFrame(
+    val layer: LayerInfo,
+    val tiles: List<TileImage>,
+    val stationary: List<TileImage> = emptyList(),
+)
 
 class LayerMovePreview(
     val layerId: Int,
     val revision: Long,
     val layers: List<LayerFrame>,
     val sourceBounds: Rect? = null,
+    val selection: app.podor.domain.Selection? = null,
 ) {
     var transform by
         mutableStateOf(sourceBounds?.let { LayerTransform(it.width.toInt(), it.height.toInt()) })

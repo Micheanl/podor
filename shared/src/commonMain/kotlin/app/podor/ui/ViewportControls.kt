@@ -16,15 +16,53 @@ import kotlin.math.roundToInt
 @Composable
 fun ViewportControls(viewport: Viewport, fitLabel: String, onChange: (Viewport) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
+    var zoomExpanded by remember { mutableStateOf(false) }
     val rotationLabel = tr("旋转视图")
     Row(verticalAlignment = Alignment.CenterVertically) {
-        StudioTextButton({ onChange(Viewport()) }, contentPadding = PaddingValues(horizontal = 7.dp)) {
-            ButtonLabel(
-                "${(viewport.zoom * 100).roundToInt()}%",
-                fontSize = 11.sp,
-                color = StudioTheme.muted,
-            )
+        Box {
+            StudioTextButton(
+                { zoomExpanded = !zoomExpanded },
+                contentPadding = PaddingValues(horizontal = 7.dp),
+            ) {
+                ButtonLabel(
+                    "${(viewport.zoom * 100).roundToInt()}%",
+                    fontSize = 11.sp,
+                    color = StudioTheme.muted,
+                )
+            }
+            DropdownMenu(
+                zoomExpanded,
+                { zoomExpanded = false },
+                shape = StudioTheme.menuShape,
+                containerColor = StudioTheme.panel,
+            ) {
+                Column(Modifier.width(StudioTheme.quickControlsWidth).padding(16.dp)) {
+                    LabeledSlider(
+                        "缩放",
+                        viewport.zoom,
+                        StudioDefaults.minZoom..StudioDefaults.maxZoom,
+                        "${(viewport.zoom * 100).roundToInt()}%",
+                    ) {
+                        onChange(viewport.zoomBy(it / viewport.zoom))
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        ToolButton(Glyph.Minus, "缩小画布") {
+                            onChange(viewport.zoomBy(1f / StudioDefaults.zoomStep))
+                        }
+                        StudioTextButton({
+                            onChange(Viewport())
+                            zoomExpanded = false
+                        }) {
+                            ButtonLabel(tr("适合窗口"))
+                        }
+                        ToolButton(Glyph.Plus, "放大画布") {
+                            onChange(viewport.zoomBy(StudioDefaults.zoomStep))
+                        }
+                    }
+                }
+            }
         }
+
         Box {
             StudioTextButton(
                 { expanded = !expanded },
@@ -58,7 +96,9 @@ fun ViewportControls(viewport: Viewport, fitLabel: String, onChange: (Viewport) 
                         ToolButton(Glyph.Undo, "向左旋转") {
                             onChange(viewport.rotateBy(-StudioDefaults.rotationStep))
                         }
-                        StudioTextButton({ onChange(viewport.copy(rotation = 0f)) }) { ButtonLabel(tr("回正")) }
+                        StudioTextButton({ onChange(viewport.copy(rotation = 0f)) }) {
+                            ButtonLabel(tr("回正"))
+                        }
                         ToolButton(Glyph.Redo, "向右旋转") {
                             onChange(viewport.rotateBy(StudioDefaults.rotationStep))
                         }

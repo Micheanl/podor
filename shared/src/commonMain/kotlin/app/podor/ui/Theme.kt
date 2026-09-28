@@ -167,6 +167,15 @@ object StudioTheme {
     val brushCaptionSize = 11.sp
     val brushLabelSize = 12.sp
     val colorWheelSize = 240.dp
+    val sliderFineDistance = 600.dp
+    val colorSliderHeight = 24.dp
+    val quickControlsWidth = 320.dp
+    val quickControlHeight = 44.dp
+    val quickTrackHeight = 26.dp
+    val quickThumbSize = 28.dp
+    val quickShadow = 6.dp
+    val quickAccent = Color(0xFFA89BDC)
+    const val layerLiftScale = 1.025f
     val workspaceWidth = 1200.dp
     val borderTrailRadius = 10.dp
     val cardTrailRadius = 16.dp

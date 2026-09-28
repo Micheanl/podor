@@ -257,10 +257,15 @@ class StudioController(
                     pending.clear()
                     frameDirty = true
                 }
-                fun readLayers(): List<LayerFrame> {
-                    val bytes = engine!!.call(EngineOperation.LAYERS)
+                fun readLayers(selection: Boolean = false): List<LayerFrame> {
+                    val bytes =
+                        engine!!.call(
+                            EngineOperation.LAYERS,
+                            if (selection) byteArrayOf(1) else byteArrayOf(),
+                        )
                     val size = bytes.intAt(8)
                     var position = 16
+                    var stationary = emptyList<TileImage>()
                     val layers = buildList {
                         repeat(bytes.intAt(12)) {
                             val id = bytes.intAt(position)
@@ -279,12 +284,16 @@ class StudioController(
                                     position += 8 + size * size * 4
                                 }
                             }
-                            add(
-                                LayerFrame(
-                                    info.layers.first { it.id == id },
-                                    images,
+                            if (id == 0) stationary = images
+                            else {
+                                add(
+                                    LayerFrame(
+                                        info.layers.first { it.id == id },
+                                        images,
+                                        if (id == info.active) stationary else emptyList(),
+                                    )
                                 )
-                            )
+                            }
                         }
                     }
                     return layers
@@ -663,12 +672,13 @@ class StudioController(
                                                 data.intAt(12).toFloat(),
                                             )
                                         } else null
-                                    val layers = readLayers()
+                                    val layers = readLayers(info.selection != null)
                                     withContext(Dispatchers.Main) {
                                         if (
-                                            tool ==
+                                            (tool ==
                                                 (if (action.transform) Tool.TransformLayer
-                                                else Tool.MoveLayer) &&
+                                                else Tool.MoveLayer) ||
+                                                (tool == Tool.Select && info.selection != null)) &&
                                                 document.active == info.active
                                         ) {
                                             layerMove =
@@ -677,6 +687,7 @@ class StudioController(
                                                     info.revision,
                                                     layers,
                                                     bounds,
+                                                    info.selection,
                                                 )
                                         }
                                     }
@@ -1259,16 +1270,29 @@ class StudioController(
             !ready ||
                 busy ||
                 preparingLayerMove ||
-                (tool != Tool.MoveLayer && tool != Tool.TransformLayer)
+                (tool != Tool.MoveLayer &&
+                    tool != Tool.TransformLayer &&
+                    !(tool == Tool.Select && document.selection != null))
         )
             return
         val transform = tool == Tool.TransformLayer
         layerMove?.let {
-            if ((it.sourceBounds != null) == transform) return
+            if (
+                (it.sourceBounds != null) == transform &&
+                    it.selection == document.selection &&
+                    it.revision == document.revision &&
+                    it.layerId == document.active
+            )
+                return
             layerMove = null
         }
         val active = document.layers.firstOrNull { it.id == document.active } ?: return
-        if (!active.visible || active.locked || active.alphaLocked || document.selection != null)
+        if (
+            !active.visible ||
+                active.locked ||
+                active.alphaLocked ||
+                (transform && document.selection != null)
+        )
             return
         preparingLayerMove = true
         busy = true

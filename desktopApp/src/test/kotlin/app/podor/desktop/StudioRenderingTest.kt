@@ -151,6 +151,11 @@ class StudioRenderingTest {
                     withContext(Dispatchers.Main) {
                         scene.render(0).close()
                         scene.render(16_666_667L).use { image ->
+                            assertEquals(1f, image.toComposeImageBitmap().toPixelMap()[1200, 93].red, 0.005f, "Inspector should start collapsed")
+                        }
+                        scene.sendPointerEvent(PointerEventType.Press, Offset(1314f, 32f))
+                        scene.sendPointerEvent(PointerEventType.Release, Offset(1314f, 32f))
+                        scene.render(33_333_334L).use { image ->
                             val pixels = image.toComposeImageBitmap().toPixelMap()
                             for (point in listOf(1200 to 70, 1200 to 890, 1350 to 300)) {
                                 assertEquals(

@@ -46,11 +46,18 @@ private val keys =
         Key.Nine,
     )
 private val keyNames =
-    keys.zip("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".map { it.toString() }).toMap()
+    keys.zip("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".map { it.toString() }).toMap() +
+        mapOf(
+            Key.Equals to "+",
+            Key.Plus to "+",
+            Key.Minus to "-",
+            Key.LeftBracket to "[",
+            Key.RightBracket to "]",
+        )
 
 fun KeyEvent.shortcut(): Shortcut? =
     keyNames[key]?.let {
-        Shortcut(it, isCtrlPressed || isMetaPressed, isShiftPressed, isAltPressed)
+        Shortcut(it, isCtrlPressed || isMetaPressed, isShiftPressed && it != "+", isAltPressed)
     }
 
 @Composable

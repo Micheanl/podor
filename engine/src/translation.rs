@@ -9,6 +9,7 @@ pub fn translate(
     id: u32,
     dx: i32,
     dy: i32,
+    selection: Option<&crate::selection::Selection>,
 ) -> Result<BTreeMap<TileKey, Tile>, String> {
     let layer = doc
         .layers
@@ -31,7 +32,34 @@ pub fn translate(
         return Ok(layer.tiles.clone());
     }
     let budget = MAX_DOCUMENT_BYTES / TILE_BYTES - (doc.tile_count() - layer.tiles.len());
-    let tiles = remap(layer, doc.bounds(), doc.bounds(), dx, dy, budget)?;
+    let tiles = if let Some(selection) = selection {
+        let (stationary, selected) = split(doc, selection)?;
+        let shifted = remap(&selected, doc.bounds(), doc.bounds(), dx, dy, budget)?;
+        let mut tiles = stationary.tiles;
+        for (key, source) in shifted {
+            if !tiles.contains_key(&key) && tiles.len() == budget {
+                return Err("工程像素超过内存限制".into());
+            }
+            let target = tiles
+                .entry(key)
+                .or_insert_with(|| Arc::new(vec![0; TILE_BYTES]));
+            for (dst, src) in Arc::make_mut(target)
+                .as_chunks_mut::<4>()
+                .0
+                .iter_mut()
+                .zip(source.as_chunks::<4>().0)
+            {
+                let inverse = 255 - u32::from(src[3]);
+                for c in 0..4 {
+                    dst[c] = (u32::from(src[c]) + (u32::from(dst[c]) * inverse + 127) / 255)
+                        .min(255) as u8;
+                }
+            }
+        }
+        tiles
+    } else {
+        remap(layer, doc.bounds(), doc.bounds(), dx, dy, budget)?
+    };
     let live: HashSet<_> = doc
         .layers
         .iter()
@@ -153,4 +181,68 @@ pub fn frame(doc: &Document) -> Vec<u8> {
         }
     }
     output
+}
+
+pub fn split(
+    doc: &Document,
+    selection: &crate::selection::Selection,
+) -> Result<(Layer, Layer), String> {
+    let (stationary, _) = crate::clipboard::cut(doc, Some(selection))?;
+    let source = doc
+        .layers
+        .iter()
+        .find(|layer| layer.id == doc.active)
+        .ok_or("图层不存在")?;
+    let mut selected = source.clone();
+    selected.tiles.clear();
+    for (&key, tile) in &source.tiles {
+        let Some(area) = (Rect {
+            left: key.0 * TILE_SIZE,
+            top: key.1 * TILE_SIZE,
+            right: (key.0 + 1) * TILE_SIZE,
+            bottom: (key.1 + 1) * TILE_SIZE,
+        })
+        .intersect(selection.bounds()) else {
+            continue;
+        };
+        let mut pixels = vec![0; TILE_BYTES];
+        let mut nonempty = false;
+        for gy in area.top..area.bottom {
+            for gx in area.left..area.right {
+                let x = gx % TILE_SIZE;
+                let y = gy % TILE_SIZE;
+                let coverage = u32::from(selection.coverage(gx, gy));
+                if coverage == 0 {
+                    continue;
+                }
+                let offset = ((y * TILE_SIZE + x) * 4) as usize;
+                for c in 0..4 {
+                    pixels[offset + c] =
+                        ((u32::from(tile[offset + c]) * coverage + 127) / 255) as u8;
+                }
+                nonempty |= pixels[offset + 3] != 0;
+            }
+        }
+        if nonempty {
+            selected.tiles.insert(key, Arc::new(pixels));
+        }
+    }
+    Ok((stationary, selected))
+}
+
+pub fn selection_frame(
+    doc: &Document,
+    selection: &crate::selection::Selection,
+) -> Result<Vec<u8>, String> {
+    let (mut stationary, selected) = split(doc, selection)?;
+    stationary.id = 0;
+    let mut preview = doc.clone();
+    let index = preview
+        .layers
+        .iter()
+        .position(|layer| layer.id == doc.active)
+        .ok_or("图层不存在")?;
+    preview.layers[index] = selected;
+    preview.layers.insert(index, stationary);
+    Ok(frame(&preview))
 }

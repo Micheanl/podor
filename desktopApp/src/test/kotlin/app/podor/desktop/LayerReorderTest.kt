@@ -148,6 +148,25 @@ class LayerReorderTest {
     }
 
     @Test
+    fun holdLayerNameThenDragCommitsOnceAndCanUndo() = runBlocking<Unit> {
+        session(4) {
+            val revision = controller.document.revision
+            pointer(PointerEventType.Press, 750f, 84f)
+            delay(650)
+            render(12)
+            pointer(PointerEventType.Move, 750f, 160f)
+            pointer(PointerEventType.Move, 750f, 325f)
+            assertEquals(revision, controller.document.revision)
+            pointer(PointerEventType.Release, 750f, 325f)
+            awaitState { controller.document.revision > revision }
+            assertEquals(listOf(4, 1, 2, 3), controller.document.layers.map { it.id })
+            assertEquals(revision + 1, controller.document.revision)
+            command("undo")
+            awaitState { controller.document.layers.map { it.id } == listOf(1, 2, 3, 4) }
+        }
+    }
+
+    @Test
     fun returningFromLayerBlendKeepsTheScrolledLayerList() =
         runBlocking<Unit> {
             session(20) {

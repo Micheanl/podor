@@ -34,7 +34,7 @@ fun StudioApp(
     PodorTheme(controller.preferences.language) {
         var panel by remember { mutableStateOf(StudioPanel.Brushes) }
         var showInspector by remember { mutableStateOf(false) }
-        var inspectorExpanded by remember { mutableStateOf(true) }
+        var inspectorExpanded by remember { mutableStateOf(false) }
         var dialog by remember { mutableStateOf(StudioDialog.None) }
         val focus = remember { FocusRequester() }
         LaunchedEffect(controller.tool) { focus.requestFocus() }
@@ -119,6 +119,7 @@ fun StudioApp(
                 }
             }
             if (event.key == Key.Escape && controller.tool == Tool.Select) {
+                controller.cancelLayerMove(exit = true)
                 controller.cancelSelectionGesture()
                 return true
             }
@@ -148,6 +149,25 @@ fun StudioApp(
                 }
                 ShortcutAction.Fill -> controller.tool = Tool.Fill
                 ShortcutAction.Fit -> controller.viewport = Viewport()
+                ShortcutAction.ZoomIn ->
+                    controller.viewport = controller.viewport.zoomBy(StudioDefaults.zoomStep)
+                ShortcutAction.ZoomOut ->
+                    controller.viewport = controller.viewport.zoomBy(1f / StudioDefaults.zoomStep)
+                ShortcutAction.BrushSmaller ->
+                    controller.brush =
+                        controller.brush.copy(
+                            size =
+                                (controller.brush.size / StudioDefaults.brushSizeStep)
+                                    .coerceAtLeast(StudioDefaults.minBrushSize)
+                        )
+                ShortcutAction.BrushLarger ->
+                    controller.brush =
+                        controller.brush.copy(
+                            size =
+                                (controller.brush.size * StudioDefaults.brushSizeStep).coerceAtMost(
+                                    StudioDefaults.maxBrushSize
+                                )
+                        )
                 ShortcutAction.Undo -> controller.command("undo")
                 ShortcutAction.Redo -> controller.command("redo")
                 ShortcutAction.Deselect -> controller.clearSelection()
@@ -252,9 +272,9 @@ fun StudioApp(
                                         color = StudioTheme.border,
                                     )
                                     Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                                        ColorSwatch(controller.brush.color, true) {
-                                            openPanel(StudioPanel.Colors)
-                                        }
+                                        var colors by remember { mutableStateOf(false) }
+                                        ColorSwatch(controller.brush.color, true) { colors = true }
+                                        if (colors) QuickBrushPopup(controller, androidx.compose.ui.geometry.Offset.Zero, besideTool = true, colorsOnly = true) { colors = false }
                                     }
                                     if (!wide)
                                         ToolButton(Glyph.Layers, "图层与工作台") {
@@ -267,19 +287,7 @@ fun StudioApp(
                                         Modifier.align(Alignment.BottomCenter)
                                             .padding(bottom = 55.dp),
                                     )
-                                else if (
-                                    controller.adjustmentPreview == null &&
-                                        controller.tool != Tool.Select &&
-                                        controller.tool != Tool.TransformLayer &&
-                                        controller.tool != Tool.Gradient
-                                )
-                                    BrushDock(
-                                        controller,
-                                        Modifier.align(Alignment.BottomCenter)
-                                            .padding(bottom = 55.dp),
-                                    ) {
-                                        openPanel(StudioPanel.Brushes)
-                                    }
+
                             }
                             if (
                                 controller.adjustmentPreview != null &&

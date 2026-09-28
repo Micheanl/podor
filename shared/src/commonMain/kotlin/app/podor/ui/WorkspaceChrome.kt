@@ -3,17 +3,14 @@ package app.podor.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
@@ -24,7 +21,6 @@ import app.podor.domain.*
 import app.podor.presentation.StudioController
 import app.podor.resources.Res
 import app.podor.resources.brand
-import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -40,230 +36,223 @@ fun StudioHeader(
 ) {
     var menu by remember { mutableStateOf(false) }
     val integrated = windowControls != null
-    Row(
-        Modifier.fillMaxWidth()
-            .borderTrail(integrated)
-            .height(if (integrated) StudioTheme.windowTitleHeight else 64.dp)
-            .background(StudioTheme.panel)
-            .padding(
-                start = if (integrated) 12.dp else if (compact) 16.dp else 24.dp,
-                end = if (integrated) 0.dp else if (compact) 16.dp else 24.dp,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Image(
-            painterResource(Res.drawable.brand),
-            AppIdentity.name,
-            Modifier.size(if (integrated) 24.dp else 30.dp),
-        )
-        Spacer(Modifier.width(if (integrated || compact) 8.dp else 20.dp))
-        if (!compact && !integrated) {
-            Box(Modifier.width(1.dp).height(20.dp).background(StudioTheme.border))
-            Spacer(Modifier.width(12.dp))
-        }
-        Box {
-            ToolButton(Glyph.Folder, "工程菜单") { menu = true }
-            DropdownMenu(
-                menu,
-                { menu = false },
-                shape = StudioTheme.menuShape,
-                containerColor = StudioTheme.panel,
-            ) {
-                if (integrated && compact) {
-                    DropdownMenuItem(
-                        { Text(controller.shortcutLabel(ShortcutAction.Undo)) },
-                        {
-                            controller.command("undo")
-                            menu = false
-                        },
-                        enabled = controller.document.canUndo,
-                    )
-                    DropdownMenuItem(
-                        { Text(controller.shortcutLabel(ShortcutAction.Redo)) },
-                        {
-                            controller.command("redo")
-                            menu = false
-                        },
-                        enabled = controller.document.canRedo,
-                    )
-                }
-                DropdownMenuItem(
-                    { Text(tr("新建画布")) },
-                    {
-                        onDialog(StudioDialog.New)
-                        menu = false
-                    },
-                    leadingIcon = { StudioIcon(Glyph.Plus) },
-                )
-                DropdownMenuItem(
-                    { Text(tr("打开工程 / 图片")) },
-                    {
-                        onDialog(StudioDialog.Open)
-                        menu = false
-                    },
-                    leadingIcon = { StudioIcon(Glyph.Folder) },
-                )
-                DropdownMenuItem(
-                    { Text(tr("保存工程")) },
-                    {
-                        controller.file(StudioController.FileAction.Save)
-                        menu = false
-                    },
-                    leadingIcon = { StudioIcon(Glyph.Save) },
-                )
-                DropdownMenuItem(
-                    { Text(tr("导出图像")) },
-                    {
-                        onDialog(StudioDialog.Export)
-                        menu = false
-                    },
-                    leadingIcon = { StudioIcon(Glyph.Export) },
-                )
-                DropdownMenuItem(
-                    { Text(tr("另存为")) },
-                    {
-                        controller.file(StudioController.FileAction.SaveAs)
-                        menu = false
-                    },
-                    leadingIcon = { StudioIcon(Glyph.Copy) },
-                )
-                HorizontalDivider(color = StudioTheme.border)
-                if (compact) ReferenceMenuItems(controller) { menu = false }
-                if (compact && controller.clipboardAvailable) {
-                    ClipboardMenuItems(controller) { menu = false }
-                    HorizontalDivider(color = StudioTheme.border)
-                }
-                DropdownMenuItem(
-                    { Text(tr("清空当前图层")) },
-                    {
-                        onDialog(StudioDialog.Clear)
-                        menu = false
-                    },
-                    enabled =
-                        controller.document.layers.none {
-                            it.id == controller.document.active && (it.locked || it.alphaLocked)
-                        },
-                )
-                DropdownMenuItem(
-                    { Text(tr("设置")) },
-                    {
-                        onDialog(StudioDialog.Settings)
-                        menu = false
-                    },
-                )
-                DropdownMenuItem(
-                    { Text(controller.shortcutLabel(ShortcutAction.Deselect)) },
-                    {
-                        controller.clearSelection()
-                        menu = false
-                    },
-                    enabled = controller.document.selection != null,
-                )
-            }
-        }
-        ToolButton(Glyph.Home, "作品首页") { controller.home() }
-        if (!integrated || !compact)
-            ToolButton(Glyph.Settings, "设置") { onDialog(StudioDialog.Settings) }
-        if (!compact && controller.clipboardAvailable) ClipboardMenu(controller)
-        if (!compact) ReferenceMenu(controller)
-        Box(
-            Modifier.weight(1f).fillMaxHeight().onGloballyPositioned {
-                if (integrated) onTitleDragRegion(it.boundsInWindow())
-            },
-            contentAlignment = Alignment.Center,
+    CompositionLocalProvider(LocalHeaderButtons provides true) {
+        Row(
+            Modifier.fillMaxWidth()
+                .borderTrail(integrated)
+                .height(if (integrated) StudioTheme.windowTitleHeight else 64.dp)
+                .background(StudioTheme.panel)
+                .padding(
+                    start = if (integrated) 12.dp else if (compact) 16.dp else 24.dp,
+                    end = if (integrated) 0.dp else if (compact) 16.dp else 24.dp,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (showDocument)
-                Row(
-                    if (integrated) Modifier
-                    else
-                        Modifier.background(StudioTheme.background.copy(alpha = 0.5f), CircleShape)
-                            .padding(horizontal = 18.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+            Image(
+                painterResource(Res.drawable.brand),
+                AppIdentity.name,
+                Modifier.size(if (integrated) 24.dp else 30.dp),
+            )
+            Spacer(Modifier.width(if (integrated || compact) 8.dp else 20.dp))
+            if (!compact && !integrated) {
+                Box(Modifier.width(1.dp).height(20.dp).background(StudioTheme.border))
+                Spacer(Modifier.width(12.dp))
+            }
+            Box {
+                ToolButton(Glyph.Folder, "工程菜单") { menu = true }
+                DropdownMenu(
+                    menu,
+                    { menu = false },
+                    shape = StudioTheme.menuShape,
+                    containerColor = StudioTheme.panel,
                 ) {
-                    Text(
-                        (controller.projectReference?.name ?: tr("未命名")) +
-                            if (controller.hasUnsavedChanges) " ·" else "",
-                        Modifier.widthIn(max = 160.dp),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                    if (integrated && compact) {
+                        DropdownMenuItem(
+                            { Text(controller.shortcutLabel(ShortcutAction.Undo)) },
+                            {
+                                controller.command("undo")
+                                menu = false
+                            },
+                            enabled = controller.document.canUndo,
+                        )
+                        DropdownMenuItem(
+                            { Text(controller.shortcutLabel(ShortcutAction.Redo)) },
+                            {
+                                controller.command("redo")
+                                menu = false
+                            },
+                            enabled = controller.document.canRedo,
+                        )
+                    }
+                    DropdownMenuItem(
+                        { Text(tr("新建画布")) },
+                        {
+                            onDialog(StudioDialog.New)
+                            menu = false
+                        },
+                        leadingIcon = { StudioIcon(Glyph.Plus) },
                     )
-                    Text(
-                        "${controller.document.width} × ${controller.document.height} px",
-                        fontSize = 10.sp,
-                        color = StudioTheme.muted,
+                    DropdownMenuItem(
+                        { Text(tr("打开工程 / 图片")) },
+                        {
+                            onDialog(StudioDialog.Open)
+                            menu = false
+                        },
+                        leadingIcon = { StudioIcon(Glyph.Folder) },
                     )
-                }
-        }
-        if (!integrated || !compact)
-            Row(Modifier.padding(horizontal = 2.dp)) {
-                ToolButton(
-                    Glyph.Undo,
-                    controller.shortcutLabel(ShortcutAction.Undo),
-                    enabled = controller.document.canUndo,
-                ) {
-                    controller.command("undo")
-                }
-                ToolButton(
-                    Glyph.Redo,
-                    controller.shortcutLabel(ShortcutAction.Redo),
-                    enabled = controller.document.canRedo,
-                ) {
-                    controller.command("redo")
+                    DropdownMenuItem(
+                        { Text(tr("保存工程")) },
+                        {
+                            controller.file(StudioController.FileAction.Save)
+                            menu = false
+                        },
+                        leadingIcon = { StudioIcon(Glyph.Save) },
+                    )
+                    DropdownMenuItem(
+                        { Text(tr("导出图像")) },
+                        {
+                            onDialog(StudioDialog.Export)
+                            menu = false
+                        },
+                        leadingIcon = { StudioIcon(Glyph.Export) },
+                    )
+                    DropdownMenuItem(
+                        { Text(tr("另存为")) },
+                        {
+                            controller.file(StudioController.FileAction.SaveAs)
+                            menu = false
+                        },
+                        leadingIcon = { StudioIcon(Glyph.Copy) },
+                    )
+                    HorizontalDivider(color = StudioTheme.border)
+                    if (compact) ReferenceMenuItems(controller) { menu = false }
+                    if (compact && controller.clipboardAvailable) {
+                        ClipboardMenuItems(controller) { menu = false }
+                        HorizontalDivider(color = StudioTheme.border)
+                    }
+                    DropdownMenuItem(
+                        { Text(tr("清空当前图层")) },
+                        {
+                            onDialog(StudioDialog.Clear)
+                            menu = false
+                        },
+                        enabled =
+                            controller.document.layers.none {
+                                it.id == controller.document.active && (it.locked || it.alphaLocked)
+                            },
+                    )
+                    DropdownMenuItem(
+                        { Text(tr("设置")) },
+                        {
+                            onDialog(StudioDialog.Settings)
+                            menu = false
+                        },
+                    )
+                    DropdownMenuItem(
+                        { Text(controller.shortcutLabel(ShortcutAction.Deselect)) },
+                        {
+                            controller.clearSelection()
+                            menu = false
+                        },
+                        enabled = controller.document.selection != null,
+                    )
                 }
             }
-        if (!compact) {
+            ToolButton(Glyph.Home, "作品首页") { controller.home() }
+            if (!integrated || !compact)
+                ToolButton(Glyph.Settings, "设置") { onDialog(StudioDialog.Settings) }
+            if (!compact && controller.clipboardAvailable) ClipboardMenu(controller)
+            if (!compact) ReferenceMenu(controller)
+            Box(
+                Modifier.weight(1f).fillMaxHeight().onGloballyPositioned {
+                    if (integrated) onTitleDragRegion(it.boundsInWindow())
+                },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (showDocument)
+                    Row(
+                        if (integrated) Modifier
+                        else
+                            Modifier.background(
+                                    StudioTheme.background.copy(alpha = 0.5f),
+                                    CircleShape,
+                                )
+                                .padding(horizontal = 18.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(
+                            (controller.projectReference?.name ?: tr("未命名")) +
+                                if (controller.hasUnsavedChanges) " ·" else "",
+                            Modifier.widthIn(max = 160.dp),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            "${controller.document.width} × ${controller.document.height} px",
+                            fontSize = 10.sp,
+                            color = StudioTheme.muted,
+                        )
+                    }
+            }
+            if (!integrated || !compact)
+                Row(Modifier.padding(horizontal = 2.dp)) {
+                    ToolButton(
+                        Glyph.Undo,
+                        controller.shortcutLabel(ShortcutAction.Undo),
+                        enabled = controller.document.canUndo,
+                    ) {
+                        controller.command("undo")
+                    }
+                    ToolButton(
+                        Glyph.Redo,
+                        controller.shortcutLabel(ShortcutAction.Redo),
+                        enabled = controller.document.canRedo,
+                    ) {
+                        controller.command("redo")
+                    }
+                }
+            if (!compact) {
+                Spacer(Modifier.width(8.dp))
+                ToolButton(
+                    Glyph.Save,
+                    controller.shortcutLabel(ShortcutAction.Save),
+                    enabled = controller.ready && !controller.busy,
+                ) {
+                    controller.file(StudioController.FileAction.Save)
+                }
+            }
             Spacer(Modifier.width(8.dp))
             ToolButton(
-                Glyph.Save,
-                controller.shortcutLabel(ShortcutAction.Save),
+                Glyph.Export,
+                controller.shortcutLabel(ShortcutAction.Export),
+                prominent = true,
                 enabled = controller.ready && !controller.busy,
             ) {
-                controller.file(StudioController.FileAction.Save)
+                onDialog(StudioDialog.Export)
             }
+            if (onToggleInspector != null) {
+                Spacer(Modifier.width(8.dp))
+                ToolButton(
+                    if (inspectorExpanded) Glyph.Sidebar else Glyph.SidebarClosed,
+                    if (inspectorExpanded) "收起面板" else "展开面板",
+                    selected = inspectorExpanded,
+                    onClick = onToggleInspector,
+                )
+            }
+            if (windowControls != null)
+                Box(Modifier.width(StudioTheme.windowButtonWidth * 3)) { windowControls() }
         }
-        Spacer(Modifier.width(8.dp))
-        ToolButton(
-            Glyph.Export,
-            controller.shortcutLabel(ShortcutAction.Export),
-            prominent = true,
-            enabled = controller.ready && !controller.busy,
-        ) {
-            onDialog(StudioDialog.Export)
-        }
-        if (onToggleInspector != null) {
-            Spacer(Modifier.width(8.dp))
-            ToolButton(
-                if (inspectorExpanded) Glyph.Sidebar else Glyph.SidebarClosed,
-                if (inspectorExpanded) "收起面板" else "展开面板",
-                selected = inspectorExpanded,
-                onClick = onToggleInspector,
-            )
-        }
-        if (windowControls != null)
-            Box(Modifier.width(StudioTheme.windowButtonWidth * 3)) { windowControls() }
     }
 }
 
 @Composable
 fun StudioTools(controller: StudioController, compact: Boolean = false) {
     var more by remember { mutableStateOf(false) }
-    ToolButton(
-        Glyph.Brush,
-        controller.shortcutLabel(ShortcutAction.Brush),
-        controller.tool == Tool.Brush,
-    ) {
-        controller.tool = Tool.Brush
-    }
-    ToolButton(
-        Glyph.Eraser,
-        controller.shortcutLabel(ShortcutAction.Eraser),
-        controller.tool == Tool.Eraser,
-    ) {
-        controller.tool = Tool.Eraser
-    }
+    QuickToolButton(controller, Tool.Brush, Glyph.Brush, ShortcutAction.Brush)
+    QuickToolButton(controller, Tool.Eraser, Glyph.Eraser, ShortcutAction.Eraser)
     if (compact)
         Box {
             ToolButton(Glyph.More, "更多工具", controller.tool !in listOf(Tool.Brush, Tool.Eraser)) {
@@ -346,63 +335,53 @@ fun StudioTools(controller: StudioController, compact: Boolean = false) {
         ) {
             controller.tool = Tool.Gradient
         }
-        ToolButton(
-            Glyph.Smudge,
-            controller.shortcutLabel(ShortcutAction.Smudge),
-            controller.tool == Tool.Smudge,
-        ) {
-            controller.tool = Tool.Smudge
-        }
+        QuickToolButton(controller, Tool.Smudge, Glyph.Smudge, ShortcutAction.Smudge)
     }
 }
 
 @Composable
-fun BrushDock(controller: StudioController, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    Row(
-        modifier
-            .clickable(interaction, indication = null, onClick = onClick)
-            .controlFeedback(interaction, CircleShape)
-            .shadow(12.dp, CircleShape)
-            .clip(CircleShape)
-            .background(StudioTheme.panel)
-            .border(1.dp, StudioTheme.border.copy(alpha = 0.7f), CircleShape)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(13.dp),
-    ) {
-        StudioIcon(
-            when (controller.tool) {
-                Tool.Eraser -> Glyph.Eraser
-                Tool.Smudge -> Glyph.Smudge
-                else -> Glyph.Brush
-            },
-            StudioTheme.accent,
-            Modifier.size(18.dp),
-        )
-        Text(
-            tr(
-                when (controller.tool) {
-                    Tool.Eraser -> "橡皮"
-                    Tool.Smudge -> "涂抹"
-                    else -> controller.brush.preset.label
+private fun QuickToolButton(
+    controller: StudioController,
+    tool: Tool,
+    glyph: Glyph,
+    shortcut: ShortcutAction,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    fun open() {
+        controller.tool = tool
+        expanded = true
+    }
+    Box(
+        Modifier.pointerInput(Unit) {
+            awaitPointerEventScope {
+                var secondary = false
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    if (event.buttons.isSecondaryPressed || secondary) {
+                        if (!secondary && event.buttons.isSecondaryPressed) open()
+                        secondary = event.buttons.isSecondaryPressed
+                        event.changes.forEach { it.consume() }
+                    }
                 }
-            ),
-            fontSize = 11.sp,
-            color = StudioTheme.text,
-        )
-        Box(Modifier.width(1.dp).height(16.dp).background(StudioTheme.border))
-        Text(
-            "${controller.brush.size.roundToInt()} px",
-            fontSize = 11.sp,
-            color = StudioTheme.muted,
-        )
-        Text(
-            "${((if (controller.tool == Tool.Smudge) controller.smudgeStrength else controller.brush.opacity)*100).roundToInt()}%",
-            fontSize = 11.sp,
-            color = StudioTheme.muted,
-        )
-        StudioIcon(Glyph.Chevron, StudioTheme.muted, Modifier.size(13.dp))
+            }
+        }
+    ) {
+        ToolButton(
+            glyph,
+            controller.shortcutLabel(shortcut),
+            controller.tool == tool,
+            onLongClick = { open() },
+        ) {
+            if (controller.tool == tool) expanded = !expanded else controller.tool = tool
+        }
+        if (expanded)
+            QuickBrushPopup(
+                controller,
+                androidx.compose.ui.geometry.Offset.Zero,
+                besideTool = true,
+            ) {
+                expanded = false
+            }
     }
 }
 

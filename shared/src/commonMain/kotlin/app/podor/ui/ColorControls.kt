@@ -100,14 +100,42 @@ fun ColorControls(controller: StudioController) {
             }
         }
     }
-    Column(
-        Modifier.clip(StudioTheme.cardShape).background(StudioTheme.background).padding(14.dp)
+    Column(Modifier.clip(StudioTheme.cardShape).background(StudioTheme.background).padding(14.dp)) {
+        HsvSliders(hsv, ::update)
+    }
+}
+
+@Composable
+internal fun HsvSliders(hsv: HsvColor, update: (HsvColor) -> Unit) {
+    LabeledSlider(
+        "色相",
+        hsv.hue,
+        0f..360f,
+        "${hsv.hue.roundToInt()}°",
+        trackColors = remember { (0..6).map { Color(HsvColor(it * 60f, 1f, 1f).toArgb()) } },
     ) {
-        LabeledSlider("饱和度", hsv.saturation, 0f..1f, "${(hsv.saturation*100).roundToInt()}%") {
-            update(hsv.copy(saturation = it))
-        }
-        LabeledSlider("明度", hsv.brightness, 0f..1f, "${(hsv.brightness*100).roundToInt()}%") {
-            update(hsv.copy(brightness = it))
-        }
+        update(hsv.copy(hue = it))
+    }
+    LabeledSlider(
+        "饱和度",
+        hsv.saturation,
+        0f..1f,
+        "${(hsv.saturation*100).roundToInt()}%",
+        trackColors =
+            listOf(
+                Color(hsv.copy(saturation = 0f).toArgb()),
+                Color(hsv.copy(saturation = 1f).toArgb()),
+            ),
+    ) {
+        update(hsv.copy(saturation = it))
+    }
+    LabeledSlider(
+        "明度",
+        hsv.brightness,
+        0f..1f,
+        "${(hsv.brightness*100).roundToInt()}%",
+        trackColors = listOf(Color.Black, Color(hsv.copy(brightness = 1f).toArgb())),
+    ) {
+        update(hsv.copy(brightness = it))
     }
 }

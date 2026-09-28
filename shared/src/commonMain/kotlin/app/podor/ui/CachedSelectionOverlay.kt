@@ -42,36 +42,39 @@ fun CachedSelectionOverlay(
             scale(scale * viewport.horizontalSign, scale, Offset.Zero)
         }) {
             clipRect(0f, 0f, document.width.toFloat(), document.height.toFloat()) {
-                outline.path?.let { path ->
-                    drawPath(
-                        path,
-                        Color.Black,
-                        style = Stroke(StudioTheme.combinedSelectionHalo.toPx() / scale),
-                    )
-                    drawPath(
-                        path,
-                        Color.White,
-                        style =
-                            Stroke(
-                                StudioTheme.combinedSelectionLine.toPx() / scale,
-                                pathEffect = dash,
-                            ),
-                    )
-                }
-                for (tile in outline.mask) {
-                    val x = tile.x * tile.size
-                    val y = tile.y * tile.size
-                    if (
-                        x < visible.right &&
-                            y < visible.bottom &&
-                            x + tile.size > visible.left &&
-                            y + tile.size > visible.top
-                    )
-                        drawContext.canvas.drawImage(
-                            tile.image,
-                            Offset(x.toFloat(), y.toFloat()),
-                            paint,
+                val move = controller.layerMove?.offset
+                translate((move?.x ?: 0).toFloat(), (move?.y ?: 0).toFloat()) {
+                    outline.path?.let { path ->
+                        drawPath(
+                            path,
+                            Color.Black,
+                            style = Stroke(StudioTheme.combinedSelectionHalo.toPx() / scale),
                         )
+                        drawPath(
+                            path,
+                            Color.White,
+                            style =
+                                Stroke(
+                                    StudioTheme.combinedSelectionLine.toPx() / scale,
+                                    pathEffect = dash,
+                                ),
+                        )
+                    }
+                    for (tile in outline.mask) {
+                        val x = tile.x * tile.size
+                        val y = tile.y * tile.size
+                        if (
+                            x < visible.right &&
+                                y < visible.bottom &&
+                                x + tile.size > visible.left &&
+                                y + tile.size > visible.top
+                        )
+                            drawContext.canvas.drawImage(
+                                tile.image,
+                                Offset(x.toFloat(), y.toFloat()),
+                                paint,
+                            )
+                    }
                 }
             }
         }

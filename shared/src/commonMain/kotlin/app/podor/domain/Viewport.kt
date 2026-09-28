@@ -54,6 +54,11 @@ data class Viewport(
         )
     }
 
+    fun zoomBy(factor: Float): Viewport {
+        val next = (zoom * factor).coerceIn(StudioDefaults.minZoom, StudioDefaults.maxZoom)
+        return copy(zoom = next, pan = pan * (next / zoom))
+    }
+
     fun rotateBy(degrees: Float) =
         copy(rotation = ((rotation + degrees + 180f) % 360f + 360f) % 360f - 180f)
 

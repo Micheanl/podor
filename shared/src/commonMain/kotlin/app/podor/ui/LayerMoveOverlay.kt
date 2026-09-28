@@ -62,6 +62,13 @@ fun LayerMoveOverlay(
             scale(scale * viewport.horizontalSign, scale, Offset.Zero)
         }) {
             clipRect(0f, 0f, document.width.toFloat(), document.height.toFloat()) {
+                frame.stationary.forEach { tile ->
+                    drawContext.canvas.drawImage(
+                        tile.image,
+                        Offset((tile.x * tile.size).toFloat(), (tile.y * tile.size).toFloat()),
+                        paint,
+                    )
+                }
                 withTransform({
                     if (transform != null && source != null) {
                         val center = transform.center(source)
