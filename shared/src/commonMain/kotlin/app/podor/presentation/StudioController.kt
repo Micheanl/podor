@@ -2,6 +2,7 @@ package app.podor.presentation
 
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
@@ -62,6 +63,9 @@ class StudioController(
     }
 
     var tool by mutableStateOf(Tool.Brush)
+    var selectionKind by mutableStateOf(StudioDefaults.selectionKind)
+    var selectionCancellation by mutableIntStateOf(0)
+        private set
     var viewport by mutableStateOf(Viewport())
     var fingerDrawing by mutableStateOf(true)
     var fillTolerance by mutableStateOf(24f)
@@ -470,6 +474,7 @@ class StudioController(
                                             type in
                                                 setOf(
                                                     "fill",
+                                                    "select_shape",
                                                     "tone",
                                                     "blur",
                                                     "merge_visible",
@@ -846,23 +851,31 @@ class StudioController(
     }
 
     fun select(start: Offset, end: Offset) {
-        val left = kotlin.math.floor(minOf(start.x, end.x)).toInt().coerceIn(0, document.width)
-        val top = kotlin.math.floor(minOf(start.y, end.y)).toInt().coerceIn(0, document.height)
-        val right = kotlin.math.ceil(maxOf(start.x, end.x)).toInt().coerceIn(0, document.width)
-        val bottom = kotlin.math.ceil(maxOf(start.y, end.y)).toInt().coerceIn(0, document.height)
-        command("select") {
-            if (left == right || top == bottom) put("rect", JsonNull)
-            else
-                putJsonObject("rect") {
-                    put("left", left)
-                    put("top", top)
-                    put("right", right)
-                    put("bottom", bottom)
-                }
-        }
+        val gesture =
+            SelectionGesture(
+                selectionKind,
+                start,
+                document.width,
+                document.height,
+                StudioDefaults.selectionSampleDistance,
+            )
+        gesture.add(end)
+        select(gesture.selection())
     }
 
-    fun clearSelection() = command("select") { put("rect", JsonNull) }
+    fun select(selection: Selection?) {
+        if (selection == null) clearSelection()
+        else command("select_shape") { put("selection", Json.encodeToJsonElement(selection)) }
+    }
+
+    fun cancelSelectionGesture() {
+        selectionCancellation++
+    }
+
+    fun clearSelection() {
+        cancelSelectionGesture()
+        command("select") { put("rect", JsonNull) }
+    }
 
     fun fill(point: Offset) =
         command("fill") {

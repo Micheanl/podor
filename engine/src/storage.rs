@@ -179,7 +179,7 @@ fn write_import(mut doc: Document, rgba: Vec<u8>) -> Result<Document, String> {
         region,
         pixels: rgba,
     }
-    .write(doc.active_mut(), region);
+    .write(doc.active_mut(), region, None);
     doc.active_mut().name = "导入的图像".into();
     doc.validate()?;
     Ok(doc)

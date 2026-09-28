@@ -1,4 +1,5 @@
 use crate::model::*;
+use crate::selection::{mix, Selection};
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -9,7 +10,12 @@ pub struct Tone {
     pub saturation: f32,
 }
 
-pub fn tone(layer: &mut Layer, region: Rect, settings: Tone) -> Result<(), String> {
+pub fn tone(
+    layer: &mut Layer,
+    region: Rect,
+    selection: Option<&Selection>,
+    settings: Tone,
+) -> Result<(), String> {
     if [settings.brightness, settings.contrast, settings.saturation]
         .iter()
         .any(|v| !v.is_finite() || !(-1.0..=1.0).contains(v))
@@ -34,6 +40,10 @@ pub fn tone(layer: &mut Layer, region: Rect, settings: Tone) -> Result<(), Strin
         let pixels = Arc::make_mut(tile);
         for y in area.top..area.bottom {
             for x in area.left..area.right {
+                let coverage = selection.map_or(255, |selection| selection.coverage(x, y));
+                if coverage == 0 {
+                    continue;
+                }
                 let i = (((y % TILE_SIZE) * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
                 let alpha = u32::from(pixels[i + 3]);
                 if alpha == 0 {
@@ -44,10 +54,11 @@ pub fn tone(layer: &mut Layer, region: Rect, settings: Tone) -> Result<(), Strin
                 });
                 let luma = rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
                 for c in 0..3 {
-                    pixels[i + c] = ((luma + (rgb[c] - luma) * (settings.saturation + 1.0))
+                    let adjusted = ((luma + (rgb[c] - luma) * (settings.saturation + 1.0))
                         .clamp(0.0, 1.0)
                         * alpha as f32)
                         .round() as u8;
+                    pixels[i + c] = mix(pixels[i + c], adjusted, coverage);
                 }
             }
         }
@@ -85,7 +96,7 @@ impl Surface {
         Self { region, pixels }
     }
 
-    pub fn write(&self, layer: &mut Layer, area: Rect) {
+    pub fn write(&self, layer: &mut Layer, area: Rect, selection: Option<&Selection>) {
         let width = (self.region.right - self.region.left) as usize;
         for ty in area.top / TILE_SIZE..=(area.bottom - 1) / TILE_SIZE {
             for tx in area.left / TILE_SIZE..=(area.right - 1) / TILE_SIZE {
@@ -111,20 +122,38 @@ impl Surface {
                     let target =
                         (((y % TILE_SIZE) * TILE_SIZE + region.left % TILE_SIZE) * 4) as usize;
                     let len = (region.right - region.left) as usize * 4;
-                    if layer.alpha_locked {
-                        for (old, new) in tile[target..target + len]
+                    let mask = selection.and_then(|selection| selection.row(y));
+                    if layer.alpha_locked || mask.is_some() {
+                        for (index, (old, new)) in tile[target..target + len]
                             .as_chunks_mut::<4>()
                             .0
                             .iter_mut()
                             .zip(self.pixels[source..source + len].as_chunks::<4>().0)
+                            .enumerate()
                         {
+                            let coverage = mask.map_or(255, |row| {
+                                row[(region.left - selection.unwrap().bounds().left) as usize
+                                    + index]
+                            });
+                            if coverage == 0 {
+                                continue;
+                            }
                             let alpha = u32::from(old[3]);
                             let new_alpha = u32::from(new[3]);
-                            for channel in 0..3 {
-                                old[channel] = (u32::from(new[channel]) * alpha + new_alpha / 2)
-                                    .checked_div(new_alpha)
-                                    .map(|value| value.min(alpha) as u8)
-                                    .unwrap_or(old[channel]);
+                            for channel in 0..4 {
+                                let adjusted = if layer.alpha_locked {
+                                    if channel == 3 {
+                                        old[3]
+                                    } else {
+                                        (u32::from(new[channel]) * alpha + new_alpha / 2)
+                                            .checked_div(new_alpha)
+                                            .map(|value| value.min(alpha) as u8)
+                                            .unwrap_or(old[channel])
+                                    }
+                                } else {
+                                    new[channel]
+                                };
+                                old[channel] = mix(old[channel], adjusted, coverage);
                             }
                         }
                     } else {
@@ -145,12 +174,13 @@ impl Surface {
 pub fn fill(
     layer: &mut Layer,
     region: Rect,
+    selection: Option<&Selection>,
     x: u32,
     y: u32,
     color: [u8; 4],
     tolerance: u8,
 ) -> Result<(), String> {
-    if !region.contains(x, y) {
+    if !region.contains(x, y) || selection.is_some_and(|selection| selection.coverage(x, y) == 0) {
         return Err("填充位置不在选区内".into());
     }
     if layer.alpha_locked
@@ -181,7 +211,12 @@ pub fn fill(
     let mut visited = vec![false; width * height];
     let mut stack = vec![seed as u32];
     let matches = |pixels: &[u8], i: usize| {
-        (!layer.alpha_locked || pixels[i * 4 + 3] != 0)
+        selection.is_none_or(|selection| {
+            selection.coverage(
+                region.left + (i % width) as u32,
+                region.top + (i / width) as u32,
+            ) != 0
+        }) && (!layer.alpha_locked || pixels[i * 4 + 3] != 0)
             && (0..4).all(|c| pixels[i * 4 + c].abs_diff(target[c]) <= tolerance)
     };
     while let Some(seed) = stack.pop() {
@@ -233,11 +268,17 @@ pub fn fill(
             }
         }
     }
-    surface.write(layer, region);
+    surface.write(layer, region, selection);
     Ok(())
 }
 
-pub fn blur(layer: &mut Layer, bounds: Rect, selection: Rect, sigma: f32) -> Result<(), String> {
+pub fn blur(
+    layer: &mut Layer,
+    bounds: Rect,
+    region: Rect,
+    selection: Option<&Selection>,
+    sigma: f32,
+) -> Result<(), String> {
     if !sigma.is_finite() || !(0.0..=32.0).contains(&sigma) {
         return Err("模糊半径必须在 0 到 32 之间".into());
     }
@@ -289,10 +330,7 @@ pub fn blur(layer: &mut Layer, bounds: Rect, selection: Rect, sigma: f32) -> Res
             .unwrap()
             .saturating_add(halo),
     };
-    let Some(output) = occupied
-        .intersect(selection)
-        .and_then(|r| r.intersect(bounds))
-    else {
+    let Some(output) = occupied.intersect(region).and_then(|r| r.intersect(bounds)) else {
         return Ok(());
     };
     let region = Rect {
@@ -311,7 +349,7 @@ pub fn blur(layer: &mut Layer, bounds: Rect, selection: Rect, sigma: f32) -> Res
         box_pass(&surface.pixels, &mut scratch, width, height, radius, false);
         box_pass(&scratch, &mut surface.pixels, width, height, radius, true);
     }
-    surface.write(layer, output);
+    surface.write(layer, output, selection);
     Ok(())
 }
 

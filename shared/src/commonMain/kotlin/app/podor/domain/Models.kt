@@ -27,14 +27,12 @@ data class DocumentInfo(
     val selection: Selection? = null,
 )
 
-@Serializable data class Selection(val left: Int, val top: Int, val right: Int, val bottom: Int)
-
 enum class Tool(val label: String) {
     Brush("画笔"),
     Eraser("橡皮"),
     Picker("取色"),
     Hand("平移画布"),
-    Select("矩形选区"),
+    Select("选区"),
     Fill("填充"),
     MoveLayer("移动图层"),
 }
@@ -186,6 +184,9 @@ data class BrushSettings(
 data class CanvasPreset(val label: String, val width: Int, val height: Int)
 
 object StudioDefaults {
+    val selectionKind = SelectionKind.Rectangle
+    const val maxSelectionPoints = 4096
+    const val selectionSampleDistance = 0.75f
     val resampleFilter = ResampleFilter.Lanczos3
     const val imageSizeLocked = true
     val imageScalePresets = listOf(50, 100, 200)

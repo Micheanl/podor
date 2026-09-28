@@ -32,6 +32,10 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
         LaunchedEffect(Unit) { focus.requestFocus() }
         fun handleShortcut(event: KeyEvent): Boolean {
             if (event.type != KeyEventType.KeyDown || dialog != StudioDialog.None) return false
+            if (event.key == Key.Escape && controller.tool == Tool.Select) {
+                controller.cancelSelectionGesture()
+                return true
+            }
             if (event.key == Key.Escape && controller.tool == Tool.MoveLayer) {
                 controller.cancelLayerMove(exit = true)
                 controller.tool = Tool.Brush
@@ -143,7 +147,7 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                                         Modifier.align(Alignment.BottomCenter)
                                             .padding(bottom = 55.dp),
                                     )
-                                else
+                                else if (controller.tool != Tool.Select)
                                     BrushDock(
                                         controller,
                                         Modifier.align(Alignment.BottomCenter)
@@ -152,6 +156,11 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                                         openPanel(StudioPanel.Brushes)
                                     }
                             }
+                            if (controller.tool == Tool.Select)
+                                SelectionDock(
+                                    controller,
+                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
+                                )
                             CanvasFooter(
                                 controller,
                                 compact,

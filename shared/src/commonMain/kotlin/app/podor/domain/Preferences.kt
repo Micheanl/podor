@@ -64,7 +64,7 @@ enum class ShortcutAction(val label: String, val default: Shortcut) {
     Picker("取色", Shortcut("I")),
     Hand("平移画布", Shortcut("H")),
     MoveLayer("移动图层", Shortcut("V")),
-    Select("矩形选区", Shortcut("M")),
+    Select("选区", Shortcut("M")),
     Fill("填充", Shortcut("G")),
     Fit("适合窗口", Shortcut("0")),
     Undo("撤销", Shortcut("Z", true)),

@@ -1,4 +1,7 @@
-use crate::{model::Sample, Engine};
+use crate::{
+    model::{Sample, MAX_COMMAND_BYTES, MAX_SELECTION_COMMAND_BYTES},
+    Command, Engine,
+};
 use std::{
     collections::HashMap,
     panic::{catch_unwind, AssertUnwindSafe},
@@ -40,10 +43,13 @@ pub fn dispatch(handle: u64, operation: u32, bytes: &[u8]) -> Result<Vec<u8>, St
     let engine = map.get_mut(&handle).ok_or("画布已关闭")?;
     match operation {
         0 => {
-            if bytes.len() > 4096 {
+            if bytes.len() > MAX_SELECTION_COMMAND_BYTES {
                 return Err("命令过长".into());
             }
             let command = serde_json::from_slice(bytes).map_err(|_| "命令格式无效")?;
+            if bytes.len() > MAX_COMMAND_BYTES && !matches!(command, Command::SelectShape { .. }) {
+                return Err("命令过长".into());
+            }
             Ok(engine.command(command)?.to_string().into_bytes())
         }
         1 => {
@@ -160,5 +166,40 @@ pub unsafe extern "C" fn podor_free(buffer: PodorBuffer) {
                 buffer.length,
             )));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::MAX_SELECTION_POINTS;
+    use serde_json::json;
+
+    #[test]
+    fn long_selection_commands_cross_the_bridge_without_relaxing_other_limits() {
+        let handle = create(128, 128).unwrap();
+        let points = (0..MAX_SELECTION_POINTS)
+            .map(|i| {
+                let angle = i as f64 * std::f64::consts::TAU / MAX_SELECTION_POINTS as f64;
+                json!({"x":64.0 + 60.0 * angle.cos(),"y":64.0 + 60.0 * angle.sin()})
+            })
+            .collect::<Vec<_>>();
+        let bytes = serde_json::to_vec(&json!({"type":"select_shape","selection":{"kind":"lasso","left":0,"top":0,"right":128,"bottom":128,"points":points}})).unwrap();
+        assert!(bytes.len() > MAX_COMMAND_BYTES);
+        let state: serde_json::Value =
+            serde_json::from_slice(&dispatch(handle, 0, &bytes).unwrap()).unwrap();
+        assert_eq!(
+            state["selection"]["points"].as_array().unwrap().len(),
+            MAX_SELECTION_POINTS
+        );
+        let oversized =
+            serde_json::to_vec(&json!({"type":"state","padding":" ".repeat(MAX_COMMAND_BYTES)}))
+                .unwrap();
+        assert!(dispatch(handle, 0, &oversized).is_err());
+        assert!(dispatch(handle, 0, &vec![b' '; MAX_SELECTION_COMMAND_BYTES + 1]).is_err());
+        let current: serde_json::Value =
+            serde_json::from_slice(&dispatch(handle, 0, b"{\"type\":\"state\"}").unwrap()).unwrap();
+        assert_eq!(current, state);
+        destroy(handle);
     }
 }

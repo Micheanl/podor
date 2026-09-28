@@ -35,6 +35,8 @@ enum class Glyph(val resource: DrawableResource) {
     Check(Res.drawable.ic_check),
     Chevron(Res.drawable.ic_chevron),
     Selection(Res.drawable.ic_selection),
+    EllipseSelection(Res.drawable.ic_ellipseselection),
+    Lasso(Res.drawable.ic_lasso),
     Fill(Res.drawable.ic_fill),
     Globe(Res.drawable.ic_globe),
     Keyboard(Res.drawable.ic_keyboard),

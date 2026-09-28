@@ -1,4 +1,5 @@
 use crate::model::*;
+use crate::selection::Selection;
 use std::{
     collections::{BTreeMap, BTreeSet, VecDeque},
     sync::Arc,
@@ -6,7 +7,7 @@ use std::{
 
 pub fn stamp(
     doc: &mut Document,
-    selection: Option<Rect>,
+    selection: Option<&Selection>,
     brush: Brush,
     point: Sample,
     dirty: &mut BTreeSet<TileKey>,
@@ -21,7 +22,7 @@ pub fn stamp(
 
 fn stamp_impl<const SIMPLE: bool>(
     doc: &mut Document,
-    selection: Option<Rect>,
+    selection: Option<&Selection>,
     brush: Brush,
     point: Sample,
     dirty: &mut BTreeSet<TileKey>,
@@ -40,7 +41,7 @@ fn stamp_impl<const SIMPLE: bool>(
     let (sin, cos) = brush.angle.to_radians().sin_cos();
     let circular = brush.tip == BrushTip::Round && brush.aspect == 1.0;
     let inverse_aspect = 1.0 / brush.aspect;
-    let region = selection.unwrap_or(doc.bounds());
+    let region = selection.map_or(doc.bounds(), Selection::bounds);
     let left = ((point.x - extent).floor().max(0.0) as u32).max(region.left);
     let top = ((point.y - extent).floor().max(0.0) as u32).max(region.top);
     let right = ((point.x + extent).ceil().max(0.0) as u32).min(region.right);
@@ -55,6 +56,16 @@ fn stamp_impl<const SIMPLE: bool>(
     for ty in top / TILE_SIZE..=(bottom - 1) / TILE_SIZE {
         for tx in left / TILE_SIZE..=(right - 1) / TILE_SIZE {
             let key = (tx, ty);
+            if selection.is_some_and(|selection| {
+                !selection.intersects(Rect {
+                    left: left.max(tx * TILE_SIZE),
+                    top: top.max(ty * TILE_SIZE),
+                    right: right.min((tx + 1) * TILE_SIZE),
+                    bottom: bottom.min((ty + 1) * TILE_SIZE),
+                })
+            }) {
+                continue;
+            }
             if (brush.eraser || alpha_locked) && !layer.tiles.contains_key(&key) {
                 continue;
             }
@@ -72,7 +83,12 @@ fn stamp_impl<const SIMPLE: bool>(
             );
             let mut changed = false;
             for y in top.max(ty * TILE_SIZE)..bottom.min((ty + 1) * TILE_SIZE) {
+                let mask = selection.and_then(|selection| selection.row(y));
                 for x in left.max(tx * TILE_SIZE)..right.min((tx + 1) * TILE_SIZE) {
+                    let selected = mask.map_or(255, |row| row[(x - region.left) as usize]);
+                    if selected == 0 {
+                        continue;
+                    }
                     let dx = x as f32 + 0.5 - point.x;
                     let dy = y as f32 + 0.5 - point.y;
                     let squared = if SIMPLE || circular {
@@ -96,7 +112,7 @@ fn stamp_impl<const SIMPLE: bool>(
                         let noise = ((hash ^ (hash >> 16)) & 65535) as f32 / 65535.0;
                         coverage *= (1.0 - brush.grain) + brush.grain * noise.powi(3);
                     }
-                    let alpha = (coverage * opacity * 255.0).round() as u32;
+                    let alpha = (coverage * opacity * f32::from(selected)).round() as u32;
                     if alpha == 0 {
                         continue;
                     }

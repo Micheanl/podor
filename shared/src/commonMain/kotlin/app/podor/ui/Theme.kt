@@ -14,6 +14,10 @@ import androidx.compose.ui.unit.sp
 import app.podor.domain.Language
 
 object StudioTheme {
+    val selectionDockPadding = 6.dp
+    val selectionDockGap = 4.dp
+    val selectionDockBorder = 1.dp
+    const val selectionDashLengthLimit = 16_000f
     val background = Color(0xFF17181B)
     val panel = Color(0xFF222327)
     val elevated = Color(0xFF2D2E33)

@@ -13,14 +13,17 @@ mod previews;
 mod psd;
 mod raster;
 mod resample;
+mod selection;
 mod stabilizer;
 mod storage;
 mod translation;
 pub use resample::ResampleFilter;
+pub use selection::{SelectionKind, SelectionPoint, SelectionSpec};
 pub use storage::{ExportFormat, ExportOptions};
 
 use history::{History, Snapshot};
 use model::*;
+use selection::Selection;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use stabilizer::Stabilizer;
@@ -31,6 +34,9 @@ use std::collections::BTreeSet;
 pub enum Command {
     Select {
         rect: Option<Rect>,
+    },
+    SelectShape {
+        selection: SelectionSpec,
     },
     Fill {
         x: u32,
@@ -139,7 +145,7 @@ impl Stroke {
         &mut self,
         point: Sample,
         document: &mut Document,
-        selection: Option<Rect>,
+        selection: Option<&Selection>,
         dirty: &mut BTreeSet<TileKey>,
         remaining: &mut usize,
     ) -> Result<(), String> {
@@ -197,7 +203,7 @@ pub struct Engine {
     stroke: Option<Stroke>,
     revision: u64,
     content_id: u64,
-    selection: Option<Rect>,
+    selection: Option<Selection>,
     preview_revision: Option<u64>,
     preview_job: Option<std::thread::JoinHandle<(u64, Vec<u8>)>>,
 }
@@ -254,7 +260,7 @@ impl Engine {
                         stroke.paint(
                             point,
                             &mut self.document,
-                            self.selection,
+                            self.selection.as_ref(),
                             &mut self.dirty,
                             &mut remaining,
                         )?;
@@ -266,7 +272,7 @@ impl Engine {
                         {
                             raster::stamp(
                                 &mut self.document,
-                                self.selection,
+                                self.selection.as_ref(),
                                 stroke.stamp_brush(),
                                 point,
                                 &mut self.dirty,
@@ -307,12 +313,12 @@ impl Engine {
                 }
                 match command {
                     Command::Select { rect } => {
-                        if let Some(rect) = rect {
-                            if rect.intersect(self.document.bounds()) != Some(rect) {
-                                return Err("选区超出画布或为空".into());
-                            }
-                        }
-                        self.selection = rect;
+                        self.selection = rect
+                            .map(|rect| Selection::rectangle(rect, self.document.bounds()))
+                            .transpose()?;
+                    }
+                    Command::SelectShape { selection } => {
+                        self.selection = Some(Selection::new(selection, self.document.bounds())?);
                     }
                     Command::New { width, height } => {
                         let document = Document::new(width, height)?;
@@ -489,7 +495,8 @@ impl Engine {
 
     fn edit_layers(&mut self, command: Command) -> Result<(), String> {
         let bounds = self.document.bounds();
-        let region = self.selection.unwrap_or(bounds);
+        let selection = self.selection.as_ref();
+        let region = selection.map_or(bounds, Selection::bounds);
         if matches!(
             command,
             Command::Fill { .. } | Command::Tone { .. } | Command::Blur { .. } | Command::Clear
@@ -508,12 +515,20 @@ impl Engine {
                 y,
                 color,
                 tolerance,
-            } => adjustments::fill(self.document.active_mut(), region, x, y, color, tolerance)?,
+            } => adjustments::fill(
+                self.document.active_mut(),
+                region,
+                selection,
+                x,
+                y,
+                color,
+                tolerance,
+            )?,
             Command::Tone { settings } => {
-                adjustments::tone(self.document.active_mut(), region, settings)?
+                adjustments::tone(self.document.active_mut(), region, selection, settings)?
             }
             Command::Blur { sigma } => {
-                adjustments::blur(self.document.active_mut(), bounds, region, sigma)?
+                adjustments::blur(self.document.active_mut(), bounds, region, selection, sigma)?
             }
             Command::AddLayer => {
                 if self.document.layers.len() >= MAX_LAYERS {
@@ -629,7 +644,7 @@ impl Engine {
             stroke.paint(
                 filtered,
                 &mut self.document,
-                self.selection,
+                self.selection.as_ref(),
                 &mut self.dirty,
                 &mut remaining,
             )?;

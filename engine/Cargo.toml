@@ -65,3 +65,7 @@ harness = false
 [[bench]]
 name = "image_size"
 harness = false
+
+[[bench]]
+name = "selection"
+harness = false

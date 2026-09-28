@@ -334,7 +334,7 @@ fun CanvasFooter(controller: StudioController, compact: Boolean, modifier: Modif
         }
         Text(
             if (compact) "${controller.document.width} × ${controller.document.height}"
-            else "${tr(active?.name ?: "图层")} · ${tr(controller.tool.label)}",
+            else "${tr(active?.name ?: "图层")} · ${tr(if (controller.tool == Tool.Select) controller.selectionKind.label else controller.tool.label)}",
             fontSize = 10.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

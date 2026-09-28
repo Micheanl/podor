@@ -26,6 +26,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import app.podor.domain.SelectionGesture
+import app.podor.domain.SelectionKind
 import app.podor.domain.StudioDefaults
 import app.podor.domain.Tool
 import app.podor.domain.TouchGesture
@@ -52,8 +54,16 @@ fun CanvasWorkspace(
         derivedStateOf { Size((fullSize.width - inset).coerceAtLeast(0f), fullSize.height) }
     }
     var cursor by remember { mutableStateOf<Offset?>(null) }
-    var selectionStart by remember { mutableStateOf<Offset?>(null) }
-    var selectionEnd by remember { mutableStateOf<Offset?>(null) }
+    var selectionGesture by remember { mutableStateOf<SelectionGesture?>(null) }
+    var selectionVersion by remember { mutableIntStateOf(0) }
+    LaunchedEffect(
+        controller.tool,
+        controller.selectionKind,
+        controller.selectionCancellation,
+        controller.document.revision,
+    ) {
+        selectionGesture = null
+    }
     LaunchedEffect(
         controller.tool,
         controller.document.revision,
@@ -69,7 +79,15 @@ fun CanvasWorkspace(
             filterQuality = FilterQuality.Low
         }
     }
-    val selectionDash = remember { PathEffect.dashPathEffect(floatArrayOf(5f, 5f)) }
+    val selectionScale by remember {
+        derivedStateOf {
+            controller.viewport.scale(viewSize, controller.document).coerceAtLeast(0.01f)
+        }
+    }
+    val selectionDash =
+        remember(selectionScale) {
+            PathEffect.dashPathEffect(floatArrayOf(5f / selectionScale, 5f / selectionScale))
+        }
     val selectionPath = remember { Path() }
     Box(
         modifier
@@ -79,12 +97,23 @@ fun CanvasWorkspace(
                 var drawing = false
                 var activePointer: PointerId? = null
                 var gesture = false
+                var selectionCancellation = controller.selectionCancellation
+                var selectionRevision = controller.document.revision
                 var moveAnchor: Offset? = null
                 var movePreview: LayerMovePreview? = null
                 val touchGesture = TouchGesture()
                 try {
                     while (currentCoroutineContext().isActive) {
                         val event = awaitPointerEventScope { awaitPointerEvent() }
+                        if (
+                            selectionGesture != null &&
+                                (controller.tool != Tool.Select ||
+                                    controller.selectionKind != selectionGesture?.kind ||
+                                    controller.selectionCancellation != selectionCancellation ||
+                                    controller.document.revision != selectionRevision)
+                        ) {
+                            selectionGesture = null
+                        }
                         val pen = event.platformPenInput()
                         val touch = event.platformTouchInput()
                         if (pen?.cancelled == true || touch?.cancelled == true) {
@@ -92,8 +121,7 @@ fun CanvasWorkspace(
                             drawing = false
                             activePointer = null
                             gesture = false
-                            selectionStart = null
-                            selectionEnd = null
+                            selectionGesture = null
                             moveAnchor = null
                             controller.cancelLayerMove()
                             touchGesture.reset()
@@ -122,8 +150,7 @@ fun CanvasWorkspace(
                                 if (drawing) controller.end(cancel = true)
                                 drawing = false
                                 activePointer = null
-                                selectionStart = null
-                                selectionEnd = null
+                                selectionGesture = null
                                 if (moveAnchor != null) controller.cancelLayerMove()
                                 moveAnchor = null
                                 cursor = null
@@ -199,7 +226,7 @@ fun CanvasWorkspace(
                         cursor =
                             if (mouse && event.type != PointerEventType.Exit) position else null
                         if (event.type == PointerEventType.Scroll) {
-                            if (drawing || selectionStart != null || moveAnchor != null) continue
+                            if (drawing || selectionGesture != null || moveAnchor != null) continue
                             val rotating = event.keyboardModifiers.isShiftPressed
                             val scroll =
                                 if (rotating && primary.scrollDelta.y == 0f) primary.scrollDelta.x
@@ -234,8 +261,7 @@ fun CanvasWorkspace(
                         if (stylus == null && pressed.size >= 2) {
                             if (moveAnchor != null) controller.cancelLayerMove()
                             moveAnchor = null
-                            selectionStart = null
-                            selectionEnd = null
+                            selectionGesture = null
                             if (drawing) {
                                 controller.end(cancel = true)
                                 drawing = false
@@ -278,17 +304,14 @@ fun CanvasWorkspace(
                                 }
                             }
                             moveAnchor = null
-                            selectionStart?.let { start ->
-                                val end =
-                                    controller.viewport.toDocument(
-                                        position,
-                                        viewSize,
-                                        controller.document,
-                                    )
-                                controller.select(start, end)
+                            selectionGesture?.let { draft ->
+                                for (sample in samples()) draft.add(
+                                    Offset(sample.first, sample.second),
+                                    event.keyboardModifiers.isShiftPressed,
+                                )
+                                controller.select(draft.selection())
                             }
-                            selectionStart = null
-                            selectionEnd = null
+                            selectionGesture = null
                             if (drawing) {
                                 if (
                                     position != primary.previousPosition ||
@@ -363,8 +386,12 @@ fun CanvasWorkspace(
                                 viewSize,
                                 controller.document,
                             )
-                        if (selectionStart != null) {
-                            selectionEnd = point
+                        if (selectionGesture != null) {
+                            for (sample in samples()) selectionGesture?.add(
+                                Offset(sample.first, sample.second),
+                                event.keyboardModifiers.isShiftPressed,
+                            )
+                            selectionVersion++
                             primary.consume()
                             continue
                         }
@@ -390,8 +417,16 @@ fun CanvasWorkspace(
                                 continue
                             }
                             if (controller.tool == Tool.Select) {
-                                selectionStart = point
-                                selectionEnd = point
+                                selectionCancellation = controller.selectionCancellation
+                                selectionRevision = controller.document.revision
+                                selectionGesture =
+                                    SelectionGesture(
+                                        controller.selectionKind,
+                                        point,
+                                        controller.document.width,
+                                        controller.document.height,
+                                        StudioDefaults.selectionSampleDistance / selectionScale,
+                                    )
                                 activePointer = primary.id
                                 primary.consume()
                                 continue
@@ -471,37 +506,74 @@ fun CanvasWorkspace(
             val document = controller.document
             val scale = controller.viewport.scale(viewSize, document)
             if (scale <= 0f) return@Canvas
+            selectionVersion
+            val draft = selectionGesture
             val selected =
-                if (selectionStart != null && selectionEnd != null) {
-                    val a = selectionStart!!
-                    val b = selectionEnd!!
-                    Rect(minOf(a.x, b.x), minOf(a.y, b.y), maxOf(a.x, b.x), maxOf(a.y, b.y))
-                } else
-                    controller.document.selection?.let {
+                if (draft != null) {
+                    if (draft.kind == SelectionKind.Lasso) null else draft.selection()
+                } else document.selection
+            val kind = draft?.kind ?: selected?.kind
+            selectionPath.reset()
+            var outlineLength = 0f
+            if (kind == SelectionKind.Lasso) {
+                val points = draft?.points ?: selected?.points.orEmpty()
+                points.forEachIndexed { index, point ->
+                    if (index == 0) selectionPath.moveTo(point.x, point.y)
+                    else {
+                        selectionPath.lineTo(point.x, point.y)
+                        val previous = points[index - 1]
+                        outlineLength +=
+                            Offset(point.x - previous.x, point.y - previous.y).getDistance()
+                    }
+                }
+                draft?.let { selectionPath.lineTo(it.end.x, it.end.y) }
+                if (points.isNotEmpty()) {
+                    val last = Offset(points.last().x, points.last().y)
+                    val end = draft?.end ?: last
+                    outlineLength +=
+                        (end - last).getDistance() +
+                            (end - Offset(points.first().x, points.first().y)).getDistance()
+                }
+                selectionPath.close()
+            } else
+                selected?.let {
+                    val rect =
                         Rect(
                             it.left.toFloat(),
                             it.top.toFloat(),
                             it.right.toFloat(),
                             it.bottom.toFloat(),
                         )
+                    if (kind == SelectionKind.Ellipse) selectionPath.addOval(rect)
+                    else selectionPath.addRect(rect)
+                }
+            if (kind != null) {
+                val viewport = controller.viewport
+                val origin = viewport.origin(viewSize, document)
+                withTransform({
+                    translate(origin.x, origin.y)
+                    rotate(viewport.rotation, Offset.Zero)
+                    scale(scale * viewport.horizontalSign, scale, Offset.Zero)
+                }) {
+                    clipRect(0f, 0f, document.width.toFloat(), document.height.toFloat()) {
+                        drawPath(selectionPath, Color.Black, style = Stroke(2f / scale))
+                        drawPath(
+                            selectionPath,
+                            Color.White,
+                            style =
+                                Stroke(
+                                    1.5f / scale,
+                                    pathEffect =
+                                        if (
+                                            outlineLength * scale <=
+                                                StudioTheme.selectionDashLengthLimit
+                                        )
+                                            selectionDash
+                                        else null,
+                                ),
+                        )
                     }
-            selected?.let { rect ->
-                val a = controller.viewport.toView(rect.topLeft, viewSize, document)
-                val b = controller.viewport.toView(rect.topRight, viewSize, document)
-                val c = controller.viewport.toView(rect.bottomRight, viewSize, document)
-                val d = controller.viewport.toView(rect.bottomLeft, viewSize, document)
-                selectionPath.reset()
-                selectionPath.moveTo(a.x, a.y)
-                selectionPath.lineTo(b.x, b.y)
-                selectionPath.lineTo(c.x, c.y)
-                selectionPath.lineTo(d.x, d.y)
-                selectionPath.close()
-                drawPath(selectionPath, Color.Black, style = Stroke(2f))
-                drawPath(
-                    selectionPath,
-                    Color.White,
-                    style = Stroke(1.5f, pathEffect = selectionDash),
-                )
+                }
             }
             cursor?.let { position ->
                 if (controller.tool == Tool.Brush || controller.tool == Tool.Eraser) {

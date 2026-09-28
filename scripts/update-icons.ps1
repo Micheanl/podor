@@ -13,6 +13,7 @@ $icons = [ordered]@{
     Globe='globe'; Keyboard='keyboard'; Plugin='puzzle'; Palette='palette'; Swap='arrow-right-left'
     Copy='copy'; Merge='layers-2'; Home='layout-grid'; Search='search'
     ImportImage='image-plus'
+    EllipseSelection='circle-dashed'; Lasso='lasso'
 }
 $drawable = Join-Path $root 'shared/src/commonMain/composeResources/drawable'
 $entries = foreach ($icon in $icons.GetEnumerator()) {
