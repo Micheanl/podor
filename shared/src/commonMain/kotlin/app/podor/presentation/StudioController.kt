@@ -474,6 +474,7 @@ class StudioController(
                                                     "blur",
                                                     "merge_visible",
                                                     "resize_canvas",
+                                                    "resize_image",
                                                 )
                                         )
                                             withContext(Dispatchers.Main) { busy = true }
@@ -779,6 +780,14 @@ class StudioController(
             put("width", width)
             put("height", height)
             put("anchor", anchor.ordinal)
+            put("revision", revision)
+        }
+
+    fun resizeImage(width: Int, height: Int, filter: ResampleFilter, revision: Long) =
+        command("resize_image") {
+            put("width", width)
+            put("height", height)
+            put("filter", filter.wireName)
             put("revision", revision)
         }
 

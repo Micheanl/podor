@@ -186,6 +186,9 @@ data class BrushSettings(
 data class CanvasPreset(val label: String, val width: Int, val height: Int)
 
 object StudioDefaults {
+    val resampleFilter = ResampleFilter.Lanczos3
+    const val imageSizeLocked = true
+    val imageScalePresets = listOf(50, 100, 200)
     val canvasAnchor = CanvasAnchor.Center
     const val brushColor = 0xFF000000L
     const val stabilization = 0f

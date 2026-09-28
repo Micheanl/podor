@@ -77,6 +77,7 @@ cargo bench --bench layers
 cargo bench --bench ora_import
 cargo bench --bench canvas_size
 cargo bench --bench canvas_frames
+cargo bench --bench image_size
 ```
 
 基准测量引擎负载，不包含设备输入、GPU 上传和屏幕延迟。
@@ -84,6 +85,8 @@ cargo bench --bench canvas_frames
 Windows 可设置 `PODOR_GPU_TEST=1` 后运行 `scripts/check.ps1`，额外检查原生窗口的硬件渲染通道，结果写入 `desktopApp/build/reports/gpu-renderer.txt`。离屏动画耗时包含图像读回，不能作为整机帧率承诺。
 
 `painting-performance.txt` 记录完整桌面界面中八图层连续绘画的输入批次到像素帧耗时、强制渲染调用耗时和主线程排队时间，超时采样附带线程栈。测试窗口位于屏幕外，结果不代表实际显示帧率或实体笔延迟。
+
+`image-resize-performance.txt` 记录大图重采样、画布刷新和主线程排队时间。平滑缩放使用预乘颜色的 Lanczos3 滤波，按行复用最多 4 MiB 缓存；像素模式使用最近邻。两种方式都保留图层，并在内存上限内支持一步撤销。
 
 交互式 Windows 会话可另设 `PODOR_INK_SYSTEM_TEST=1`，测试通过系统指针注入检查压感、笔尾擦除和重复鼠标事件。注入前逐点确认命中测试窗口，结束后关闭窗口。实体数位板、触控笔仍需设备验证；双指手势目前只有 Compose 输入模拟测试。
 

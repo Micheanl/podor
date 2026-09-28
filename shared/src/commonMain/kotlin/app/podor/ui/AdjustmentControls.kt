@@ -18,6 +18,7 @@ fun AdjustmentControls(controller: StudioController) {
     var saturation by remember { mutableStateOf(0f) }
     var radius by remember { mutableStateOf(4f) }
     var canvasSize by remember { mutableStateOf(false) }
+    var imageSize by remember { mutableStateOf(false) }
     val locked =
         controller.document.layers.firstOrNull { it.id == controller.document.active }?.locked ==
             true
@@ -31,6 +32,15 @@ fun AdjustmentControls(controller: StudioController) {
         enabled = controller.ready && !controller.busy,
     )
     if (canvasSize) CanvasSizeDialog(controller) { canvasSize = false }
+    ActionButton(
+        "图像尺寸",
+        { imageSize = true },
+        modifier = Modifier.fillMaxWidth(),
+        glyph = Glyph.Fit,
+        primary = false,
+        enabled = controller.ready && !controller.busy,
+    )
+    if (imageSize) ImageSizeDialog(controller) { imageSize = false }
     HorizontalDivider(color = StudioTheme.border)
     Text(
         tr(if (controller.document.selection != null) "仅作用于当前图层的选区" else "作用于当前图层"),

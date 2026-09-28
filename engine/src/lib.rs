@@ -12,9 +12,11 @@ mod openraster;
 mod previews;
 mod psd;
 mod raster;
+mod resample;
 mod stabilizer;
 mod storage;
 mod translation;
+pub use resample::ResampleFilter;
 pub use storage::{ExportFormat, ExportOptions};
 
 use history::{History, Snapshot};
@@ -102,6 +104,13 @@ pub enum Command {
         width: u32,
         height: u32,
         anchor: u8,
+        revision: u64,
+    },
+    ResizeImage {
+        width: u32,
+        height: u32,
+        #[serde(default)]
+        filter: ResampleFilter,
         revision: u64,
     },
     State,
@@ -378,6 +387,27 @@ impl Engine {
                         }
                         if (width, height) != (self.document.width, self.document.height) {
                             let resized = canvas::resize(&self.document, width, height, anchor)?;
+                            let before = std::mem::replace(&mut self.document, resized);
+                            self.dirty.clear();
+                            self.mark_all();
+                            self.selection = None;
+                            self.history
+                                .push(before, self.content_id, &self.document, true);
+                            self.revision += 1;
+                            self.content_id = self.revision;
+                        }
+                    }
+                    Command::ResizeImage {
+                        width,
+                        height,
+                        filter,
+                        revision,
+                    } => {
+                        if revision != self.revision {
+                            return Err("画布已变化，请重新调整尺寸".into());
+                        }
+                        if (width, height) != (self.document.width, self.document.height) {
+                            let resized = resample::resize(&self.document, width, height, filter)?;
                             let before = std::mem::replace(&mut self.document, resized);
                             self.dirty.clear();
                             self.mark_all();

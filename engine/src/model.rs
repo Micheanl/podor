@@ -10,6 +10,7 @@ pub const MAX_LAYER_NAME_BYTES: usize = 256;
 pub const MAX_HISTORY_BYTES: usize = 64 * 1024 * 1024;
 pub const MAX_DOCUMENT_BYTES: usize = 128 * 1024 * 1024;
 pub const MAX_STROKE_CACHE_BYTES: usize = 4 * 1024 * 1024;
+pub const MAX_RESAMPLE_CACHE_BYTES: usize = 4 * 1024 * 1024;
 pub const MAX_HISTORY_ENTRIES: usize = 60;
 pub const MAX_ORA_ENTRIES: usize = 256;
 pub const MAX_ORA_METADATA_BYTES: usize = 256 * 1024;
