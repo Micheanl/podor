@@ -53,6 +53,9 @@ data class BrushPreset(
     val spacing: Float = 0.08f,
     val stabilization: Float = StudioDefaults.stabilization,
     val followDirection: Boolean = false,
+    val pressureCurve: Float = StudioDefaults.pressureCurve,
+    val sizePressure: Float = StudioDefaults.sizePressure,
+    val opacityPressure: Float = StudioDefaults.opacityPressure,
 ) {
     fun valid(): Boolean =
         id.matches(Regex("[a-zA-Z0-9._-]{1,64}")) &&
@@ -73,7 +76,13 @@ data class BrushPreset(
             spacing.isFinite() &&
             spacing in 0.02f..1f &&
             stabilization.isFinite() &&
-            stabilization in 0f..1f
+            stabilization in 0f..1f &&
+            pressureCurve.isFinite() &&
+            pressureCurve in -1f..1f &&
+            sizePressure.isFinite() &&
+            sizePressure in 0f..1f &&
+            opacityPressure.isFinite() &&
+            opacityPressure in 0f..1f
 
     companion object {
         val Ink = BrushPreset("ink", "墨水笔", 0.9f, 1f, 12f)
@@ -137,6 +146,26 @@ data class BrushPreset(
                     followDirection = true,
                 ),
                 BrushPreset("stipple", "点描", 1f, 1f, 5f, spacing = 0.95f),
+                BrushPreset(
+                    "pressure-ink",
+                    "压感墨笔",
+                    0.95f,
+                    1f,
+                    32f,
+                    stabilization = StudioDefaults.lineStabilization,
+                    pressureCurve = 0.5f,
+                    opacityPressure = 0.25f,
+                ),
+                BrushPreset(
+                    "glaze",
+                    "薄涂笔",
+                    0.2f,
+                    0.12f,
+                    100f,
+                    spacing = 0.06f,
+                    sizePressure = 0.2f,
+                    opacityPressure = 1f,
+                ),
             )
     }
 }
@@ -161,6 +190,9 @@ object StudioDefaults {
     const val brushColor = 0xFF000000L
     const val stabilization = 0f
     const val lineStabilization = 0.5f
+    const val pressureCurve = 0f
+    const val sizePressure = 1f
+    const val opacityPressure = 0f
     const val exportQuality = 90
     const val maxDimension = 8192
     const val maxCanvasPixels = 16_777_216L

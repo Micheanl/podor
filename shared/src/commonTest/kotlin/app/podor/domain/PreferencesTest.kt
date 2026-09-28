@@ -95,12 +95,49 @@ class PreferencesTest {
 
     @Test
     fun bundledBrushesHaveDistinctAndValidParameters() {
-        assertEquals(14, BrushPreset.entries.size)
+        assertEquals(16, BrushPreset.entries.size)
         assertTrue(BrushPreset.entries.all { it.valid() })
-        assertEquals(14, BrushPreset.entries.map { it.id }.distinct().size)
+        assertEquals(16, BrushPreset.entries.map { it.id }.distinct().size)
         assertTrue(BrushPreset.entries.any { it.tip == BrushTip.Flat })
         assertTrue(BrushPreset.entries.any { it.grain > 0f })
         assertTrue(BrushPreset.entries.any { it.stabilization > 0f })
         assertEquals(3, BrushPreset.entries.count { it.followDirection })
+        assertTrue(BrushPreset.entries.any { it.opacityPressure == 1f && it.sizePressure < 1f })
+    }
+
+    @Test
+    fun pressureSettingsSurviveSavingAndOlderBrushesKeepTheirResponse() {
+        val legacy = BrushPack.parse("""{"id":"old","name":"Old","brushes":[{"id":"custom-1","label":"Ink","hardness":1,"opacity":1,"size":12}]}""".encodeToByteArray())
+        val original = legacy.brushes.single()
+        assertEquals(0f, original.pressureCurve)
+        assertEquals(1f, original.sizePressure)
+        assertEquals(0f, original.opacityPressure)
+        val brush = original.copy(pressureCurve = -0.6f, sizePressure = 0.3f, opacityPressure = 0.8f)
+        val pack = legacy.copy(brushes = listOf(brush))
+        assertEquals(pack, BrushPack.parse(Json.encodeToString(pack).encodeToByteArray()))
+        val preferences = Preferences(brushes = pack.brushes)
+        assertTrue(preferences.valid())
+        assertEquals(preferences, Json.decodeFromString<Preferences>(Json.encodeToString(preferences)))
+    }
+
+    @Test
+    fun invalidPressureSettingsAreRejectedBeforeImport() {
+        val json = Json { allowSpecialFloatingPointValues = true }
+        for (value in listOf(-1.01f, 1.01f, Float.NaN, Float.POSITIVE_INFINITY)) {
+            val invalid = listOf(
+                BrushPreset.Ink.copy(pressureCurve = value),
+                BrushPreset.Ink.copy(sizePressure = value),
+                BrushPreset.Ink.copy(opacityPressure = value),
+            )
+            invalid.forEach { brush ->
+                assertFalse(brush.valid())
+                val pack = BrushPack("invalid", "Invalid", brushes = listOf(brush))
+                assertFailsWith<IllegalArgumentException> {
+                    BrushPack.parse(json.encodeToString(pack).encodeToByteArray())
+                }
+            }
+        }
+        assertFalse(BrushPreset.Ink.copy(sizePressure = -0.01f).valid())
+        assertFalse(BrushPreset.Ink.copy(opacityPressure = -0.01f).valid())
     }
 }

@@ -147,8 +147,9 @@ impl Stroke {
                     raster::stamp(document, selection, brush, last, dirty, remaining)?;
                     self.changed = true;
                 }
-                let spacing = (self.brush.size
-                    * last.pressure.min(point.pressure).clamp(0.05, 1.0)
+                let spacing = (self
+                    .brush
+                    .size_at_pressure(last.pressure.min(point.pressure))
                     * self.brush.spacing)
                     .max(0.5);
                 let mut cursor = spacing - self.distance.min(spacing);

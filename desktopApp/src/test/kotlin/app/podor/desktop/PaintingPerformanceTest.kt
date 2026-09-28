@@ -120,7 +120,12 @@ class PaintingPerformanceTest {
                             controller.brush.copy(
                                 size = 256f,
                                 opacity = 0.6f,
-                                preset = controller.brush.preset.copy(hardness = 0.5f),
+                                preset = controller.brush.preset.copy(
+                                    hardness = 0.5f,
+                                    pressureCurve = 0.5f,
+                                    sizePressure = 0.5f,
+                                    opacityPressure = 0.75f,
+                                ),
                                 color = 0xFF893A55,
                             )
                         controller.begin(Offset(256f, 1024f), 0.8f)
@@ -193,6 +198,7 @@ class PaintingPerformanceTest {
                         """
                     Renderer: $api
                     1360 x 900 native StudioApp window outside the visible desktop; 2048 x 2048 canvas, 8 mixed layers, brush 256 px, 480 samples.
+                    Pressure curve: ${controller.brush.preset.pressureCurve}; size response: ${controller.brush.preset.sizePressure}; opacity response: ${controller.brush.preset.opacityPressure}.
                     Input batch to published pixel frame: ${summary(inputMillis)}
                     Forced native render call: ${summary(renderMillis)}
                     Main-thread dispatch wait during drawing and thumbnail completion: ${summary(dispatchMillis)}

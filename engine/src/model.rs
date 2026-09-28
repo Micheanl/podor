@@ -192,6 +192,12 @@ pub struct Brush {
     pub spacing: f32,
     #[serde(default)]
     pub stabilization: f32,
+    #[serde(default)]
+    pub pressure_curve: f32,
+    #[serde(default = "default_size_pressure")]
+    pub size_pressure: f32,
+    #[serde(default)]
+    pub opacity_pressure: f32,
 }
 
 #[derive(Clone, Copy, Default, Deserialize, PartialEq)]
@@ -207,6 +213,9 @@ fn default_aspect() -> f32 {
 }
 fn default_spacing() -> f32 {
     BRUSH_SPACING_RATIO
+}
+fn default_size_pressure() -> f32 {
+    1.0
 }
 
 impl Default for Brush {
@@ -224,6 +233,9 @@ impl Default for Brush {
             grain: 0.0,
             spacing: BRUSH_SPACING_RATIO,
             stabilization: 0.0,
+            pressure_curve: 0.0,
+            size_pressure: 1.0,
+            opacity_pressure: 0.0,
         }
     }
 }
@@ -246,10 +258,32 @@ impl Brush {
             || !(0.02..=1.0).contains(&self.spacing)
             || !self.stabilization.is_finite()
             || !(0.0..=1.0).contains(&self.stabilization)
+            || !self.pressure_curve.is_finite()
+            || !(-1.0..=1.0).contains(&self.pressure_curve)
+            || !self.size_pressure.is_finite()
+            || !(0.0..=1.0).contains(&self.size_pressure)
+            || !self.opacity_pressure.is_finite()
+            || !(0.0..=1.0).contains(&self.opacity_pressure)
         {
             return Err("画笔参数无效".into());
         }
         Ok(self)
+    }
+
+    fn pressure_response(self, input: f32) -> f32 {
+        let pressure = input.clamp(0.0, 1.0);
+        pressure + self.pressure_curve * pressure * (1.0 - pressure)
+    }
+
+    pub(crate) fn size_at_pressure(self, input: f32) -> f32 {
+        self.size
+            * (1.0 - self.size_pressure + self.size_pressure * self.pressure_response(input))
+                .clamp(0.05, 1.0)
+    }
+
+    pub(crate) fn opacity_at_pressure(self, input: f32) -> f32 {
+        self.opacity
+            * (1.0 - self.opacity_pressure + self.opacity_pressure * self.pressure_response(input))
     }
 }
 

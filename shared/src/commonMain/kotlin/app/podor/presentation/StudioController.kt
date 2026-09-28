@@ -733,6 +733,9 @@ class StudioController(
                         put("grain", settings.preset.grain)
                         put("spacing", settings.preset.spacing)
                         put("stabilization", settings.preset.stabilization)
+                        put("pressure_curve", settings.preset.pressureCurve)
+                        put("size_pressure", settings.preset.sizePressure)
+                        put("opacity_pressure", settings.preset.opacityPressure)
                         put("eraser", tool == Tool.Eraser || stylusEraser)
                         putJsonArray("color") {
                             add((settings.color shr 16 and 255).toInt())

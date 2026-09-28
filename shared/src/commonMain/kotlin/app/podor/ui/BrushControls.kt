@@ -216,6 +216,7 @@ fun BrushStrokePreview(
 
 @Composable
 private fun BrushEditor(controller: StudioController, onDismiss: () -> Unit) {
+    var pressure by remember { mutableStateOf(false) }
     var name by remember {
         mutableStateOf(trValue(controller.brush.preset.label, controller.preferences.language))
     }
@@ -242,48 +243,70 @@ private fun BrushEditor(controller: StudioController, onDismiss: () -> Unit) {
                     singleLine = true,
                     label = { Text(tr("名称")) },
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    BrushTip.entries.forEach { tip ->
-                        FilterChip(
-                            preset.tip == tip,
-                            { update(preset.copy(tip = tip)) },
-                            label = { Text(tr(if (tip == BrushTip.Round) "圆形" else "扁平")) },
-                        )
+                Row(horizontalArrangement = Arrangement.spacedBy(StudioTheme.brushSettingsGap)) {
+                    listOf(false to "笔尖", true to "压感").forEach { (tab, label) ->
+                        FilterChip(pressure == tab, { pressure = tab }, label = { Text(tr(label)) })
                     }
                 }
-                LabeledSlider(
-                    "硬度",
-                    preset.hardness,
-                    0f..1f,
-                    "${(preset.hardness*100).roundToInt()}%",
-                ) {
-                    update(preset.copy(hardness = it))
-                }
-                LabeledSlider(
-                    "笔尖比例",
-                    preset.aspect,
-                    0.1f..1f,
-                    "${(preset.aspect*100).roundToInt()}%",
-                ) {
-                    update(preset.copy(aspect = it))
-                }
-                LabeledSlider("角度", preset.angle, -180f..180f, "${preset.angle.roundToInt()}°") {
-                    update(preset.copy(angle = it))
-                }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(tr("跟随笔画方向"), Modifier.weight(1f), fontSize = 13.sp)
-                    Switch(preset.followDirection, { update(preset.copy(followDirection = it)) })
-                }
-                LabeledSlider("颗粒", preset.grain, 0f..1f, "${(preset.grain*100).roundToInt()}%") {
-                    update(preset.copy(grain = it))
-                }
-                LabeledSlider(
-                    "间距",
-                    preset.spacing,
-                    0.02f..1f,
-                    "${(preset.spacing*100).roundToInt()}%",
-                ) {
-                    update(preset.copy(spacing = it))
+                if (pressure) {
+                    BrushPressureControls(preset, onChange = ::update)
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        BrushTip.entries.forEach { tip ->
+                            FilterChip(
+                                preset.tip == tip,
+                                { update(preset.copy(tip = tip)) },
+                                label = { Text(tr(if (tip == BrushTip.Round) "圆形" else "扁平")) },
+                            )
+                        }
+                    }
+                    LabeledSlider(
+                        "硬度",
+                        preset.hardness,
+                        0f..1f,
+                        "${(preset.hardness*100).roundToInt()}%",
+                    ) {
+                        update(preset.copy(hardness = it))
+                    }
+                    LabeledSlider(
+                        "笔尖比例",
+                        preset.aspect,
+                        0.1f..1f,
+                        "${(preset.aspect*100).roundToInt()}%",
+                    ) {
+                        update(preset.copy(aspect = it))
+                    }
+                    LabeledSlider(
+                        "角度",
+                        preset.angle,
+                        -180f..180f,
+                        "${preset.angle.roundToInt()}°",
+                    ) {
+                        update(preset.copy(angle = it))
+                    }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(tr("跟随笔画方向"), Modifier.weight(1f), fontSize = 13.sp)
+                        Switch(
+                            preset.followDirection,
+                            { update(preset.copy(followDirection = it)) },
+                        )
+                    }
+                    LabeledSlider(
+                        "颗粒",
+                        preset.grain,
+                        0f..1f,
+                        "${(preset.grain*100).roundToInt()}%",
+                    ) {
+                        update(preset.copy(grain = it))
+                    }
+                    LabeledSlider(
+                        "间距",
+                        preset.spacing,
+                        0.02f..1f,
+                        "${(preset.spacing*100).roundToInt()}%",
+                    ) {
+                        update(preset.copy(spacing = it))
+                    }
                 }
             }
         },

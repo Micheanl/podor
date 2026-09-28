@@ -72,6 +72,14 @@ object StudioTheme {
     val layerShape = RoundedCornerShape(16.dp)
     const val layerDragSourceAlpha = 0.35f
     val sliderThumbSize = 18.dp
+    val brushSettingsGap = 12.dp
+    val brushGraphHeight = 136.dp
+    val brushGraphPadding = 16.dp
+    val brushGraphShape = RoundedCornerShape(18.dp)
+    val brushGraphLine = 2.dp
+    val brushGraphDot = 3.dp
+    val brushCaptionSize = 11.sp
+    val brushLabelSize = 12.sp
     val colorWheelSize = 240.dp
     val workspaceWidth = 1200.dp
     val projectCardWidth = 240.dp

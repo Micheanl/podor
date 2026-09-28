@@ -27,7 +27,11 @@ fn stamp_impl<const SIMPLE: bool>(
     dirty: &mut BTreeSet<TileKey>,
     remaining: &mut usize,
 ) -> Result<(), String> {
-    let radius = (brush.size * point.pressure.clamp(0.05, 1.0) * 0.5).max(0.5);
+    let opacity = brush.opacity_at_pressure(point.pressure);
+    if opacity == 0.0 {
+        return Ok(());
+    }
+    let radius = (brush.size_at_pressure(point.pressure) * 0.5).max(0.5);
     let extent = if brush.tip == BrushTip::Flat {
         radius * std::f32::consts::SQRT_2
     } else {
@@ -92,7 +96,7 @@ fn stamp_impl<const SIMPLE: bool>(
                         let noise = ((hash ^ (hash >> 16)) & 65535) as f32 / 65535.0;
                         coverage *= (1.0 - brush.grain) + brush.grain * noise.powi(3);
                     }
-                    let alpha = (coverage * brush.opacity * 255.0).round() as u32;
+                    let alpha = (coverage * opacity * 255.0).round() as u32;
                     if alpha == 0 {
                         continue;
                     }
