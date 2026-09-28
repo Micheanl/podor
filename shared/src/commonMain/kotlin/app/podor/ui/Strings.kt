@@ -373,6 +373,8 @@ private val english =
         "清空当前图层" to "Clear layer",
         "快捷键与手势" to "Shortcuts & gestures",
         "取消选区" to "Deselect",
+        "上一件作品" to "Previous artwork",
+        "下一件作品" to "Next artwork",
         "撤销" to "Undo",
         "重做" to "Redo",
         "导出" to "Export",

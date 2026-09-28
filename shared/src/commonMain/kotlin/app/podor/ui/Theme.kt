@@ -168,6 +168,17 @@ object StudioTheme {
     val brushLabelSize = 12.sp
     val colorWheelSize = 240.dp
     val workspaceWidth = 1200.dp
+    val carouselCardWidth = 300.dp
+    val carouselMinPreviewHeight = 96.dp
+    val carouselPreviewHeight = 260.dp
+    const val carouselAngle = 0.58f
+    const val carouselDepth = 0.18f
+    const val carouselNeighbors = 3
+    val sonarSpacing = 26.dp
+    val sonarDotRadius = 1.dp
+    val sonarBandWidth = 90.dp
+    const val sonarBaseAlpha = 0.07f
+    const val sonarWaveAlpha = 0.22f
     val projectCardWidth = 240.dp
     val projectPreviewHeight = 174.dp
     const val exportColumns = 3
@@ -198,6 +209,8 @@ object StudioTheme {
 }
 
 object StudioMotion {
+    const val carouselMillis = 480
+    const val sonarMillis = 4200
     const val letterSwapMillis = 480
     const val letterSwapStagger = 0.45f
     const val pressMillis = 90

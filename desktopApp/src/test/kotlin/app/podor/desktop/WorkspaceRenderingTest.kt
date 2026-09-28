@@ -132,8 +132,12 @@ class WorkspaceRenderingTest {
                             repeat(30) { scene.render((it + 1) * 16_666_667L).close() }
                             capture(scene, name, 600_000_000L)
                             if (name == "workspace") {
-                                val artworkPosition =
-                                    Offset(210f, 310f + StudioTheme.windowTitleHeight.value)
+                                val nextPosition = Offset(732f, 808f)
+                                scene.sendPointerEvent(PointerEventType.Press, nextPosition)
+                                scene.sendPointerEvent(PointerEventType.Release, nextPosition)
+                                repeat(45) { scene.render(700_000_000L + it * 16_666_667L).close() }
+                                capture(scene, "workspace-next", 1_500_000_000L)
+                                val artworkPosition = Offset(680f, 514f)
                                 scene.sendPointerEvent(PointerEventType.Press, artworkPosition)
                                 scene.sendPointerEvent(PointerEventType.Release, artworkPosition)
                             }
@@ -141,8 +145,40 @@ class WorkspaceRenderingTest {
                         if (name == "workspace") {
                             awaitState { controller.document.width == 512 && !controller.busy }
                             withContext(Dispatchers.Main) {
-                                assertEquals("远山", controller.projectReference?.name)
+                                assertEquals("Bordeaux", controller.projectReference?.name)
                                 controller.home()
+                                repeat(40) {
+                                    scene.render(1_600_000_000L + it * 16_666_667L).close()
+                                }
+                                scene.sendPointerEvent(PointerEventType.Press, Offset(680f, 514f))
+                                repeat(20) {
+                                    scene.sendPointerEvent(
+                                        PointerEventType.Move,
+                                        Offset(680f - (it + 1) * 13f, 514f),
+                                    )
+                                    scene.render(2_400_000_000L + it * 16_666_667L).close()
+                                }
+                                scene.sendPointerEvent(PointerEventType.Release, Offset(420f, 514f))
+                                repeat(45) {
+                                    scene.render(2_800_000_000L + it * 16_666_667L).close()
+                                }
+                                scene.sendPointerEvent(PointerEventType.Press, Offset(680f, 514f))
+                                scene.sendPointerEvent(PointerEventType.Release, Offset(680f, 514f))
+                            }
+                            awaitState {
+                                controller.projectReference?.name == "Light study" &&
+                                    !controller.busy
+                            }
+                            withContext(Dispatchers.Main) {
+                                controller.home()
+                                scene.sendPointerEvent(PointerEventType.Move, Offset(1f, 1f))
+                                repeat(320) {
+                                    scene.render(3_700_000_000L + it * 16_666_667L).close()
+                                }
+                                assertFalse(
+                                    scene.hasInvalidations(),
+                                    "Workspace animations must settle",
+                                )
                             }
                         }
                     } finally {

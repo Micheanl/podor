@@ -1,15 +1,11 @@
 package app.podor.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,9 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -88,6 +85,7 @@ fun WorkspaceHome(controller: StudioController, updates: UpdateController? = nul
                     .focusable(),
                 contentAlignment = Alignment.TopCenter,
             ) {
+                WorkspaceSonar(Modifier.matchParentSize())
                 val narrow = maxWidth < 680.dp
                 val compact = maxHeight < 700.dp
                 Column(
@@ -231,16 +229,12 @@ fun WorkspaceHome(controller: StudioController, updates: UpdateController? = nul
                             }
                         }
                     } else {
-                        LazyVerticalGrid(
-                            GridCells.Adaptive(StudioTheme.projectCardWidth),
-                            Modifier.weight(1f).fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(18.dp),
-                            verticalArrangement = Arrangement.spacedBy(18.dp),
-                            contentPadding = PaddingValues(bottom = 16.dp),
-                        ) {
-                            items(projects, key = { it.reference.id }) { project ->
-                                ProjectCard(controller, project)
-                            }
+                        WorkspaceCarousel(projects, Modifier.weight(1f).fillMaxWidth()) {
+                            project,
+                            selected,
+                            select,
+                            previewHeight ->
+                            ProjectCard(controller, project, selected, select, previewHeight)
                         }
                     }
                     Text(tr("作品仅在手动保存时写入文件"), fontSize = 11.sp, color = StudioTheme.muted)
@@ -252,7 +246,13 @@ fun WorkspaceHome(controller: StudioController, updates: UpdateController? = nul
 }
 
 @Composable
-private fun ProjectCard(controller: StudioController, project: RecentProject) {
+private fun ProjectCard(
+    controller: StudioController,
+    project: RecentProject,
+    selected: Boolean,
+    select: () -> Unit,
+    previewHeight: androidx.compose.ui.unit.Dp,
+) {
     val preview by
         produceState<ImageBitmap?>(null, project.reference.id, project.openedAt) {
             value = controller.projectThumbnail(project.reference)
@@ -260,73 +260,50 @@ private fun ProjectCard(controller: StudioController, project: RecentProject) {
     var menu by remember { mutableStateOf(false) }
     val interaction = remember { MutableInteractionSource() }
     val shape = StudioTheme.cardShape
-    val rim = remember {
-        Brush.linearGradient(
-            listOf(StudioTheme.surfaceRim.copy(alpha = 0.5f), StudioTheme.border.copy(alpha = 0.3f))
-        )
-    }
-    Surface(
-        Modifier.fillMaxWidth()
-            .clickable(interaction, indication = null, enabled = !controller.busy) {
-                controller.navigate(WorkspaceDestination.Open(project.reference))
-            }
-            .controlFeedback(
-                interaction,
-                shape,
-                enabled = !controller.busy,
-                pressedScale = StudioMotion.cardPressScale,
-            ),
-        shape = shape,
-        color = StudioTheme.panel,
-        border = BorderStroke(StudioTheme.hairline, rim),
-    ) {
-        Column {
-            Box(
-                Modifier.fillMaxWidth()
-                    .height(StudioTheme.projectPreviewHeight)
-                    .background(StudioTheme.elevated)
-                    .padding(18.dp),
-                contentAlignment = Alignment.Center,
+    BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        val ratio = project.width.toFloat() / project.height.coerceAtLeast(1)
+        val imageWidth = minOf(maxWidth, previewHeight * ratio)
+        Box(
+            Modifier.width(imageWidth)
+                .height(imageWidth / ratio)
+                .clip(shape)
+                .combinedClickable(
+                    interactionSource = interaction,
+                    indication = null,
+                    enabled = !controller.busy,
+                    onLongClickLabel = tr("作品选项"),
+                    onLongClick = { menu = true },
+                    onClick = {
+                        if (selected)
+                            controller.navigate(WorkspaceDestination.Open(project.reference))
+                        else select()
+                    },
+                )
+                .semantics { contentDescription = project.reference.name }
+                .controlFeedback(
+                    interaction,
+                    shape,
+                    enabled = !controller.busy,
+                    pressedScale = StudioMotion.cardPressScale,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (preview == null) StudioIcon(Glyph.Layers, StudioTheme.muted.copy(alpha = 0.4f))
+            else ArtworkPreview(preview, project.width, project.height, Modifier.fillMaxSize())
+            DropdownMenu(
+                menu,
+                { menu = false },
+                shape = StudioTheme.menuShape,
+                containerColor = StudioTheme.panel,
             ) {
-                if (preview == null) StudioIcon(Glyph.Layers, StudioTheme.muted.copy(alpha = 0.4f))
-                else ArtworkPreview(preview, project.width, project.height, Modifier.fillMaxSize())
-            }
-            Row(
-                Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        project.reference.name,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 14.sp,
-                    )
-                    Text(
-                        "${project.width} × ${project.height}",
-                        fontSize = 11.sp,
-                        color = StudioTheme.muted,
-                    )
-                }
-                Box {
-                    ToolButton(Glyph.More, "作品选项") { menu = true }
-                    DropdownMenu(
-                        menu,
-                        { menu = false },
-                        shape = StudioTheme.menuShape,
-                        containerColor = StudioTheme.panel,
-                    ) {
-                        DropdownMenuItem(
-                            { Text(tr("从列表移除")) },
-                            {
-                                controller.forgetProject(project.reference)
-                                menu = false
-                            },
-                            leadingIcon = { StudioIcon(Glyph.Close) },
-                        )
-                    }
-                }
+                DropdownMenuItem(
+                    { Text(tr("从列表移除")) },
+                    {
+                        controller.forgetProject(project.reference)
+                        menu = false
+                    },
+                    leadingIcon = { StudioIcon(Glyph.Close) },
+                )
             }
         }
     }

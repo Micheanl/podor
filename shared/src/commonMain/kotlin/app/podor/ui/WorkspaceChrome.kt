@@ -158,11 +158,7 @@ fun StudioHeader(
             }
         }
         Spacer(Modifier.weight(1f))
-        Row(
-            Modifier.clip(CircleShape)
-                .background(StudioTheme.background.copy(alpha = 0.65f))
-                .padding(horizontal = 2.dp)
-        ) {
+        Row(Modifier.padding(horizontal = 2.dp)) {
             ToolButton(
                 Glyph.Undo,
                 controller.shortcutLabel(ShortcutAction.Undo),

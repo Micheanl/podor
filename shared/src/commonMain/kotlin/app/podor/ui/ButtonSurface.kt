@@ -21,7 +21,7 @@ internal fun Modifier.buttonSurface(
     val fill =
         animateColorAsState(
             when {
-                !enabled -> StudioTheme.elevated.copy(alpha = 0.35f)
+                !enabled && (alwaysVisible || accented) -> StudioTheme.elevated.copy(alpha = 0.35f)
                 primary -> StudioTheme.accent
                 accented -> StudioTheme.selection
                 alwaysVisible -> StudioTheme.elevated
