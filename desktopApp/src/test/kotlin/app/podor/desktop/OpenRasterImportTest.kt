@@ -16,16 +16,21 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.json.put
 
 class OpenRasterImportTest {
-    @OptIn(ExperimentalPathApi::class)
     @Test
-    fun oraOpensAsEditableLayersAndSavesSeparatelyWithoutChangingTheSource() =
+    fun oraOpensAsEditableLayersAndSavesSeparatelyWithoutChangingTheSource() = checkImport("ora", 0.5f)
+
+    @Test
+    fun psdOpensAsEditableLayersAndSavesSeparatelyWithoutChangingTheSource() = checkImport("psd", 128f / 255f)
+
+    @OptIn(ExperimentalPathApi::class)
+    private fun checkImport(extension: String, opacity: Float) =
         runBlocking<Unit> {
             NativeLoader.load()
-            val root = Path.of("build", "ora-tests").toAbsolutePath().normalize()
+            val root = Path.of("build", "$extension-tests").toAbsolutePath().normalize()
             Files.createDirectories(root)
             val directory = Files.createTempDirectory(root, "import-")
-            val source = directory.resolve("drawing.ora")
-            val original = Files.readAllBytes(Path.of("../engine/tests/fixtures/gimp-layers.ora"))
+            val source = directory.resolve("drawing.$extension")
+            val original = Files.readAllBytes(Path.of("../engine/tests/fixtures/gimp-layers.$extension"))
             Files.write(source, original)
             val output = ProjectReference(directory.resolve("drawing.podor").toString(), "drawing")
             val disk = DesktopFiles(DesktopStorage(directory.resolve("data"))) { null }
@@ -75,15 +80,24 @@ class OpenRasterImportTest {
                     assertEquals(129, controller.document.width)
                     assertEquals(131, controller.document.height)
                     assertEquals(LayerBlendMode.Multiply, controller.document.layers[1].blend)
-                    assertEquals(0.5f, controller.document.layers[1].opacity)
+                    assertEquals(opacity, controller.document.layers[1].opacity)
                     assertFalse(controller.document.layers[2].visible)
                     assertFalse(controller.hasUnsavedChanges)
                     assertEquals(0, writes)
                     controller.command("select_layer") { put("id", 2) }
                 }
                 awaitState { controller.document.active == 2 }
-                withContext(Dispatchers.Main) { controller.command("clear") }
-                awaitState { controller.hasUnsavedChanges }
+                if (extension == "psd") {
+                    withContext(Dispatchers.Main) {
+                        assertTrue(controller.document.layers[1].alphaLocked)
+                        controller.setLayerProtection(2, alphaLocked = false)
+                    }
+                    awaitState { !controller.document.layers[1].alphaLocked }
+                }
+                val beforeClear = withContext(Dispatchers.Main) {
+                    controller.document.revision.also { controller.command("clear") }
+                }
+                awaitState { controller.hasUnsavedChanges && controller.document.revision > beforeClear }
                 assertEquals(0, writes)
                 assertContentEquals(original, Files.readAllBytes(source))
                 withContext(Dispatchers.Main) { controller.file(StudioController.FileAction.Save) }
@@ -109,7 +123,7 @@ class OpenRasterImportTest {
                 }
                 val document = withContext(Dispatchers.Main) { controller.document }
                 val pixels = withContext(Dispatchers.Main) { controller.frame }
-                val bad = directory.resolve("damaged.ora")
+                val bad = directory.resolve("damaged.$extension")
                 Files.write(bad, original.copyOf(original.size / 2))
                 withContext(Dispatchers.Main) {
                     controller.navigate(

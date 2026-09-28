@@ -22,6 +22,7 @@ pub const MAX_HISTORY_ENTRIES: usize = 60;
 pub const MAX_ORA_ENTRIES: usize = 256;
 pub const MAX_ORA_METADATA_BYTES: usize = 256 * 1024;
 pub const MAX_ORA_XML_NODES: u32 = 1024;
+pub const MAX_PSD_DECODED_BYTES: u64 = MAX_DOCUMENT_BYTES as u64 * 4;
 pub const PREVIEW_EDGE: u32 = 96;
 pub const EXPORT_THUMBNAIL_EDGE: u32 = 256;
 pub const DEFAULT_EXPORT_QUALITY: u8 = 90;

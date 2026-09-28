@@ -60,7 +60,9 @@ Windows 图片剪贴板提供 PNG 和系统图片格式，保留透明像素。C
 
 工程保留图层，普通图片不保留图层。PNG、WebP 支持透明，WebP 导出为无损编码。JPEG 叠加白底，可调整质量。导入会处理 EXIF 方向，不保留元数据，不转换 ICC 配置。
 
-PSD 目前只导出 8 位 RGB 图层，保留层序、Unicode 名称、可见性、不透明度和八种混合模式，写入锁定标记与合成预览。按 [Adobe PSD 规范](https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/) 逐行 PackBits 编码，合成只缓存一排像素图块和压缩后的通道。GIMP 3.2.6 已检查十个样本；八种模式的预览逐像素一致，重算图层的通道误差不超过 2/255。GIMP 不恢复完整图层锁定；Photoshop 本机兼容性尚未验证。
+PSD 支持 8 位 RGB 平面像素图层导入导出，保留层序、Unicode 名称、可见性、不透明度、锁定标记和八种混合模式。按 [Adobe PSD 规范](https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/) 读取 Raw、PackBits、ZIP 和 ZIP 预测压缩；分层文件按行解码写入稀疏图块，限制累计解码量与实际像素内存。图层组、蒙版、剪贴图层、混合颜色带和其他特效明确报错。画布外像素会裁切，颜色按 sRGB 读取，手动保存另存为 `.podor`，不覆盖来源 PSD。无图层的 RGB 合成图也可打开，额外 Alpha 通道不会误当透明度。
+
+PSD 导出逐行 PackBits 编码，合成只缓存一排像素图块和压缩后的通道。GIMP 3.2.6 已检查十个导出样本；八种模式的预览逐像素一致，重算图层的通道误差不超过 2/255。反向导入 GIMP 的三层样本，合成通道差值不超过 1/255。GIMP 不恢复完整图层锁定；Photoshop 本机兼容性尚未验证。
 
 图层面板可将 PNG、JPEG、静态 WebP 插入当前层上方。图片居中，小图保持原尺寸，大图等比缩小到画布内；选中后可直接移动，原作品路径不变，仍需手动保存。缩小采用预乘 RGBA 的面积加权采样，按行读写稀疏图块，缩放只使用行像素缓冲。无需缩放且偏移对齐图块时直接使用解码后的图块。导入记录一次撤销，超出文档或撤销预算则保留原作品。
 
@@ -87,6 +89,7 @@ cargo bench --bench blending --bench previews --bench imports
 cargo bench --bench exports
 cargo bench --bench layers
 cargo bench --bench ora_import
+cargo bench --bench psd_import
 cargo bench --bench canvas_size
 cargo bench --bench canvas_frames
 cargo bench --bench image_size

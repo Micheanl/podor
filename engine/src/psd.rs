@@ -1,5 +1,8 @@
 use crate::{model::*, raster::composite_tile_background, storage::MAX_FILE_BYTES};
 
+mod import;
+pub use import::load;
+
 pub fn export(doc: &Document) -> Result<Vec<u8>, String> {
     let mut output = b"8BPS\0\x01\0\0\0\0\0\0\0\x04".to_vec();
     output.extend(doc.height.to_be_bytes());
