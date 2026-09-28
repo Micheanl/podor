@@ -2,6 +2,7 @@ package app.podor.desktop
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.graphics.Color
 import app.podor.desktop.input.TabletInput
 import app.podor.domain.TabletInputMode
@@ -98,7 +99,15 @@ internal object WindowHit {
     const val BOTTOM_LEFT = 16
     const val BOTTOM_RIGHT = 17
 
-    fun at(x: Int, y: Int, width: Int, height: Int, scale: Float, maximized: Boolean): Int {
+    fun at(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        scale: Float,
+        maximized: Boolean,
+        captionHit: ((Int, Int) -> Boolean)? = null,
+    ): Int {
         val border = (StudioTheme.windowResizeBorder.value * scale).roundToInt()
         if (!maximized) {
             val left = x < border
@@ -111,11 +120,17 @@ internal object WindowHit {
         }
         val titleHeight = (StudioTheme.windowTitleHeight.value * scale).roundToInt()
         val controls = (StudioTheme.windowButtonWidth.value * 3 * scale).roundToInt()
-        return if (y < titleHeight && x < width - controls) CAPTION else CLIENT
+        return if (y < titleHeight && x < width - controls && (captionHit?.invoke(x, y) != false))
+            CAPTION
+        else CLIENT
     }
 }
 
-internal class NativeWindowChrome(window: Window, mode: TabletInputMode = TabletInputMode.WindowsInk) : AutoCloseable {
+internal class NativeWindowChrome(
+    window: Window,
+    mode: TabletInputMode = TabletInputMode.WindowsInk,
+    private val captionHit: ((Int, Int) -> Boolean)? = null,
+) : AutoCloseable {
     private val user = Native.load("user32", WindowApi::class.java)
     private val handle = Native.getWindowPointer(window)
     private val originalProcedure = user.GetWindowLongPtrW(handle, -4)
@@ -202,6 +217,7 @@ internal class NativeWindowChrome(window: Window, mode: TabletInputMode = Tablet
             rect.getInt(12),
             user.GetDpiForWindow(handle) / 96f,
             user.IsZoomed(handle),
+            captionHit,
         )
     }
 
@@ -256,11 +272,17 @@ internal class NativeWindowChrome(window: Window, mode: TabletInputMode = Tablet
 }
 
 @Composable
-fun WindowsChrome(window: Window, mode: TabletInputMode = TabletInputMode.WindowsInk) {
+fun WindowsChrome(
+    window: Window,
+    mode: TabletInputMode = TabletInputMode.WindowsInk,
+    captionHit: (Int, Int) -> Boolean = { _, _ -> true },
+) {
+    val hit = rememberUpdatedState(captionHit)
     DisposableEffect(window, mode) {
         var chrome: NativeWindowChrome? = null
         fun install() {
-            if (chrome == null) chrome = NativeWindowChrome(window, mode)
+            if (chrome == null)
+                chrome = NativeWindowChrome(window, mode) { x, y -> hit.value(x, y) }
             chrome.attachChildren()
         }
         val listener =

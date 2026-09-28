@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
@@ -33,12 +34,26 @@ fun PodorApp(
     controller: StudioController,
     updates: UpdateController? = null,
     titleBarHeight: Dp = 0.dp,
+    onTitleDragRegion: (Rect) -> Unit = {},
     titleBar: @Composable (Boolean) -> Unit = {},
 ) {
     CompositionLocalProvider(LocalLanguage provides controller.preferences.language) {
-        StudioLaunch(controller.ready, titleBarHeight, titleBar) {
+        val integrated = titleBarHeight > 0.dp && !controller.showWorkspace
+        StudioLaunch(
+            controller.ready,
+            if (integrated) 0.dp else titleBarHeight,
+            { launching ->
+                if (launching || !integrated) titleBar(launching)
+            },
+        ) {
             if (controller.showWorkspace) WorkspaceHome(controller, updates)
-            else StudioApp(controller, updates)
+            else
+                StudioApp(
+                    controller,
+                    updates,
+                    if (integrated) ({ titleBar(false) }) else null,
+                    onTitleDragRegion,
+                )
         }
         UnsavedChangesDialog(controller)
     }
@@ -80,7 +95,9 @@ fun StudioLaunch(
         }
     ) {
         Box(
-            Modifier.fillMaxSize().background(StudioTheme.background).padding(top = titleBarHeight)
+            Modifier.fillMaxSize()
+                .background(StudioTheme.background)
+                .padding(top = titleBarHeight)
                 .onPreviewKeyEvent { visible }
         ) {
             content()

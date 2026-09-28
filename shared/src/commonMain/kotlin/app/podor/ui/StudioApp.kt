@@ -6,7 +6,6 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -17,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
@@ -25,7 +25,12 @@ import app.podor.presentation.StudioController
 import app.podor.presentation.UpdateController
 
 @Composable
-fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
+fun StudioApp(
+    controller: StudioController,
+    updates: UpdateController? = null,
+    windowControls: (@Composable () -> Unit)? = null,
+    onTitleDragRegion: (Rect) -> Unit = {},
+) {
     PodorTheme(controller.preferences.language) {
         var panel by remember { mutableStateOf(StudioPanel.Brushes) }
         var showInspector by remember { mutableStateOf(false) }
@@ -36,7 +41,9 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
         fun clipboardShortcut(event: KeyEvent): Boolean {
             if ((event.isCtrlPressed || event.isMetaPressed) && !event.isAltPressed) {
                 when (event.key) {
-                    Key.C, Key.X, Key.V -> return true
+                    Key.C,
+                    Key.X,
+                    Key.V -> return true
                     else -> Unit
                 }
             }
@@ -152,7 +159,8 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                 ShortcutAction.Copy -> controller.clipboard(ClipboardAction.Copy)
                 ShortcutAction.CopyVisible -> controller.clipboard(ClipboardAction.CopyVisible)
                 ShortcutAction.Cut -> controller.clipboard(ClipboardAction.Cut)
-                ShortcutAction.PasteReference -> controller.references.load(true, controller.document)
+                ShortcutAction.PasteReference ->
+                    controller.references.load(true, controller.document)
                 ShortcutAction.Paste -> controller.clipboard(ClipboardAction.Paste)
             }
             return true
@@ -170,8 +178,9 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                                 (event.key == Key.Enter || event.key == Key.Escape)
                         if (
                             previewConfirmation ||
-                                ((event.isCtrlPressed || event.isMetaPressed || event.isAltPressed) &&
-                                    !clipboardShortcut(event))
+                                ((event.isCtrlPressed ||
+                                    event.isMetaPressed ||
+                                    event.isAltPressed) && !clipboardShortcut(event))
                         )
                             handleShortcut(event)
                         else false
@@ -188,7 +197,11 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
             ) {
                 val compact = maxWidth < 620.dp || maxHeight < 520.dp
                 val wide = !compact && maxWidth >= 1000.dp
-                val showDocument = maxWidth >= if (controller.clipboardAvailable) 880.dp else 820.dp
+                val showDocument =
+                    maxWidth >=
+                        if (windowControls != null) 1100.dp
+                        else if (controller.clipboardAvailable) 880.dp else 820.dp
+                val headerCompact = compact || (windowControls != null && maxWidth < 1000.dp)
                 fun openPanel(next: StudioPanel) {
                     panel = next
                     if (wide) inspectorExpanded = true else showInspector = true
@@ -200,12 +213,14 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                 Column(Modifier.fillMaxSize()) {
                     StudioHeader(
                         controller,
-                        compact,
+                        headerCompact,
                         showDocument,
                         { dialog = it },
                         inspectorExpanded = inspectorExpanded,
                         onToggleInspector =
                             if (wide) ({ inspectorExpanded = !inspectorExpanded }) else null,
+                        windowControls = windowControls,
+                        onTitleDragRegion = onTitleDragRegion,
                     )
                     Box(Modifier.weight(1f).fillMaxWidth()) {
                         CanvasWorkspace(

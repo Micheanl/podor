@@ -3,7 +3,10 @@ package app.podor.desktop
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
@@ -21,6 +24,7 @@ import app.podor.resources.Res
 import app.podor.resources.brand
 import app.podor.ui.PodorApp
 import app.podor.ui.StudioTheme
+import app.podor.ui.borderTrail
 import app.podor.ui.input.nativeTouchGuard
 import java.awt.Dimension
 import org.jetbrains.compose.resources.painterResource
@@ -57,7 +61,12 @@ fun main() {
             state = windowState,
             undecorated = customChrome,
         ) {
-            if (customChrome) WindowsChrome(window, controller.preferences.tabletInputMode)
+            var dragRegion by remember { mutableStateOf(Rect.Zero) }
+            if (customChrome)
+                WindowsChrome(window, controller.preferences.tabletInputMode) { x, y ->
+                    controller.showWorkspace ||
+                        dragRegion.contains(Offset(x.toFloat(), y.toFloat()))
+                }
             SideEffect {
                 windowRef = window
                 window.minimumSize =
@@ -66,11 +75,16 @@ fun main() {
                         StudioTheme.minimumWindowHeight.value.toInt(),
                     )
             }
-            Box(Modifier.fillMaxSize().nativeTouchGuard()) {
+            Box(
+                Modifier.fillMaxSize()
+                    .nativeTouchGuard()
+                    .borderTrail(active = customChrome && LocalWindowInfo.current.isWindowFocused)
+            ) {
                 PodorApp(
                     controller,
                     updates,
                     titleBarHeight = if (customChrome) StudioTheme.windowTitleHeight else 0.dp,
+                    onTitleDragRegion = { dragRegion = it },
                 ) { launching ->
                     if (customChrome)
                         WindowTitleBar(

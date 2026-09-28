@@ -13,6 +13,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -32,18 +35,29 @@ fun StudioHeader(
     onDialog: (StudioDialog) -> Unit,
     inspectorExpanded: Boolean = false,
     onToggleInspector: (() -> Unit)? = null,
+    windowControls: (@Composable () -> Unit)? = null,
+    onTitleDragRegion: (Rect) -> Unit = {},
 ) {
     var menu by remember { mutableStateOf(false) }
+    val integrated = windowControls != null
     Row(
         Modifier.fillMaxWidth()
-            .height(64.dp)
+            .borderTrail(integrated)
+            .height(if (integrated) StudioTheme.windowTitleHeight else 64.dp)
             .background(StudioTheme.panel)
-            .padding(horizontal = if (compact) 16.dp else 24.dp),
+            .padding(
+                start = if (integrated) 12.dp else if (compact) 16.dp else 24.dp,
+                end = if (integrated) 0.dp else if (compact) 16.dp else 24.dp,
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Image(painterResource(Res.drawable.brand), AppIdentity.name, Modifier.size(30.dp))
-        Spacer(Modifier.width(if (compact) 8.dp else 20.dp))
-        if (!compact) {
+        Image(
+            painterResource(Res.drawable.brand),
+            AppIdentity.name,
+            Modifier.size(if (integrated) 24.dp else 30.dp),
+        )
+        Spacer(Modifier.width(if (integrated || compact) 8.dp else 20.dp))
+        if (!compact && !integrated) {
             Box(Modifier.width(1.dp).height(20.dp).background(StudioTheme.border))
             Spacer(Modifier.width(12.dp))
         }
@@ -55,6 +69,24 @@ fun StudioHeader(
                 shape = StudioTheme.menuShape,
                 containerColor = StudioTheme.panel,
             ) {
+                if (integrated && compact) {
+                    DropdownMenuItem(
+                        { Text(controller.shortcutLabel(ShortcutAction.Undo)) },
+                        {
+                            controller.command("undo")
+                            menu = false
+                        },
+                        enabled = controller.document.canUndo,
+                    )
+                    DropdownMenuItem(
+                        { Text(controller.shortcutLabel(ShortcutAction.Redo)) },
+                        {
+                            controller.command("redo")
+                            menu = false
+                        },
+                        enabled = controller.document.canRedo,
+                    )
+                }
                 DropdownMenuItem(
                     { Text(tr("新建画布")) },
                     {
@@ -130,50 +162,58 @@ fun StudioHeader(
             }
         }
         ToolButton(Glyph.Home, "作品首页") { controller.home() }
-        ToolButton(Glyph.Settings, "设置") { onDialog(StudioDialog.Settings) }
+        if (!integrated || !compact)
+            ToolButton(Glyph.Settings, "设置") { onDialog(StudioDialog.Settings) }
         if (!compact && controller.clipboardAvailable) ClipboardMenu(controller)
         if (!compact) ReferenceMenu(controller)
-        if (showDocument) {
-            Spacer(Modifier.weight(1f))
-            Row(
-                Modifier.background(StudioTheme.background.copy(alpha = 0.5f), CircleShape)
-                    .padding(horizontal = 18.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                StudioIcon(Glyph.Selection, StudioTheme.muted, Modifier.size(15.dp))
-                Text(
-                    (controller.projectReference?.name ?: tr("未命名")) + if (controller.hasUnsavedChanges) " ·" else "",
-                    Modifier.widthIn(max = 160.dp),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    "${controller.document.width} × ${controller.document.height} px",
-                    fontSize = 10.sp,
-                    color = StudioTheme.muted,
-                )
-            }
+        Box(
+            Modifier.weight(1f).fillMaxHeight().onGloballyPositioned {
+                if (integrated) onTitleDragRegion(it.boundsInWindow())
+            },
+            contentAlignment = Alignment.Center,
+        ) {
+            if (showDocument)
+                Row(
+                    if (integrated) Modifier
+                    else
+                        Modifier.background(StudioTheme.background.copy(alpha = 0.5f), CircleShape)
+                            .padding(horizontal = 18.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        (controller.projectReference?.name ?: tr("未命名")) +
+                            if (controller.hasUnsavedChanges) " ·" else "",
+                        Modifier.widthIn(max = 160.dp),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        "${controller.document.width} × ${controller.document.height} px",
+                        fontSize = 10.sp,
+                        color = StudioTheme.muted,
+                    )
+                }
         }
-        Spacer(Modifier.weight(1f))
-        Row(Modifier.padding(horizontal = 2.dp)) {
-            ToolButton(
-                Glyph.Undo,
-                controller.shortcutLabel(ShortcutAction.Undo),
-                enabled = controller.document.canUndo,
-            ) {
-                controller.command("undo")
+        if (!integrated || !compact)
+            Row(Modifier.padding(horizontal = 2.dp)) {
+                ToolButton(
+                    Glyph.Undo,
+                    controller.shortcutLabel(ShortcutAction.Undo),
+                    enabled = controller.document.canUndo,
+                ) {
+                    controller.command("undo")
+                }
+                ToolButton(
+                    Glyph.Redo,
+                    controller.shortcutLabel(ShortcutAction.Redo),
+                    enabled = controller.document.canRedo,
+                ) {
+                    controller.command("redo")
+                }
             }
-            ToolButton(
-                Glyph.Redo,
-                controller.shortcutLabel(ShortcutAction.Redo),
-                enabled = controller.document.canRedo,
-            ) {
-                controller.command("redo")
-            }
-        }
         if (!compact) {
             Spacer(Modifier.width(8.dp))
             ToolButton(
@@ -202,6 +242,8 @@ fun StudioHeader(
                 onClick = onToggleInspector,
             )
         }
+        if (windowControls != null)
+            Box(Modifier.width(StudioTheme.windowButtonWidth * 3)) { windowControls() }
     }
 }
 
@@ -283,7 +325,11 @@ fun StudioTools(controller: StudioController, compact: Boolean = false) {
         ) {
             controller.tool = Tool.Hand
         }
-        ToolButton(Glyph.Move, controller.shortcutLabel(ShortcutAction.MoveLayer), controller.tool == Tool.MoveLayer) {
+        ToolButton(
+            Glyph.Move,
+            controller.shortcutLabel(ShortcutAction.MoveLayer),
+            controller.tool == Tool.MoveLayer,
+        ) {
             controller.tool = Tool.MoveLayer
         }
         ToolButton(
@@ -377,7 +423,8 @@ fun CanvasFooter(controller: StudioController, compact: Boolean, modifier: Modif
         }
         Text(
             if (compact) "${controller.document.width} × ${controller.document.height}"
-            else "${tr(active?.name ?: "图层")} · ${tr(if (controller.tool == Tool.Select) controller.selectionKind.label else controller.tool.label)}",
+            else
+                "${tr(active?.name ?: "图层")} · ${tr(if (controller.tool == Tool.Select) controller.selectionKind.label else controller.tool.label)}",
             fontSize = 10.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

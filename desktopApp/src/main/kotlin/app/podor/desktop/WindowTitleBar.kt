@@ -15,10 +15,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -42,26 +40,7 @@ internal fun WindowTitleBar(
     onClose: () -> Unit,
     background: Color = StudioTheme.panel,
 ) {
-    Row(
-        Modifier.fillMaxWidth()
-            .height(StudioTheme.windowTitleHeight)
-            .background(background)
-            .drawWithCache {
-                val spectrum = Brush.horizontalGradient(StudioTheme.windowSpectrum)
-                val fade = Brush.verticalGradient(listOf(Color.Transparent, background))
-                onDrawBehind {
-                    if (background.alpha > 0f) {
-                        drawRect(spectrum, alpha = StudioTheme.windowTintAlpha)
-                        drawRect(fade)
-                        drawRect(
-                            spectrum,
-                            size = Size(size.width, StudioTheme.windowRimHeight.toPx()),
-                            alpha = StudioTheme.windowRimAlpha,
-                        )
-                    }
-                }
-            }
-    ) {
+    Row(Modifier.fillMaxWidth().height(StudioTheme.windowTitleHeight).background(background)) {
         Spacer(Modifier.weight(1f))
         WindowButton(trValue("最小化", language), 0, background.alpha == 0f, onClick = onMinimize)
         WindowButton(

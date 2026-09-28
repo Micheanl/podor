@@ -168,6 +168,12 @@ object StudioTheme {
     val brushLabelSize = 12.sp
     val colorWheelSize = 240.dp
     val workspaceWidth = 1200.dp
+    val borderTrailRadius = 10.dp
+    val cardTrailRadius = 16.dp
+    val borderTrailWidth = 1.5.dp
+    val borderTrailLength = 220.dp
+    val borderTrailLight = Color(0xFFE1E9F7)
+    const val borderTrailFraction = 0.28f
     val carouselCardWidth = 300.dp
     val carouselMinPreviewHeight = 96.dp
     val carouselPreviewHeight = 260.dp
@@ -190,18 +196,6 @@ object StudioTheme {
     val windowButtonInset = 6.dp
     val windowIconSize = 12.dp
     val windowResizeBorder = 6.dp
-    val windowSpectrum =
-        listOf(
-            Color(0xFFDA6982),
-            Color(0xFFDF9977),
-            Color(0xFFD2BD7F),
-            Color(0xFF78B5A2),
-            Color(0xFF76A8CF),
-            Color(0xFF9A86C5),
-        )
-    const val windowTintAlpha = 0.08f
-    const val windowRimAlpha = 0.18f
-    val windowRimHeight = 1.dp
     val surfaceRim = Color(0xFF62616B)
     const val colorRingRadius = 0.455f
     const val colorRingWidth = 0.075f
@@ -209,6 +203,7 @@ object StudioTheme {
 }
 
 object StudioMotion {
+    const val borderTrailMillis = 2800
     const val carouselMillis = 480
     const val sonarMillis = 4200
     const val letterSwapMillis = 480

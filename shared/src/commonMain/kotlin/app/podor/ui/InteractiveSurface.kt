@@ -155,6 +155,7 @@ fun ChoiceSurface(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
+    val hovered by interaction.collectIsHoveredAsState()
     val shape = StudioTheme.cardShape
     val background =
         animateColorAsState(
@@ -163,6 +164,7 @@ fun ChoiceSurface(
         )
     Column(
         modifier
+            .borderTrail(hovered, StudioTheme.cardTrailRadius)
             .selectable(
                 selected,
                 interaction,
