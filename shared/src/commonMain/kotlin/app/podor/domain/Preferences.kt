@@ -92,8 +92,17 @@ data class Preferences(
     val shortcuts: Map<ShortcutAction, Shortcut> = emptyMap(),
     val plugins: List<BrushPack> = emptyList(),
     val brushes: List<BrushPreset> = emptyList(),
+    val favoriteBrushes: Set<String> = emptySet(),
     val palette: List<Long> = emptyList(),
 ) {
+    fun withAvailableBrushFavorites(): Preferences {
+        val available =
+            BrushPreset.entries.map { it.id }.toSet() +
+                brushes.map { it.id } +
+                plugins.flatMap { pack -> pack.brushes.map { "plugin:${pack.id}/${it.id}" } }
+        return copy(favoriteBrushes = favoriteBrushes.intersect(available))
+    }
+
     fun shortcut(action: ShortcutAction) = shortcuts[action] ?: action.default
 
     fun withNewShortcuts(): Preferences {
@@ -131,10 +140,11 @@ data class Preferences(
             plugins.size <= 16 &&
             plugins.all { it.valid() } &&
             plugins.map { it.id }.distinct().size == plugins.size &&
-            brushes.size <= 64 &&
+            brushes.size <= StudioDefaults.maxCustomBrushes &&
             brushes.all { it.valid() } &&
             brushes.map { it.id }.distinct().size == brushes.size &&
             brushes.none { custom -> BrushPreset.entries.any { it.id == custom.id } } &&
+            favoriteBrushes == withAvailableBrushFavorites().favoriteBrushes &&
             shortcuts.values.all { it.valid() } &&
             ShortcutAction.entries.map(::shortcut).distinct().size == ShortcutAction.entries.size
 

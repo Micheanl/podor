@@ -187,6 +187,9 @@ data class BrushSettings(
 data class CanvasPreset(val label: String, val width: Int, val height: Int)
 
 object StudioDefaults {
+    const val maxCustomBrushes = 64
+    const val brushSearchLength = 60
+    val brushCollection = BrushCollection.All
     const val toneAmount = 0f
     const val blurSigma = 4f
     const val minBlurSigma = 0.5f

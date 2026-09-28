@@ -14,6 +14,10 @@ import androidx.compose.ui.unit.sp
 import app.podor.domain.Language
 
 object StudioTheme {
+    val brushLibraryGap = 8.dp
+    val brushLibraryCaptionSize = 11.sp
+    val brushLibraryFavoriteSize = 30.dp
+    val brushLibraryFavoriteIconSize = 16.dp
     val colorSelectionWidth = 280.dp
     val colorSelectionPadding = 16.dp
     val colorSelectionGap = 8.dp

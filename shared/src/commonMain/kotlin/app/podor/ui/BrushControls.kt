@@ -1,11 +1,16 @@
 package app.podor.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,6 +25,9 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.podor.domain.*
@@ -31,6 +39,33 @@ import kotlin.random.Random
 @Composable
 fun BrushControls(controller: StudioController) {
     var editing by remember { mutableStateOf(false) }
+    var searching by remember { mutableStateOf(controller.brushLibraryQuery.isNotEmpty()) }
+    var collections by remember { mutableStateOf(false) }
+    val allBrushes = controller.brushes
+    val favorites = controller.preferences.favoriteBrushes
+    val language = LocalLanguage.current
+    val query = controller.brushLibraryQuery.trim()
+    val group = controller.brushCollection
+    val customs =
+        remember(controller.preferences.brushes) {
+            controller.preferences.brushes.map { it.id }.toSet()
+        }
+    val brushes =
+        remember(allBrushes, favorites, language, query, group, customs) {
+            allBrushes.filter { preset ->
+                val matchesGroup =
+                    when (group) {
+                        BrushCollection.All -> true
+                        BrushCollection.Favorites -> preset.id in favorites
+                        BrushCollection.Custom -> preset.id in customs
+                        BrushCollection.Extensions -> preset.id.startsWith("plugin:")
+                    }
+                matchesGroup &&
+                    (query.isEmpty() ||
+                        preset.label.contains(query, ignoreCase = true) ||
+                        trValue(preset.label, language).contains(query, ignoreCase = true))
+            }
+        }
     val smudge = controller.tool == Tool.Smudge
     val strength = if (smudge) controller.smudgeStrength else controller.brush.opacity
     LazyVerticalGrid(
@@ -108,11 +143,96 @@ fun BrushControls(controller: StudioController) {
             }
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
-            Box(Modifier.padding(top = 10.dp, bottom = 8.dp)) {
-                SectionLabel("笔刷库", "${controller.brushes.size}")
+            Column(verticalArrangement = Arrangement.spacedBy(StudioTheme.brushLibraryGap)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) {
+                        SectionLabel("笔刷库", "${brushes.size}/${allBrushes.size}")
+                    }
+                    ToolButton(Glyph.Search, "搜索笔刷", selected = searching) {
+                        searching = !searching
+                        if (!searching) controller.brushLibraryQuery = ""
+                    }
+                    Box {
+                        fun glyph(value: BrushCollection) =
+                            when (value) {
+                                BrushCollection.All -> Glyph.Folder
+                                BrushCollection.Favorites -> Glyph.Favorite
+                                BrushCollection.Custom -> Glyph.Brush
+                                BrushCollection.Extensions -> Glyph.Plugin
+                            }
+                        ToolButton(
+                            glyph(group),
+                            group.label,
+                            selected = group != BrushCollection.All,
+                        ) {
+                            collections = !collections
+                        }
+                        DropdownMenu(
+                            collections,
+                            { collections = false },
+                            shape = StudioTheme.clipboardMenuShape,
+                            containerColor = StudioTheme.panel,
+                        ) {
+                            BrushCollection.entries.forEach { collection ->
+                                DropdownMenuItem(
+                                    text = { Text(tr(collection.label)) },
+                                    leadingIcon = { StudioIcon(glyph(collection)) },
+                                    trailingIcon = {
+                                        if (collection == group) StudioIcon(Glyph.Check)
+                                    },
+                                    onClick = {
+                                        controller.brushCollection = collection
+                                        collections = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+                AnimatedVisibility(
+                    searching,
+                    enter =
+                        expandVertically(
+                            tween(StudioMotion.panelMillis, easing = StudioMotion.easing)
+                        ) + fadeIn(tween(StudioMotion.feedbackMillis)),
+                    exit =
+                        shrinkVertically(
+                            tween(StudioMotion.dismissMillis, easing = StudioMotion.exitEasing)
+                        ) + fadeOut(tween(StudioMotion.feedbackMillis)),
+                ) {
+                    OutlinedTextField(
+                        controller.brushLibraryQuery,
+                        {
+                            controller.brushLibraryQuery = it.take(StudioDefaults.brushSearchLength)
+                        },
+                        Modifier.fillMaxWidth(),
+                        placeholder = {
+                            Text(tr("搜索笔刷"), fontSize = StudioTheme.brushLibraryCaptionSize)
+                        },
+                        singleLine = true,
+                        trailingIcon = {
+                            if (controller.brushLibraryQuery.isNotEmpty())
+                                ToolButton(Glyph.Close, "清除搜索") {
+                                    controller.brushLibraryQuery = ""
+                                }
+                        },
+                    )
+                }
             }
         }
-        items(controller.brushes, key = { it.id }) { preset ->
+        if (brushes.isEmpty())
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Text(
+                    tr(
+                        if (group == BrushCollection.Favorites && query.isEmpty()) "点亮星标，收藏常用笔刷"
+                        else "没有匹配的笔刷"
+                    ),
+                    Modifier.padding(vertical = StudioTheme.brushLibraryGap),
+                    color = StudioTheme.muted,
+                    fontSize = StudioTheme.brushLibraryCaptionSize,
+                )
+            }
+        items(brushes, key = { it.id }) { preset ->
             val selected = controller.brush.preset.id == preset.id
             ChoiceSurface(selected, { controller.selectPreset(preset) }) {
                 BrushStrokePreview(
@@ -127,15 +247,25 @@ fun BrushControls(controller: StudioController) {
                         fontSize = 11.sp,
                         color = if (selected) StudioTheme.accent else StudioTheme.muted,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                    if (selected) {
-                        Box(
-                            Modifier.size(17.dp).background(StudioTheme.selection, CircleShape),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            StudioIcon(Glyph.Check, StudioTheme.onSelection, Modifier.size(11.dp))
-                        }
+                    val favorite = preset.id in favorites
+                    val favoriteLabel =
+                        tr(if (favorite) "取消收藏笔刷" else "收藏笔刷") + " · " + tr(preset.label)
+                    IconToggleButton(
+                        favorite,
+                        { controller.toggleBrushFavorite(preset.id) },
+                        Modifier.size(StudioTheme.brushLibraryFavoriteSize).semantics {
+                            contentDescription = favoriteLabel
+                        },
+                    ) {
+                        StudioIcon(
+                            if (favorite) Glyph.FavoriteFilled else Glyph.Favorite,
+                            if (favorite) StudioTheme.accent
+                            else StudioTheme.muted.copy(alpha = 0.45f),
+                            Modifier.size(StudioTheme.brushLibraryFavoriteIconSize),
+                        )
                     }
                 }
             }
@@ -221,6 +351,9 @@ fun BrushStrokePreview(
 @Composable
 private fun BrushEditor(controller: StudioController, onDismiss: () -> Unit) {
     var pressure by remember { mutableStateOf(false) }
+    var saveCopy by remember { mutableStateOf(false) }
+    val custom = controller.preferences.brushes.any { it.id == controller.brush.preset.id }
+    val replace = custom && !saveCopy
     var name by remember {
         mutableStateOf(trValue(controller.brush.preset.label, controller.preferences.language))
     }
@@ -232,21 +365,33 @@ private fun BrushEditor(controller: StudioController, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = "编辑笔刷",
         glyph = Glyph.Brush,
-        confirmLabel = "保存为新笔刷",
+        confirmLabel = if (replace) "保存笔刷" else "保存为新笔刷",
         cancelLabel = "完成",
-        enabled = name.isNotBlank() && controller.preferences.brushes.size < 64,
-        onConfirm = { controller.saveBrush(name) },
+        enabled =
+            name.isNotBlank() &&
+                (replace || controller.preferences.brushes.size < StudioDefaults.maxCustomBrushes),
+        onConfirm = { controller.saveBrush(name, replace = replace) },
         text = {
             Column(
                 Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                OutlinedTextField(
-                    name,
-                    { name = it.take(60) },
-                    singleLine = true,
-                    label = { Text(tr("名称")) },
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(StudioTheme.brushLibraryGap),
+                ) {
+                    OutlinedTextField(
+                        name,
+                        { name = it.take(60) },
+                        Modifier.weight(1f),
+                        singleLine = true,
+                        label = { Text(tr("名称")) },
+                    )
+                    if (custom)
+                        ToolButton(Glyph.Copy, "另存笔刷副本", selected = saveCopy) {
+                            saveCopy = !saveCopy
+                        }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(StudioTheme.brushSettingsGap)) {
                     listOf(false to "笔尖", true to "压感").forEach { (tab, label) ->
                         FilterChip(pressure == tab, { pressure = tab }, label = { Text(tr(label)) })

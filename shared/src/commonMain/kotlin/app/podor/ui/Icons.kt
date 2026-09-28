@@ -55,6 +55,8 @@ enum class Glyph(val resource: DrawableResource) {
     Merge(Res.drawable.ic_merge),
     Home(Res.drawable.ic_home),
     Search(Res.drawable.ic_search),
+    Favorite(Res.drawable.ic_favorite),
+    FavoriteFilled(Res.drawable.ic_favorite_filled),
     Update(Res.drawable.ic_update),
     Sidebar(Res.drawable.ic_sidebar),
     Lock(Res.drawable.ic_lock),

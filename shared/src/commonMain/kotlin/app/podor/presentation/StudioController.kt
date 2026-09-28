@@ -74,6 +74,8 @@ class StudioController(
 
     var brush by mutableStateOf(BrushSettings())
     var smudgeStrength by mutableStateOf(StudioDefaults.smudgeStrength)
+    var brushLibraryQuery by mutableStateOf("")
+    var brushCollection by mutableStateOf(StudioDefaults.brushCollection)
     var symmetry by mutableStateOf(SymmetrySettings())
     var preferences by mutableStateOf(Preferences())
         private set
@@ -453,6 +455,7 @@ class StudioController(
                             parser
                                 .decodeFromString<Preferences>(bytes.decodeToString())
                                 .withNewShortcuts()
+                                .withAvailableBrushFavorites()
                                 .also {
                                     require(it.valid())
                                 }
@@ -1004,12 +1007,15 @@ class StudioController(
                                                 val updated =
                                                     withContext(Dispatchers.Main) {
                                                         val updated =
-                                                            preferences.copy(
-                                                                plugins =
-                                                                    preferences.plugins.filterNot {
-                                                                        it.id == pack.id
-                                                                    } + pack
-                                                            )
+                                                            preferences
+                                                                .copy(
+                                                                    plugins =
+                                                                        preferences.plugins
+                                                                            .filterNot {
+                                                                                it.id == pack.id
+                                                                            } + pack
+                                                                )
+                                                                .withAvailableBrushFavorites()
                                                         require(updated.valid()) { "插件数量超过限制" }
                                                         preferences = updated
                                                         status = "笔刷包已导入"
@@ -1386,12 +1392,13 @@ class StudioController(
         }
 
     fun updatePreferences(value: Preferences) {
-        if (!value.valid()) {
+        val updated = value.withAvailableBrushFavorites()
+        if (!updated.valid()) {
             error = "设置参数无效"
             return
         }
-        preferences = value
-        scope.launch { actions.send(Action.Settings(value)) }
+        preferences = updated
+        scope.launch { actions.send(Action.Settings(updated)) }
     }
 
     fun addPaletteColors(colors: List<Long>): Boolean {
@@ -1415,12 +1422,27 @@ class StudioController(
         scope.launch { actions.send(Action.ExtractPalette) }
     }
 
-    fun saveBrush(name: String) {
-        if (preferences.brushes.size >= 64 || name.isBlank()) return
+    fun toggleBrushFavorite(id: String) {
+        if (brushes.none { it.id == id }) return
+        val favorites = preferences.favoriteBrushes
+        updatePreferences(
+            preferences.copy(
+                favoriteBrushes = if (id in favorites) favorites - id else favorites + id
+            )
+        )
+    }
+
+    fun saveBrush(name: String, replace: Boolean = false) {
+        if (name.isBlank() || previewPending()) return
+        val existing = preferences.brushes.firstOrNull { it.id == brush.preset.id }
+        if (replace && existing == null) return
+        if (!replace && preferences.brushes.size >= StudioDefaults.maxCustomBrushes) return
         val id =
-            generateSequence(1) { it + 1 }
-                .map { "custom-$it" }
-                .first { candidate -> preferences.brushes.none { it.id == candidate } }
+            if (replace) existing!!.id
+            else
+                generateSequence(1) { it + 1 }
+                    .map { "custom-$it" }
+                    .first { candidate -> preferences.brushes.none { it.id == candidate } }
         val saved =
             brush.preset.copy(
                 id = id,
@@ -1428,7 +1450,11 @@ class StudioController(
                 size = brush.size,
                 opacity = brush.opacity,
             )
-        updatePreferences(preferences.copy(brushes = preferences.brushes + saved))
+        if (!saved.valid()) return
+        val updated =
+            if (replace) preferences.brushes.map { if (it.id == id) saved else it }
+            else preferences.brushes + saved
+        updatePreferences(preferences.copy(brushes = updated))
         selectPreset(saved)
     }
 

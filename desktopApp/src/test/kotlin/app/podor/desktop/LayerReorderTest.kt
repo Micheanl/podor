@@ -76,6 +76,7 @@ class LayerReorderTest {
                 controller.file(StudioController.FileAction.Save)
             }
             awaitState { files.saved != null && !controller.busy }
+            render()
             return files.saved!!
         }
     }
