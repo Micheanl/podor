@@ -57,6 +57,7 @@ fun CanvasWorkspace(
     modifier: Modifier = Modifier,
     endInset: Dp = 0.dp,
 ) {
+    val checker = rememberCanvasChecker()
     var fullSize by remember { mutableStateOf(Size.Zero) }
     val focus = remember { FocusRequester() }
     val density by rememberUpdatedState(LocalDensity.current.density)
@@ -679,7 +680,7 @@ fun CanvasWorkspace(
                 scale(scale * viewport.horizontalSign, scale, Offset.Zero)
             }) {
                 clipRect(0f, 0f, document.width.toFloat(), document.height.toFloat()) {
-                    drawRect(Color.White, size = paper)
+                    drawCanvasBackground(controller.preferences.canvasBackground, checker, paper, scale)
                     if (controller.layerMove == null && controller.gradientPreview == null)
                         (controller.adjustmentPreview?.takeUnless { it.comparing }?.frame
                                 ?: controller.frame)

@@ -333,7 +333,7 @@ class StudioController(
                         }
                         outlineId = selected?.id ?: 0L
                     }
-                    val bytes = engine!!.call(EngineOperation.FRAME)
+                    val bytes = engine!!.call(EngineOperation.FRAME, byteArrayOf(1))
                     val width = bytes.intAt(0)
                     val height = bytes.intAt(4)
                     val resized = frameWidth != width || frameHeight != height

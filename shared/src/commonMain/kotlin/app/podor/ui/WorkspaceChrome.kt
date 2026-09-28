@@ -387,6 +387,7 @@ fun CanvasFooter(controller: StudioController, compact: Boolean, modifier: Modif
             color = StudioTheme.muted.copy(alpha = 0.8f),
             modifier = Modifier.weight(1f),
         )
+        CanvasBackgroundMenu(controller)
         ViewportControls(controller.viewport, controller.shortcutLabel(ShortcutAction.Fit)) {
             controller.viewport = it
         }

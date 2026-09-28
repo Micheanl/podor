@@ -254,7 +254,7 @@ class CanvasViewTest {
                 try {
                     engine.call(
                         EngineOperation.COMMAND,
-                        """{"type":"fill","x":0,"y":0,"color":[137,58,85,255],"tolerance":0}"""
+                        """{"type":"fill","x":0,"y":0,"color":[137,58,85,128],"tolerance":0}"""
                             .encodeToByteArray(),
                     )
                     engine.call(EngineOperation.SAVE)
@@ -284,6 +284,13 @@ class CanvasViewTest {
                 try {
                     repeat(90) { index ->
                         withContext(Dispatchers.Main) {
+                            if (index % 30 == 0) {
+                                controller.updatePreferences(
+                                    controller.preferences.copy(
+                                        canvasBackground = CanvasBackground.entries[index / 30]
+                                    )
+                                )
+                            }
                             controller.viewport =
                                 Viewport(
                                     zoom = if (index < 45) 1.3f else 5.3f,
@@ -304,7 +311,7 @@ class CanvasViewTest {
                         Files.createDirectories(report.parent)
                         Files.writeString(
                             report,
-                            "Renderer: $api\n4096 x 4096, 1024 tiles, 90 rotation/mirror/zoom updates, original canvas pixel frame retained. This is not a full-app frame-rate benchmark.\n",
+                            "Renderer: $api\n4096 x 4096, 1024 translucent tiles, 90 rotation/mirror/zoom updates across white, gray and checker backgrounds, original canvas pixel frame retained. This is not a full-app frame-rate benchmark.\n",
                         )
                     }
                     files.saved = null

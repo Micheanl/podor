@@ -102,7 +102,7 @@ pub fn prepare(
     Ok((document, keys))
 }
 
-pub fn frame(document: &Document, keys: &BTreeSet<TileKey>) -> Vec<u8> {
+pub fn frame(document: &Document, keys: &BTreeSet<TileKey>, transparent: bool) -> Vec<u8> {
     let mut output = Vec::with_capacity(16 + keys.len() * (8 + TILE_BYTES));
     for value in [
         document.width,
@@ -115,7 +115,11 @@ pub fn frame(document: &Document, keys: &BTreeSet<TileKey>) -> Vec<u8> {
     for &key in keys {
         output.extend(key.0.to_le_bytes());
         output.extend(key.1.to_le_bytes());
-        output.extend(raster::composite_tile(document, key));
+        output.extend(raster::composite_tile_background(
+            document,
+            key,
+            transparent,
+        ));
     }
     output
 }

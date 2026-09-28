@@ -93,7 +93,11 @@ pub fn dispatch(handle: u64, operation: u32, bytes: &[u8]) -> Result<Vec<u8>, St
             engine.samples(&samples)?;
             Ok(Vec::new())
         }
-        2 => Ok(engine.frame()),
+        2 => match bytes {
+            [] | [0] => Ok(engine.frame()),
+            [1] => Ok(engine.frame_with_background(true)),
+            _ => Err("画布显示选项无效".into()),
+        },
         3 => engine.save(),
         4 => {
             engine.load(bytes)?;
@@ -218,6 +222,29 @@ mod tests {
     use super::*;
     use crate::model::MAX_SELECTION_POINTS;
     use serde_json::json;
+
+    #[test]
+    fn frame_options_preserve_alpha_and_reject_unknown_encodings() {
+        let handle = create(16, 16).unwrap();
+        dispatch(
+            handle,
+            0,
+            br#"{"type":"fill","x":0,"y":0,"color":[100,40,20,100],"tolerance":0}"#,
+        )
+        .unwrap();
+        let saved = dispatch(handle, 3, &[]).unwrap();
+        let opaque = dispatch(handle, 2, &[]).unwrap();
+        let alpha = dispatch(handle, 2, &[1]).unwrap();
+        assert_eq!(opaque[27], 255);
+        assert_eq!(alpha[27], 100);
+        for invalid in [&[2][..], &[1, 0][..]] {
+            assert!(dispatch(handle, 2, invalid).is_err());
+        }
+        assert_eq!(dispatch(handle, 2, &[1]).unwrap().len(), 16);
+        assert_eq!(dispatch(handle, 2, &[0]).unwrap(), opaque);
+        assert_eq!(dispatch(handle, 3, &[]).unwrap(), saved);
+        destroy(handle);
+    }
 
     #[test]
     fn long_selection_commands_cross_the_bridge_without_relaxing_other_limits() {

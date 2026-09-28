@@ -128,7 +128,7 @@ class ClipboardControllerTest {
             waitFor { controller.status == "已剪切，可撤销" && !controller.busy }
             withContext(Dispatchers.Main) {
                 val tile = controller.frame.tiles.getValue(0L).image.toPixelMap()
-                assertEquals(1f, tile[55, 40].red, 0.005f)
+                assertEquals(0f, tile[55, 40].alpha, 0.005f)
                 assertEquals(frame.tiles.getValue(0L).image.toPixelMap()[10, 10], tile[10, 10])
                 controller.command("undo")
             }

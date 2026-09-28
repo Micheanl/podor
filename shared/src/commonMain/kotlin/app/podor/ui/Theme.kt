@@ -78,6 +78,10 @@ object StudioTheme {
     val pressLight = 0.085f
     val checkerLight = Color(0xFFDBDCDF)
     val checkerDark = Color(0xFFB9BBC0)
+    val canvasGray = Color(0xFF73767D)
+    val canvasCheckerSize = 12.dp
+    val canvasBackgroundHintPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+    val canvasBackgroundHintSize = 10.sp
     val blendBackdrop = Color(0xFF7A88BA)
     val blendSource = Color(0xFFE6AABB)
     val railWidth = 68.dp

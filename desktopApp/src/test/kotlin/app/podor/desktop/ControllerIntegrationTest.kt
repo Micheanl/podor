@@ -43,8 +43,9 @@ class ControllerIntegrationTest {
             withContext(Dispatchers.Main) {
                 val pixels = controller.frame.tiles.values.first().image.toPixelMap()
                 assertTrue(pixels[64, 60].red < 0.05f)
-                assertTrue(pixels[74, 60].red > 0.95f)
-                assertTrue(pixels[64, 108].red < 0.95f)
+                assertTrue(pixels[64, 60].alpha > 0.95f)
+                assertTrue(pixels[74, 60].alpha < 0.05f)
+                assertTrue(pixels[64, 108].alpha > 0.05f)
                 controller.saveBrush("Turn")
             }
             awaitState { controller.preferences.brushes.any { it.label == "Turn" } }
@@ -532,7 +533,8 @@ class ControllerIntegrationTest {
                 withContext(Dispatchers.Main) {
                     val pixels =
                         controller.frame.tiles.values.single { it.x == 1 }.image.toPixelMap()
-                    assertEquals(1f, pixels[210 - 128, 64].green)
+                    assertEquals(0f, pixels[210 - 128, 64].alpha)
+                    assertTrue(pixels[160 - 128, 64].alpha > 0.7f)
                     assertTrue(pixels[160 - 128, 64].green < 0.3f)
                 }
                 saveManually(controller, files)

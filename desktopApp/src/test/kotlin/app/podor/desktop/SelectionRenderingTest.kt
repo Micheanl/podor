@@ -233,8 +233,8 @@ class SelectionRenderingTest {
                 val frame = controller.frame
                 val pixels = frame.tiles.values.single().image.toPixelMap()
                 assertEquals(139f / 255f, pixels[20, 20].red, 0.005f)
-                assertEquals(1f, pixels[64, 48].red, 0.005f)
-                assertEquals(1f, pixels[4, 4].red, 0.005f)
+                assertEquals(0f, pixels[64, 48].alpha, 0.005f)
+                assertEquals(0f, pixels[4, 4].alpha, 0.005f)
                 repeat(40) {
                     scene.sendPointerEvent(PointerEventType.Move, Offset(300f + it, 400f))
                     render().close()
@@ -378,8 +378,8 @@ class SelectionRenderingTest {
             withContext(Dispatchers.Main) {
                 val pixels = controller.frame.tiles.values.single().image.toPixelMap()
                 assertEquals(139f / 255f, pixels[60, 40].red, 0.005f)
-                assertEquals(1f, pixels[10, 10].red, 0.005f)
-                if (kind != SelectionKind.Rectangle) assertEquals(1f, pixels[25, 73].red, 0.005f)
+                assertEquals(0f, pixels[10, 10].alpha, 0.005f)
+                if (kind != SelectionKind.Rectangle) assertEquals(0f, pixels[25, 73].alpha, 0.005f)
                 controller.command("undo")
             }
             waitFor { !controller.hasUnsavedChanges && controller.document.canRedo }

@@ -205,19 +205,21 @@ fn white_background(result: &mut [u8]) {
 pub struct StrokeCompositor {
     lower_count: usize,
     opaque: bool,
+    transparent: bool,
     tiles: BTreeMap<TileKey, Vec<u8>>,
     order: VecDeque<TileKey>,
 }
 
 impl StrokeCompositor {
-    pub fn new(doc: &Document) -> Self {
+    pub fn new(doc: &Document, transparent: bool) -> Self {
         Self {
             lower_count: doc
                 .layers
                 .iter()
                 .position(|layer| layer.id == doc.active)
                 .unwrap(),
-            opaque: normal_layers(doc),
+            opaque: !transparent && normal_layers(doc),
+            transparent,
             tiles: BTreeMap::new(),
             order: VecDeque::new(),
         }
@@ -225,7 +227,7 @@ impl StrokeCompositor {
 
     pub fn tile(&mut self, doc: &Document, key: TileKey) -> Vec<u8> {
         if self.lower_count == 0 {
-            return composite_tile(doc, key);
+            return composite_tile_background(doc, key, self.transparent);
         }
         if !self.tiles.contains_key(&key) {
             if self.tiles.len() == MAX_STROKE_CACHE_BYTES / TILE_BYTES {
@@ -248,7 +250,7 @@ impl StrokeCompositor {
             key,
             self.opaque,
         );
-        if !self.opaque {
+        if !self.opaque && !self.transparent {
             white_background(&mut result);
         }
         result
@@ -264,7 +266,7 @@ mod tests {
         let mut doc = Document::new(8192, 512).unwrap();
         doc.layers.push(Layer::new(2, "Paint".into()));
         doc.active = 2;
-        let mut cache = StrokeCompositor::new(&doc);
+        let mut cache = StrokeCompositor::new(&doc, false);
         for y in 0..4 {
             for x in 0..64 {
                 assert_eq!(cache.tile(&doc, (x, y)), composite_tile(&doc, (x, y)));

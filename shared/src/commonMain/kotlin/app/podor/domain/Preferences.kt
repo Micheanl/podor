@@ -89,6 +89,7 @@ enum class ShortcutAction(val label: String, val default: Shortcut) {
 data class Preferences(
     val language: Language = Language.Chinese,
     val startupScreen: StartupScreen = StartupScreen.Workspace,
+    val canvasBackground: CanvasBackground = StudioDefaults.canvasBackground,
     val shortcuts: Map<ShortcutAction, Shortcut> = emptyMap(),
     val plugins: List<BrushPack> = emptyList(),
     val brushes: List<BrushPreset> = emptyList(),

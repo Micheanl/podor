@@ -113,8 +113,9 @@ class ImageResizeTest {
                     assertNull(saved)
                     assertEquals(setOf(0L), controller.frame.tiles.keys)
                     val pixels = controller.frame.tiles.getValue(0L).image.toPixelMap()
-                    assertEquals(1f, pixels[5, 16].green)
-                    assertEquals(157 / 255f, pixels[50, 16].green, 0.005f)
+                    assertEquals(0f, pixels[5, 16].alpha)
+                    assertEquals(60 / 255f, pixels[50, 16].green, 0.005f)
+                    assertEquals(128 / 255f, pixels[50, 16].alpha, 0.005f)
                     assertEquals(2, controller.document.active)
                     controller.command("undo")
                 }
@@ -122,11 +123,11 @@ class ImageResizeTest {
                 withContext(Dispatchers.Main) {
                     assertFalse(controller.hasUnsavedChanges)
                     assertEquals(
-                        1f,
-                        controller.frame.tiles[0L]?.image?.toPixelMap()?.get(5, 16)?.green ?: 1f,
+                        0f,
+                        controller.frame.tiles[0L]?.image?.toPixelMap()?.get(5, 16)?.alpha ?: 0f,
                     )
                     assertEquals(
-                        157 / 255f,
+                        60 / 255f,
                         controller.frame.tiles.getValue(1L shl 32).image.toPixelMap()[50, 60].green,
                         0.005f,
                     )

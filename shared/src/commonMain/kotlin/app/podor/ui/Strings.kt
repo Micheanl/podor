@@ -25,6 +25,12 @@ fun trValue(value: String, language: Language): String {
 
 private val english =
     mapOf(
+        "画布背景" to "Canvas background",
+        "白色" to "White",
+        "灰色" to "Gray",
+        "透明棋盘格" to "Transparency grid",
+        "仅影响显示" to "Display only",
+        "画布显示选项无效" to "Invalid canvas display option",
         "图层混合" to "Layer blending",
         "图层已隐藏" to "Layer hidden",
         "原图对比" to "Compare original",

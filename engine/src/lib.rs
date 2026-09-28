@@ -255,6 +255,7 @@ pub struct Engine {
     pub document: Document,
     history: History,
     dirty: BTreeSet<TileKey>,
+    transparent_frame: bool,
     stroke: Option<Stroke>,
     revision: u64,
     content_id: u64,
@@ -270,6 +271,7 @@ impl Engine {
             document: Document::new(width, height)?,
             history: History::default(),
             dirty: BTreeSet::new(),
+            transparent_frame: false,
             stroke: None,
             revision: 0,
             content_id: 0,
@@ -299,7 +301,10 @@ impl Engine {
                 let brush = brush.validate()?;
                 self.stroke = Some(Stroke {
                     before: self.document.clone(),
-                    compositor: raster::StrokeCompositor::new(&self.document),
+                    compositor: raster::StrokeCompositor::new(
+                        &self.document,
+                        self.transparent_frame,
+                    ),
                     brush,
                     stabilizer: Stabilizer::new(brush.stabilization),
                     last: None,
@@ -854,6 +859,17 @@ impl Engine {
     }
 
     pub fn frame(&mut self) -> Vec<u8> {
+        self.frame_with_background(false)
+    }
+
+    pub fn frame_with_background(&mut self, transparent: bool) -> Vec<u8> {
+        if self.transparent_frame != transparent {
+            self.transparent_frame = transparent;
+            self.mark_all();
+            if let Some(stroke) = self.stroke.as_mut() {
+                stroke.compositor = raster::StrokeCompositor::new(&self.document, transparent);
+            }
+        }
         let mut dirty = std::mem::take(&mut self.dirty);
         dirty.retain(|&(x, y)| {
             x < self.document.width.div_ceil(TILE_SIZE)
@@ -874,7 +890,7 @@ impl Engine {
             output.extend(if let Some(stroke) = self.stroke.as_mut() {
                 stroke.compositor.tile(&self.document, key)
             } else {
-                raster::composite_tile(&self.document, key)
+                raster::composite_tile_background(&self.document, key, transparent)
             });
         }
         output
@@ -893,7 +909,11 @@ impl Engine {
             self.selection.as_ref(),
             request,
         )?;
-        Ok(adjustment_preview::frame(&document, &keys))
+        Ok(adjustment_preview::frame(
+            &document,
+            &keys,
+            self.transparent_frame,
+        ))
     }
     pub fn import_layer(&mut self, bytes: &[u8], name: &str) -> Result<(), String> {
         if self.stroke.is_some() {

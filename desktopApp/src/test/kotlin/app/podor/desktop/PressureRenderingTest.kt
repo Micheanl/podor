@@ -155,8 +155,10 @@ class PressureRenderingTest {
                             .image
                             .toPixelMap()
                     assertEquals(0f, pixels[64, 32].red, 0.005f)
-                    assertEquals(1f, pixels[74, 32].red, 0.005f)
-                    assertEquals(64 / 255f, pixels[94, 96].red, 0.005f)
+                    assertEquals(1f, pixels[64, 32].alpha, 0.005f)
+                    assertEquals(0f, pixels[74, 32].alpha, 0.005f)
+                    assertEquals(191 / 255f, pixels[94, 96].alpha, 0.005f)
+                    assertEquals(0f, pixels[94, 96].red, 0.005f)
                     controller.saveBrush("Pressure test")
                     controller.file(StudioController.FileAction.ExportBrushes)
                 }

@@ -187,6 +187,7 @@ data class BrushSettings(
 data class CanvasPreset(val label: String, val width: Int, val height: Int)
 
 object StudioDefaults {
+    val canvasBackground = CanvasBackground.White
     const val layerOpacity = 1f
     const val maxCustomBrushes = 64
     const val brushSearchLength = 60
