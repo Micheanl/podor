@@ -1,7 +1,6 @@
 package app.podor.ui
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -21,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -144,12 +142,6 @@ fun LabeledSlider(
     val change by rememberUpdatedState(onChange)
     val finished by rememberUpdatedState(onChangeFinished)
     val scrubDistance = with(LocalDensity.current) { StudioTheme.sliderFineDistance.toPx() }
-    val trackHeight by
-        animateDpAsState(
-            if (trackColors != null) StudioTheme.colorSliderHeight
-            else if (dragging || scrubbing) 6.dp else 4.dp,
-            tween(StudioMotion.feedbackMillis),
-        )
     val thumbScale =
         animateFloatAsState(
             if (dragging || focused || scrubbing) StudioMotion.sliderActiveScale else 1f,
@@ -221,33 +213,31 @@ fun LabeledSlider(
                         },
                     )
                 else
-                    Box(
-                        Modifier.size(StudioTheme.sliderThumbSize)
-                            .graphicsLayer {
-                                scaleX = thumbScale.value
-                                scaleY = thumbScale.value
-                            }
-                            .shadow(3.dp, CircleShape)
-                            .background(StudioTheme.text, CircleShape)
+                    ColorSliderThumb(
+                        StudioTheme.quickAccent,
+                        Modifier.size(StudioTheme.quickThumbSize).graphicsLayer {
+                            scaleX = thumbScale.value
+                            scaleY = thumbScale.value
+                        },
                     )
             },
             track = { state ->
                 if (trackColors != null)
                     Box(
                         Modifier.fillMaxWidth()
-                            .height(trackHeight)
+                            .height(StudioTheme.colorSliderHeight)
                             .clip(CircleShape)
                             .background(Brush.horizontalGradient(trackColors))
                     )
                 else
                     SliderDefaults.Track(
                         state,
-                        modifier = Modifier.height(trackHeight),
+                        modifier = Modifier.height(StudioTheme.colorSliderHeight),
                         thumbTrackGapSize = 0.dp,
                         drawStopIndicator = null,
                         colors =
                             SliderDefaults.colors(
-                                activeTrackColor = StudioTheme.accent,
+                                activeTrackColor = StudioTheme.quickAccent,
                                 inactiveTrackColor = StudioTheme.border,
                             ),
                     )

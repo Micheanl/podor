@@ -3,7 +3,6 @@ package app.podor.ui
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -223,7 +222,7 @@ private fun CapsuleSlider(
                         ),
                         thumb,
                     )
-                else Box(thumb.shadow(3.dp, CircleShape).background(Color.White, CircleShape))
+                else ColorSliderThumb(StudioTheme.quickAccent, thumb)
             },
             track = { state ->
                 Box(
@@ -244,14 +243,6 @@ private fun CapsuleSlider(
                                 .fillMaxHeight()
                                 .background(StudioTheme.quickAccent)
                         )
-                    if (colors == null)
-                        Canvas(Modifier.matchParentSize()) {
-                            for (i in 1..4) drawCircle(
-                                Color.White.copy(alpha = 0.22f),
-                                2.dp.toPx(),
-                                Offset(size.width * i / 5f, size.height / 2),
-                            )
-                        }
                 }
             },
         )

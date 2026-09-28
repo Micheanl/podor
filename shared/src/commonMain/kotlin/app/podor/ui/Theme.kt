@@ -171,8 +171,8 @@ object StudioTheme {
     val colorSliderHeight = 24.dp
     val quickControlsWidth = 320.dp
     val quickControlHeight = 44.dp
-    val quickTrackHeight = 26.dp
-    val quickThumbSize = 28.dp
+    val quickTrackHeight = 24.dp
+    val quickThumbSize = 26.dp
     val quickShadow = 6.dp
     val quickAccent = Color(0xFFA89BDC)
     const val layerLiftScale = 1.025f
@@ -222,7 +222,7 @@ object StudioMotion {
     const val releaseMillis = 220
     const val pressScale = 0.98f
     const val cardPressScale = 0.99f
-    const val sliderActiveScale = 1.18f
+    const val sliderActiveScale = 1.08f
     const val pageMillis = 220
     const val pageFadeMillis = 80
     const val pageTravel = 6f
