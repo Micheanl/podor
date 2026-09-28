@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.IntOffset
 import app.podor.data.ProjectFiles
@@ -63,7 +64,14 @@ class StudioController(
                 .flatMap { pack -> pack.brushes.map { it.copy(id = "plugin:${pack.id}/${it.id}") } }
     }
 
-    var tool by mutableStateOf(Tool.Brush)
+    private var currentTool by mutableStateOf(Tool.Brush)
+    var tool: Tool
+        get() = currentTool
+        set(value) {
+            if (value != currentTool && transformPending()) return
+            currentTool = value
+        }
+
     var selectionKind by mutableStateOf(StudioDefaults.selectionKind)
     var selectionCancellation by mutableIntStateOf(0)
         private set
@@ -119,7 +127,10 @@ class StudioController(
 
         data object Frame : Action
 
-        data object PrepareLayerMove : Action
+        data class PrepareLayerMove(val transform: Boolean) : Action
+
+        data class TransformLayer(val id: Int, val revision: Long, val value: LayerTransform) :
+            Action
 
         data class TranslateLayer(val id: Int, val revision: Long, val offset: IntOffset) : Action
 
@@ -332,8 +343,18 @@ class StudioController(
                                     action.finished.complete(true)
                                     break
                                 }
-                                Action.PrepareLayerMove -> {
+                                is Action.PrepareLayerMove -> {
                                     finishDrawing()
+                                    val bounds =
+                                        if (action.transform) {
+                                            val data = engine.call(EngineOperation.LAYER_BOUNDS)
+                                            Rect(
+                                                data.intAt(0).toFloat(),
+                                                data.intAt(4).toFloat(),
+                                                data.intAt(8).toFloat(),
+                                                data.intAt(12).toFloat(),
+                                            )
+                                        } else null
                                     val bytes = engine.call(EngineOperation.LAYERS)
                                     val size = bytes.intAt(8)
                                     var position = 16
@@ -365,10 +386,18 @@ class StudioController(
                                     }
                                     withContext(Dispatchers.Main) {
                                         if (
-                                            tool == Tool.MoveLayer && document.active == info.active
+                                            tool ==
+                                                (if (action.transform) Tool.TransformLayer
+                                                else Tool.MoveLayer) &&
+                                                document.active == info.active
                                         ) {
                                             layerMove =
-                                                LayerMovePreview(info.active, info.revision, layers)
+                                                LayerMovePreview(
+                                                    info.active,
+                                                    info.revision,
+                                                    layers,
+                                                    bounds,
+                                                )
                                         }
                                     }
                                 }
@@ -384,6 +413,25 @@ class StudioController(
                                         )
                                     publishFrame()
                                     withContext(Dispatchers.Main) { layerMove = null }
+                                }
+                                is Action.TransformLayer -> {
+                                    info =
+                                        command(
+                                            jsonCommand("transform_layer") {
+                                                put("id", action.id)
+                                                put("revision", action.revision)
+                                                put(
+                                                    "transform",
+                                                    Json.encodeToJsonElement(action.value),
+                                                )
+                                            }
+                                        )
+                                    publishFrame()
+                                    withContext(Dispatchers.Main) {
+                                        layerMove = null
+                                        tool = Tool.Brush
+                                        status = "图层变换已完成"
+                                    }
                                 }
                                 is Action.Forget -> {
                                     files.forgetProject(action.reference)
@@ -696,8 +744,9 @@ class StudioController(
                             }
                             withContext(Dispatchers.Main) {
                                 if (
-                                    action == Action.PrepareLayerMove ||
-                                        action is Action.TranslateLayer
+                                    action is Action.PrepareLayerMove ||
+                                        action is Action.TranslateLayer ||
+                                        action is Action.TransformLayer
                                 ) {
                                     layerMove = null
                                     tool = Tool.Brush
@@ -706,7 +755,7 @@ class StudioController(
                             }
                         } finally {
                             withContext(Dispatchers.Main) {
-                                if (action == Action.PrepareLayerMove) preparingLayerMove = false
+                                if (action is Action.PrepareLayerMove) preparingLayerMove = false
                                 busy = false
                             }
                         }
@@ -732,18 +781,65 @@ class StudioController(
     }
 
     fun command(type: String, values: JsonObjectBuilder.() -> Unit = {}) {
+        if (transformPending()) return
         if (ready && !busy) scope.launch { actions.send(Action.Command(jsonCommand(type, values))) }
     }
 
+    private fun transformPending(): Boolean {
+        if (layerMove?.transformChanged != true) return false
+        error = "请先确认或取消图层变换"
+        return true
+    }
+
     fun prepareLayerMove() {
-        if (!ready || busy || preparingLayerMove || layerMove != null || tool != Tool.MoveLayer)
+        if (
+            !ready ||
+                busy ||
+                preparingLayerMove ||
+                (tool != Tool.MoveLayer && tool != Tool.TransformLayer)
+        )
             return
+        val transform = tool == Tool.TransformLayer
+        layerMove?.let {
+            if ((it.sourceBounds != null) == transform) return
+            layerMove = null
+        }
         val active = document.layers.firstOrNull { it.id == document.active } ?: return
         if (!active.visible || active.locked || active.alphaLocked || document.selection != null)
             return
         preparingLayerMove = true
         busy = true
-        scope.launch { actions.send(Action.PrepareLayerMove) }
+        scope.launch { actions.send(Action.PrepareLayerMove(transform)) }
+    }
+
+    fun previewLayerTransform(value: LayerTransform) {
+        val preview = layerMove ?: return
+        if (preview.sourceBounds != null && !preview.committing && value.valid())
+            preview.transform = value
+    }
+
+    fun nudgeLayerTransform(horizontal: Int, vertical: Int, fast: Boolean) {
+        val value = layerMove?.transform ?: return
+        val step = if (fast) StudioDefaults.transformFastNudge else StudioDefaults.transformNudge
+        val limit = StudioDefaults.maxTransformOffset
+        previewLayerTransform(
+            value.copy(
+                dx = (value.dx + horizontal * step).coerceIn(-limit, limit),
+                dy = (value.dy + vertical * step).coerceIn(-limit, limit),
+            )
+        )
+    }
+
+    fun commitLayerTransform() {
+        if (!ready || busy) return
+        val preview = layerMove ?: return
+        val value = preview.transform ?: return
+        if (preview.committing || !value.valid()) return
+        preview.committing = true
+        busy = true
+        scope.launch {
+            actions.send(Action.TransformLayer(preview.layerId, preview.revision, value))
+        }
     }
 
     fun previewLayerMove(offset: IntOffset) {
@@ -814,6 +910,7 @@ class StudioController(
     }
 
     fun file(action: FileAction) {
+        if (transformPending()) return
         if (action == FileAction.ImportLayer && (!hasCanvas || showWorkspace)) return
         if (action == FileAction.Open) {
             navigate(WorkspaceDestination.Open())
@@ -854,6 +951,7 @@ class StudioController(
         }
 
     fun selectPreset(preset: BrushPreset) {
+        if (transformPending()) return
         brush = brush.copy(preset = preset, size = preset.size, opacity = preset.opacity)
         tool = Tool.Brush
     }
@@ -895,6 +993,7 @@ class StudioController(
     }
 
     fun export(options: ExportOptions) {
+        if (transformPending()) return
         if (!ready || busy) return
         require(options.format in exportFormats)
         scope.launch { actions.send(Action.Export(options)) }
@@ -915,6 +1014,7 @@ class StudioController(
 
     fun clipboard(action: ClipboardAction) {
         if (!ready || busy || !clipboardAvailable || !hasCanvas || showWorkspace) return
+        if (transformPending()) return
         cancelSelectionGesture()
         scope.launch { actions.send(Action.Clipboard(action)) }
     }
@@ -951,6 +1051,7 @@ class StudioController(
     }
 
     fun navigate(destination: WorkspaceDestination) {
+        if (transformPending()) return
         if (destination == WorkspaceDestination.Exit && !ready) {
             exitRequested = true
             return
@@ -968,6 +1069,7 @@ class StudioController(
     }
 
     fun home() {
+        if (transformPending()) return
         if (ready && !busy) showWorkspace = true
     }
 

@@ -17,11 +17,13 @@ mod resample;
 mod selection;
 mod stabilizer;
 mod storage;
+mod transform;
 mod translation;
 pub use clipboard::CopyMode;
 pub use resample::ResampleFilter;
 pub use selection::{SelectionKind, SelectionPoint, SelectionSpec};
 pub use storage::{ExportFormat, ExportOptions};
+pub use transform::LayerTransform;
 
 use history::{History, Snapshot};
 use model::*;
@@ -101,6 +103,11 @@ pub enum Command {
         id: u32,
         dx: i32,
         dy: i32,
+    },
+    TransformLayer {
+        id: u32,
+        revision: u64,
+        transform: LayerTransform,
     },
     Clear,
     Pick {
@@ -462,6 +469,30 @@ impl Engine {
                             self.content_id = self.revision;
                         }
                     }
+                    Command::TransformLayer {
+                        id,
+                        revision,
+                        transform,
+                    } => {
+                        if revision != self.revision || id != self.document.active {
+                            return Err("图层已变化，请重新开始变换".into());
+                        }
+                        if self.selection.is_some() {
+                            return Err("请先取消选区，再变换图层".into());
+                        }
+                        let tiles = transform::prepare(&self.document, id, transform)?;
+                        let index = self.layer_index(id)?;
+                        if tiles != self.document.layers[index].tiles {
+                            let before = self.document.clone();
+                            self.dirty.extend(self.document.layers[index].tiles.keys());
+                            self.dirty.extend(tiles.keys());
+                            self.document.layers[index].tiles = tiles;
+                            self.history
+                                .push(before, self.content_id, &self.document, true);
+                            self.revision += 1;
+                            self.content_id = self.revision;
+                        }
+                    }
                     Command::ReorderLayer {
                         id,
                         index,
@@ -750,6 +781,16 @@ impl Engine {
     }
     pub fn layer_frame(&self) -> Vec<u8> {
         translation::frame(&self.document)
+    }
+    pub fn layer_bounds(&self) -> Result<Rect, String> {
+        let layer = self
+            .document
+            .layers
+            .iter()
+            .find(|layer| layer.id == self.document.active)
+            .unwrap();
+        transform::bounds(layer, self.document.bounds())
+            .ok_or_else(|| "当前图层没有可变换的内容".into())
     }
     pub fn export_png(&self) -> Result<Vec<u8>, String> {
         storage::export_png(&self.document)

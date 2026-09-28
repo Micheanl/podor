@@ -34,6 +34,8 @@ import app.podor.domain.SelectionKind
 import app.podor.domain.StudioDefaults
 import app.podor.domain.Tool
 import app.podor.domain.TouchGesture
+import app.podor.domain.TransformGesture
+import app.podor.domain.transformHandle
 import app.podor.presentation.LayerMovePreview
 import app.podor.presentation.StudioController
 import app.podor.ui.input.platformPenInput
@@ -74,7 +76,8 @@ fun CanvasWorkspace(
         controller.document.active,
         controller.busy,
     ) {
-        if (controller.tool == Tool.MoveLayer) controller.prepareLayerMove()
+        if (controller.tool == Tool.MoveLayer || controller.tool == Tool.TransformLayer)
+            controller.prepareLayerMove()
         else controller.cancelLayerMove(exit = true)
     }
     val tilePaint = remember {
@@ -107,6 +110,13 @@ fun CanvasWorkspace(
                 var selectionRevision = controller.document.revision
                 var moveAnchor: Offset? = null
                 var movePreview: LayerMovePreview? = null
+                var transformDrag: TransformGesture? = null
+                var transformPreview: LayerMovePreview? = null
+                fun cancelTransformDrag() {
+                    if (controller.layerMove === transformPreview)
+                        transformDrag?.let { controller.previewLayerTransform(it.initial) }
+                    transformDrag = null
+                }
                 val touchGesture = TouchGesture()
                 try {
                     while (currentCoroutineContext().isActive) {
@@ -125,6 +135,7 @@ fun CanvasWorkspace(
                         val pen = event.platformPenInput()
                         val touch = event.platformTouchInput()
                         if (pen?.cancelled == true || touch?.cancelled == true) {
+                            cancelTransformDrag()
                             if (drawing) controller.end(cancel = true)
                             drawing = false
                             activePointer = null
@@ -155,6 +166,7 @@ fun CanvasWorkspace(
                                     }
                                 )
                             if (touch.gesturing) {
+                                cancelTransformDrag()
                                 if (drawing) controller.end(cancel = true)
                                 drawing = false
                                 activePointer = null
@@ -234,7 +246,13 @@ fun CanvasWorkspace(
                         cursor =
                             if (mouse && event.type != PointerEventType.Exit) position else null
                         if (event.type == PointerEventType.Scroll) {
-                            if (drawing || selectionGesture != null || moveAnchor != null) continue
+                            if (
+                                drawing ||
+                                    selectionGesture != null ||
+                                    moveAnchor != null ||
+                                    transformDrag != null
+                            )
+                                continue
                             val rotating = event.keyboardModifiers.isShiftPressed
                             val scroll =
                                 if (rotating && primary.scrollDelta.y == 0f) primary.scrollDelta.x
@@ -267,6 +285,7 @@ fun CanvasWorkspace(
                             gesture = true
                         }
                         if (stylus == null && pressed.size >= 2) {
+                            cancelTransformDrag()
                             if (moveAnchor != null) controller.cancelLayerMove()
                             moveAnchor = null
                             selectionGesture = null
@@ -291,6 +310,28 @@ fun CanvasWorkspace(
                             continue
                         }
                         if (pressed.isEmpty()) {
+                            transformDrag?.let {
+                                if (
+                                    controller.tool == Tool.TransformLayer &&
+                                        controller.layerMove === transformPreview
+                                ) {
+                                    val point =
+                                        controller.viewport.toDocument(
+                                            position,
+                                            viewSize,
+                                            controller.document,
+                                        )
+                                    controller.previewLayerTransform(
+                                        it.update(
+                                            point,
+                                            transformPreview?.proportional == true ||
+                                                event.keyboardModifiers.isShiftPressed,
+                                            event.keyboardModifiers.isShiftPressed,
+                                        )
+                                    )
+                                }
+                            }
+                            transformDrag = null
                             moveAnchor?.let { anchor ->
                                 if (
                                     controller.tool == Tool.MoveLayer &&
@@ -335,6 +376,60 @@ fun CanvasWorkspace(
                             continue
                         }
                         if (gesture) continue
+                        if (controller.tool == Tool.TransformLayer) {
+                            if (
+                                (primary.type == PointerType.Touch || touch != null) &&
+                                    !controller.fingerDrawing
+                            )
+                                continue
+                            val preview = controller.layerMove
+                            val source = preview?.sourceBounds
+                            val value = preview?.transform
+                            val point =
+                                controller.viewport.toDocument(
+                                    position,
+                                    viewSize,
+                                    controller.document,
+                                )
+                            if (
+                                primary.pressed &&
+                                    !primary.previousPressed &&
+                                    source != null &&
+                                    value != null &&
+                                    !preview.committing
+                            ) {
+                                val scale =
+                                    controller.viewport
+                                        .scale(viewSize, controller.document)
+                                        .coerceAtLeast(0.01f)
+                                val handle =
+                                    transformHandle(
+                                        source,
+                                        value,
+                                        point,
+                                        StudioTheme.transformHitRadius.value * density / scale,
+                                        StudioTheme.transformRotationGap.value * density / scale,
+                                    )
+                                transformDrag = handle?.let {
+                                    TransformGesture(source, value, it, point)
+                                }
+                                transformPreview = preview
+                                activePointer = primary.id
+                            }
+                            if (preview === transformPreview && preview?.committing == false)
+                                transformDrag?.let {
+                                    controller.previewLayerTransform(
+                                        it.update(
+                                            point,
+                                            preview.proportional ||
+                                                event.keyboardModifiers.isShiftPressed,
+                                            event.keyboardModifiers.isShiftPressed,
+                                        )
+                                    )
+                                }
+                            primary.consume()
+                            continue
+                        }
                         if (controller.tool == Tool.MoveLayer) {
                             if (
                                 (primary.type == PointerType.Touch || touch != null) &&
@@ -457,6 +552,7 @@ fun CanvasWorkspace(
                         if (drawing) primary.consume()
                     }
                 } finally {
+                    cancelTransformDrag()
                     if (drawing) controller.command("cancel")
                     if (moveAnchor != null) controller.cancelLayerMove()
                 }
@@ -509,6 +605,8 @@ fun CanvasWorkspace(
         }
         controller.layerMove?.let {
             LayerMoveOverlay(controller, it, viewSize, Modifier.matchParentSize())
+            if (it.transform != null)
+                LayerTransformHandles(controller, it, viewSize, Modifier.matchParentSize())
         }
         Canvas(Modifier.matchParentSize().graphicsLayer()) {
             val document = controller.document

@@ -25,4 +25,5 @@ object EngineOperation {
     const val IMPORT_LAYER = 9
     const val COPY_SELECTION = 10
     const val PASTE_IMAGE = 11
+    const val LAYER_BOUNDS = 12
 }

@@ -70,6 +70,16 @@ pub fn resize(
     if retained.len() * TILE_BYTES > MAX_HISTORY_BYTES {
         return Err("缩放图像会超出撤销内存限制".into());
     }
+    resize_pixels(doc, width, height, filter)
+}
+
+pub fn resize_pixels(
+    doc: &Document,
+    width: u32,
+    height: u32,
+    filter: ResampleFilter,
+) -> Result<Document, String> {
+    Document::new(width, height)?;
     let transposed =
         u64::from(width) * u64::from(doc.height) > u64::from(height) * u64::from(doc.width);
     let (source_inner, source_outer) = axes(doc.width, doc.height, transposed);

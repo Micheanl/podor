@@ -15,6 +15,7 @@ pub const MAX_SELECTION_POINTS: usize = 4096;
 pub const MAX_COMMAND_BYTES: usize = 4096;
 pub const MAX_SELECTION_COMMAND_BYTES: usize = MAX_SELECTION_POINTS * 64 + 1024;
 pub const MAX_CLIPBOARD_BYTES: usize = MAX_PIXELS as usize * 4 + 1024 * 1024;
+pub const MAX_TRANSFORM_OFFSET: f64 = MAX_DIMENSION as f64 * 2.0;
 pub const MAX_HISTORY_ENTRIES: usize = 60;
 pub const MAX_ORA_ENTRIES: usize = 256;
 pub const MAX_ORA_METADATA_BYTES: usize = 256 * 1024;

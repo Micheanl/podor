@@ -30,7 +30,7 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
         var inspectorExpanded by remember { mutableStateOf(true) }
         var dialog by remember { mutableStateOf(StudioDialog.None) }
         val focus = remember { FocusRequester() }
-        LaunchedEffect(Unit) { focus.requestFocus() }
+        LaunchedEffect(controller.tool) { focus.requestFocus() }
         fun clipboardShortcut(event: KeyEvent): Boolean {
             if ((event.isCtrlPressed || event.isMetaPressed) && !event.isAltPressed) {
                 when (event.key) {
@@ -45,6 +45,37 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
         }
         fun handleShortcut(event: KeyEvent): Boolean {
             if (event.type != KeyEventType.KeyDown || dialog != StudioDialog.None) return false
+            if (controller.tool == Tool.TransformLayer) {
+                if (!event.isCtrlPressed && !event.isMetaPressed && !event.isAltPressed) {
+                    val direction =
+                        when (event.key) {
+                            Key.DirectionLeft -> -1 to 0
+                            Key.DirectionRight -> 1 to 0
+                            Key.DirectionUp -> 0 to -1
+                            Key.DirectionDown -> 0 to 1
+                            else -> null
+                        }
+                    if (direction != null) {
+                        controller.nudgeLayerTransform(
+                            direction.first,
+                            direction.second,
+                            event.isShiftPressed,
+                        )
+                        return true
+                    }
+                }
+                if (event.key == Key.Enter) {
+                    controller.commitLayerTransform()
+                    return true
+                }
+                if (event.key == Key.Escape) {
+                    if (!controller.busy) {
+                        controller.cancelLayerMove(exit = true)
+                        controller.tool = Tool.Brush
+                    }
+                    return true
+                }
+            }
             if (event.key == Key.Escape && controller.tool == Tool.Select) {
                 controller.cancelSelectionGesture()
                 return true
@@ -65,6 +96,7 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                 ShortcutAction.Picker -> controller.tool = Tool.Picker
                 ShortcutAction.Hand -> controller.tool = Tool.Hand
                 ShortcutAction.MoveLayer -> controller.tool = Tool.MoveLayer
+                ShortcutAction.TransformLayer -> controller.tool = Tool.TransformLayer
                 ShortcutAction.Select -> controller.tool = Tool.Select
                 ShortcutAction.Fill -> controller.tool = Tool.Fill
                 ShortcutAction.Fit -> controller.viewport = Viewport()
@@ -88,9 +120,13 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                     .safeDrawingPadding()
                     .focusRequester(focus)
                     .onPreviewKeyEvent { event ->
+                        val transformConfirmation =
+                            controller.tool == Tool.TransformLayer &&
+                                (event.key == Key.Enter || event.key == Key.Escape)
                         if (
-                            (event.isCtrlPressed || event.isMetaPressed || event.isAltPressed) &&
-                                !clipboardShortcut(event)
+                            transformConfirmation ||
+                                ((event.isCtrlPressed || event.isMetaPressed || event.isAltPressed) &&
+                                    !clipboardShortcut(event))
                         )
                             handleShortcut(event)
                         else false
@@ -170,7 +206,10 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                                         Modifier.align(Alignment.BottomCenter)
                                             .padding(bottom = 55.dp),
                                     )
-                                else if (controller.tool != Tool.Select)
+                                else if (
+                                    controller.tool != Tool.Select &&
+                                        controller.tool != Tool.TransformLayer
+                                )
                                     BrushDock(
                                         controller,
                                         Modifier.align(Alignment.BottomCenter)
@@ -181,6 +220,11 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                             }
                             if (controller.tool == Tool.Select)
                                 SelectionDock(
+                                    controller,
+                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
+                                )
+                            if (controller.tool == Tool.TransformLayer)
+                                LayerTransformDock(
                                     controller,
                                     Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
                                 )

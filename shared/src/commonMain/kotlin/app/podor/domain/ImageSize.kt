@@ -1,9 +1,14 @@
 package app.podor.domain
 
 import kotlin.math.roundToInt
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class ResampleFilter(val wireName: String, val label: String, val description: String) {
+    @SerialName("lanczos3")
     Lanczos3("lanczos3", "平滑", "适合绘画与照片"),
+    @SerialName("nearest")
     Nearest("nearest", "像素", "保留像素硬边"),
 }
 

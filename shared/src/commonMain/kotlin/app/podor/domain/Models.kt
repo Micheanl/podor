@@ -35,6 +35,7 @@ enum class Tool(val label: String) {
     Select("选区"),
     Fill("填充"),
     MoveLayer("移动图层"),
+    TransformLayer("变换图层"),
 }
 
 @Serializable
@@ -200,6 +201,9 @@ object StudioDefaults {
     const val opacityPressure = 0f
     const val exportQuality = 90
     const val maxDimension = 8192
+    const val maxTransformOffset = maxDimension * 2f
+    const val transformNudge = 1f
+    const val transformFastNudge = 10f
     const val maxCanvasPixels = 16_777_216L
     val canvasPresets =
         listOf(

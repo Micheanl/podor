@@ -22,6 +22,8 @@ MSI 在 `desktopApp/build/release/<版本>/main/msi/`。`:desktopApp:createDistr
 
 工具默认值在 `StudioDefaults`，视觉参数在 `StudioTheme`，引擎上限在 `engine/src/model.rs`。
 
+图层变换用 Ctrl+T，拖控制点缩放、顶部圆点旋转，方向键微调，Shift 加快移动或将旋转吸附到 15°。Enter 确认，Esc 取消；未确认的变换不会写入工程。预览复用图块，确认后 Rust 在后台重采样，缩放使用 Lanczos3，旋转使用预乘 RGBA 双线性采样；像素模式使用最近邻。只变换当前整层，选区需先取消，画布外内容在确认时裁切。
+
 画布旋转和镜像由 Compose 变换图块，`Viewport` 统一正反坐标换算，旋转后的可见范围由视口四角反算，保留图块裁剪。Windows 已检查 Direct3D 下 4096 × 4096 画布连续切换视图时复用原像素帧。
 
 Windows 指针消息在接收线程读取，再通过 AWT 交给 Compose 命中检测。笔和触摸共用输入队列，排队上限 64 批，每批最多 256 点，每轮最多派发 8 批；溢出或系统取消会撤回当前笔画。未添加轮询定时器，光栅化继续在后台执行。

@@ -14,6 +14,16 @@ import androidx.compose.ui.unit.sp
 import app.podor.domain.Language
 
 object StudioTheme {
+    val transformHitRadius = 13.dp
+    val transformHandleRadius = 4.dp
+    val transformRotationGap = 30.dp
+    val transformOutlineWidth = 1.dp
+    val transformOutlineHalo = 3.dp
+    val transformOutlineShade = Color.Black.copy(alpha = 0.55f)
+    val transformRotationDot = 2.dp
+    val transformDockGap = 4.dp
+    val transformDockWidth = 620.dp
+    val transformDockPadding = 12.dp
     val clipboardMenuShape = RoundedCornerShape(18.dp)
     val clipboardShortcutSize = 10.sp
     val selectionDockPadding = 6.dp

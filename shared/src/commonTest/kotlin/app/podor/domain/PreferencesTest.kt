@@ -38,7 +38,7 @@ class PreferencesTest {
         assertEquals(Language.English, restored.language)
         assertEquals(restored, restored.withNewShortcuts())
         assertEquals(Shortcut("V"), Preferences().withNewShortcuts().shortcut(ShortcutAction.MoveLayer))
-        val assigned = Preferences().assign(ShortcutAction.MoveLayer, Shortcut("T", command = true))
+        val assigned = Preferences().assign(ShortcutAction.MoveLayer, Shortcut("T", command = true, shift = true))
         assertEquals(assigned, assigned.withNewShortcuts())
     }
 

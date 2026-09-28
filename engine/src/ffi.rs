@@ -110,6 +110,13 @@ pub fn dispatch(handle: u64, operation: u32, bytes: &[u8]) -> Result<Vec<u8>, St
             engine.paste_image(bytes)?;
             Ok(engine.state().to_string().into_bytes())
         }
+        12 => {
+            let bounds = engine.layer_bounds()?;
+            Ok([bounds.left, bounds.top, bounds.right, bounds.bottom]
+                .into_iter()
+                .flat_map(u32::to_le_bytes)
+                .collect())
+        }
         _ => Err("未知引擎操作".into()),
     }
 }

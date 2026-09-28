@@ -78,6 +78,7 @@ enum class ShortcutAction(val label: String, val default: Shortcut) {
     CopyVisible("复制可见画面", Shortcut("C", true, true)),
     Cut("剪切", Shortcut("X", true)),
     Paste("粘贴为新图层", Shortcut("V", true)),
+    TransformLayer("变换图层", Shortcut("T", true)),
 }
 
 @Serializable
@@ -99,6 +100,7 @@ data class Preferences(
                 ShortcutAction.CopyVisible,
                 ShortcutAction.Cut,
                 ShortcutAction.Paste,
+                ShortcutAction.TransformLayer,
             )) {
             if (action in result.shortcuts || action.default !in result.shortcuts.values) continue
             val used = ShortcutAction.entries.filter { it != action }.map(result::shortcut).toSet()

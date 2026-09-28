@@ -236,7 +236,14 @@ fun StudioTools(controller: StudioController, compact: Boolean = false) {
                 containerColor = StudioTheme.panel,
                 shape = RoundedCornerShape(16.dp),
             ) {
-                listOf(Tool.Select, Tool.Fill, Tool.Picker, Tool.Hand, Tool.MoveLayer).forEach { tool ->
+                listOf(
+                    Tool.Select,
+                    Tool.Fill,
+                    Tool.Picker,
+                    Tool.Hand,
+                    Tool.MoveLayer,
+                    Tool.TransformLayer,
+                ).forEach { tool ->
                     DropdownMenuItem(
                         { Text(tr(tool.label)) },
                         {
@@ -278,6 +285,13 @@ fun StudioTools(controller: StudioController, compact: Boolean = false) {
         }
         ToolButton(Glyph.Move, controller.shortcutLabel(ShortcutAction.MoveLayer), controller.tool == Tool.MoveLayer) {
             controller.tool = Tool.MoveLayer
+        }
+        ToolButton(
+            Glyph.Transform,
+            controller.shortcutLabel(ShortcutAction.TransformLayer),
+            controller.tool == Tool.TransformLayer,
+        ) {
+            controller.tool = Tool.TransformLayer
         }
     }
 }
