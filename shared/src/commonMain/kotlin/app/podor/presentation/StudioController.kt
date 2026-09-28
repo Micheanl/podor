@@ -64,6 +64,11 @@ class StudioController(
 
     private var preparingGradient = false
 
+    var adjustmentPreview by mutableStateOf<AdjustmentPreview?>(null)
+        private set
+
+    private var preparingAdjustment = false
+
     val exportFormats = files.exportFormats
     val clipboardAvailable = files.clipboard != null
 
@@ -160,6 +165,13 @@ class StudioController(
         data object Frame : Action
 
         data object PrepareGradient : Action
+
+        data class PrepareAdjustment(val kind: AdjustmentKind, val previousTool: Tool) : Action
+
+        data class ApplyAdjustment(
+            val preview: AdjustmentPreview,
+            val settings: AdjustmentSettings,
+        ) : Action
 
         data class ApplyGradient(
             val id: Int,
@@ -488,6 +500,44 @@ class StudioController(
                                         else if (addPaletteColors(colors)) status = "已提取画布颜色"
                                     }
                                 }
+                                is Action.PrepareAdjustment -> {
+                                    finishDrawing()
+                                    publishFrame()
+                                    withContext(Dispatchers.Main) {
+                                        val active = info.layers.first { it.id == info.active }
+                                        check(!active.locked) { "图层已锁定，请先解锁" }
+                                        check(active.visible) { "请先显示当前图层" }
+                                        adjustmentPreview =
+                                            AdjustmentPreview(
+                                                info.active,
+                                                info.revision,
+                                                action.kind,
+                                                action.previousTool,
+                                                frame,
+                                            )
+                                    }
+                                }
+                                is Action.ApplyAdjustment -> {
+                                    withContext(Dispatchers.Main) { busy = true }
+                                    info =
+                                        command(
+                                            jsonCommand("apply_adjustment") {
+                                                put(
+                                                    "request",
+                                                    adjustmentRequest(
+                                                        action.preview,
+                                                        action.settings,
+                                                    ),
+                                                )
+                                            }
+                                        )
+                                    publishFrame()
+                                    withContext(Dispatchers.Main) {
+                                        adjustmentPreview = null
+                                        currentTool = action.preview.previousTool
+                                        status = "调整已完成"
+                                    }
+                                }
                                 Action.PrepareGradient -> {
                                     finishDrawing()
                                     val layers = readLayers()
@@ -760,6 +810,58 @@ class StudioController(
                                         flushPoints()
                                         publishFrame()
                                     }
+                                    val adjustment =
+                                        withContext(Dispatchers.Main) {
+                                            adjustmentPreview
+                                                ?.takeIf { !it.committing && it.updating }
+                                                ?.let { it to it.settings }
+                                        }
+                                    if (adjustment != null) {
+                                        val (preview, settings) = adjustment
+                                        val bytes =
+                                            engine.call(
+                                                EngineOperation.ADJUSTMENT_PREVIEW,
+                                                adjustmentRequest(preview, settings)
+                                                    .toString()
+                                                    .encodeToByteArray(),
+                                            )
+                                        if (
+                                            !withContext(Dispatchers.Main) {
+                                                adjustmentPreview === preview &&
+                                                    !preview.committing &&
+                                                    preview.updating
+                                            }
+                                        )
+                                            continue
+                                        val size = bytes.intAt(8)
+                                        val count = bytes.intAt(12)
+                                        var offset = 16
+                                        val images = preview.original.tiles.toMutableMap()
+                                        repeat(count) {
+                                            val x = bytes.intAt(offset)
+                                            val y = bytes.intAt(offset + 4)
+                                            images[(x.toLong() shl 32) or y.toLong()] =
+                                                TileImage(
+                                                    x,
+                                                    y,
+                                                    size,
+                                                    rgbaBitmap(bytes, offset + 8, size),
+                                                )
+                                            offset += 8 + size * size * 4
+                                        }
+                                        val adjusted = RenderFrame(images)
+                                        withContext(Dispatchers.Main) {
+                                            if (
+                                                adjustmentPreview === preview &&
+                                                    !preview.committing &&
+                                                    preview.updating
+                                            ) {
+                                                preview.frame = adjusted
+                                                preview.changed = count > 0
+                                                preview.renderedSettings = settings
+                                            }
+                                        }
+                                    }
                                     if (!drawing && previewRevision != info.revision) {
                                         val bytes = engine.call(EngineOperation.PREVIEWS)
                                         if (bytes.isNotEmpty()) {
@@ -955,6 +1057,16 @@ class StudioController(
                                 publishFrame()
                             }
                             withContext(Dispatchers.Main) {
+                                if (action is Action.PrepareAdjustment) {
+                                    adjustmentPreview = null
+                                    currentTool = action.previousTool
+                                }
+                                if (action is Action.ApplyAdjustment)
+                                    adjustmentPreview?.committing = false
+                                if (action == Action.Frame) {
+                                    adjustmentPreview?.let { currentTool = it.previousTool }
+                                    adjustmentPreview = null
+                                }
                                 if (action is Action.ApplyGradient)
                                     gradientPreview?.committing = false
                                 if (action == Action.PrepareGradient) {
@@ -976,6 +1088,7 @@ class StudioController(
                                 if (action == Action.ExtractPalette) extractingPalette = false
                                 if (action is Action.PrepareLayerMove) preparingLayerMove = false
                                 if (action == Action.PrepareGradient) preparingGradient = false
+                                if (action is Action.PrepareAdjustment) preparingAdjustment = false
                                 busy = false
                             }
                         }
@@ -1006,6 +1119,10 @@ class StudioController(
     }
 
     private fun previewPending(): Boolean {
+        if (preparingAdjustment || adjustmentPreview != null) {
+            error = "请先确认或取消调整"
+            return true
+        }
         if (gradientPreview?.line != null) {
             error = "请先确认或取消渐变"
             return true
@@ -1024,6 +1141,45 @@ class StudioController(
         busy = true
         scope.launch { actions.send(Action.PrepareGradient) }
     }
+
+    fun prepareAdjustment(kind: AdjustmentKind) {
+        if (!ready || busy || previewPending()) return
+        val previousTool = tool
+        cancelGradient()
+        layerMove = null
+        preparingAdjustment = true
+        busy = true
+        currentTool = Tool.Hand
+        scope.launch { actions.send(Action.PrepareAdjustment(kind, previousTool)) }
+    }
+
+    fun updateAdjustment(settings: AdjustmentSettings) {
+        val preview = adjustmentPreview ?: return
+        if (!preview.committing && settings.kind == preview.settings.kind && settings.valid())
+            preview.settings = settings
+    }
+
+    fun cancelAdjustment() {
+        val preview = adjustmentPreview ?: return
+        if (preview.committing) return
+        adjustmentPreview = null
+        currentTool = preview.previousTool
+    }
+
+    fun commitAdjustment() {
+        val preview = adjustmentPreview ?: return
+        if (!ready || busy || preview.updating || !preview.changed || preview.committing) return
+        preview.committing = true
+        busy = true
+        scope.launch { actions.send(Action.ApplyAdjustment(preview, preview.settings)) }
+    }
+
+    private fun adjustmentRequest(preview: AdjustmentPreview, settings: AdjustmentSettings) =
+        buildJsonObject {
+            put("id", preview.layerId)
+            put("revision", preview.revision)
+            put("settings", Json.encodeToJsonElement(settings))
+        }
 
     fun previewGradient(line: GradientLine?) {
         val preview = gradientPreview ?: return

@@ -14,6 +14,11 @@ import androidx.compose.ui.unit.sp
 import app.podor.domain.Language
 
 object StudioTheme {
+    val adjustmentGap = 18.dp
+    val adjustmentHintSize = 11.sp
+    val adjustmentStatusSize = 14.dp
+    val adjustmentStatusStroke = 1.5.dp
+    val adjustmentStatusGap = 8.dp
     val combinedSelectionDash = 5.dp
     val combinedSelectionHalo = 2.dp
     val combinedSelectionLine = 1.5.dp

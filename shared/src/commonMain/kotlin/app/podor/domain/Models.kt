@@ -187,6 +187,10 @@ data class BrushSettings(
 data class CanvasPreset(val label: String, val width: Int, val height: Int)
 
 object StudioDefaults {
+    const val toneAmount = 0f
+    const val blurSigma = 4f
+    const val minBlurSigma = 0.5f
+    const val maxBlurSigma = 32f
     const val extractedPaletteSize = 12
     const val maxPaletteColors = 24
     const val paletteColumns = 6

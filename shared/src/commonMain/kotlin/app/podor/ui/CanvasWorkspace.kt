@@ -675,25 +675,29 @@ fun CanvasWorkspace(
                 clipRect(0f, 0f, document.width.toFloat(), document.height.toFloat()) {
                     drawRect(Color.White, size = paper)
                     if (controller.layerMove == null && controller.gradientPreview == null)
-                        controller.frame.tiles.values.forEach { tile ->
-                            val x = tile.x * tile.size
-                            val y = tile.y * tile.size
-                            if (
-                                x >= visible.right ||
-                                    y >= visible.bottom ||
-                                    x + tile.size <= visible.left ||
-                                    y + tile.size <= visible.top
-                            )
-                                return@forEach
-                            drawContext.canvas.drawImage(
-                                tile.image,
-                                Offset(
-                                    (tile.x * tile.size).toFloat(),
-                                    (tile.y * tile.size).toFloat(),
-                                ),
-                                tilePaint,
-                            )
-                        }
+                        (controller.adjustmentPreview?.takeUnless { it.comparing }?.frame
+                                ?: controller.frame)
+                            .tiles
+                            .values
+                            .forEach { tile ->
+                                val x = tile.x * tile.size
+                                val y = tile.y * tile.size
+                                if (
+                                    x >= visible.right ||
+                                        y >= visible.bottom ||
+                                        x + tile.size <= visible.left ||
+                                        y + tile.size <= visible.top
+                                )
+                                    return@forEach
+                                drawContext.canvas.drawImage(
+                                    tile.image,
+                                    Offset(
+                                        (tile.x * tile.size).toFloat(),
+                                        (tile.y * tile.size).toFloat(),
+                                    ),
+                                    tilePaint,
+                                )
+                            }
                 }
             }
         }

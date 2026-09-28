@@ -47,6 +47,16 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
         }
         fun handleShortcut(event: KeyEvent): Boolean {
             if (event.type != KeyEventType.KeyDown || dialog != StudioDialog.None) return false
+            if (controller.adjustmentPreview != null) {
+                if (event.key == Key.Enter) {
+                    controller.commitAdjustment()
+                    return true
+                }
+                if (event.key == Key.Escape) {
+                    controller.cancelAdjustment()
+                    return true
+                }
+            }
             if (controller.tool == Tool.Gradient) {
                 if (event.key == Key.Enter) {
                     controller.commitGradient()
@@ -139,7 +149,8 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                     .focusRequester(focus)
                     .onPreviewKeyEvent { event ->
                         val previewConfirmation =
-                            (controller.tool == Tool.TransformLayer ||
+                            (controller.adjustmentPreview != null ||
+                                controller.tool == Tool.TransformLayer ||
                                 controller.tool == Tool.Gradient) &&
                                 (event.key == Key.Enter || event.key == Key.Escape)
                         if (
@@ -227,7 +238,8 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                                             .padding(bottom = 55.dp),
                                     )
                                 else if (
-                                    controller.tool != Tool.Select &&
+                                    controller.adjustmentPreview == null &&
+                                        controller.tool != Tool.Select &&
                                         controller.tool != Tool.TransformLayer &&
                                         controller.tool != Tool.Gradient
                                 )
@@ -239,6 +251,11 @@ fun StudioApp(controller: StudioController, updates: UpdateController? = null) {
                                         openPanel(StudioPanel.Brushes)
                                     }
                             }
+                            if (controller.adjustmentPreview != null)
+                                AdjustmentDock(
+                                    controller,
+                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
+                                )
                             if (controller.tool == Tool.Select)
                                 SelectionDock(
                                     controller,

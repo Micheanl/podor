@@ -25,6 +25,18 @@ fun trValue(value: String, language: Language): String {
 
 private val english =
     mapOf(
+        "原图对比" to "Compare original",
+        "重置调整" to "Reset adjustment",
+        "取消调整" to "Cancel adjustment",
+        "确认调整" to "Apply adjustment",
+        "调整已完成" to "Adjustment applied",
+        "正在预览…" to "Updating preview…",
+        "正在应用…" to "Applying…",
+        "原图" to "Original",
+        "预览" to "Preview",
+        "请先确认或取消调整" to "Apply or cancel the adjustment first",
+        "图层已变化，请重新调整" to "The layer changed. Start a new adjustment",
+        "调整参数无效" to "Invalid adjustment settings",
         "涂抹" to "Smudge",
         "涂抹强度" to "Smudge strength",
         "强度压感" to "Strength pressure",

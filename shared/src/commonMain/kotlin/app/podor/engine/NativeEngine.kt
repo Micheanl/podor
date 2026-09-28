@@ -31,4 +31,5 @@ object EngineOperation {
     const val SELECTION_FRAME = 13
     const val PALETTE = 14
     const val SELECTION_OUTLINE = 15
+    const val ADJUSTMENT_PREVIEW = 16
 }

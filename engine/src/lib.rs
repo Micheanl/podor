@@ -1,3 +1,4 @@
+mod adjustment_preview;
 mod adjustments;
 mod blending;
 mod canvas;
@@ -23,6 +24,7 @@ mod stabilizer;
 mod storage;
 mod transform;
 mod translation;
+pub use adjustment_preview::{AdjustmentKind, AdjustmentRequest, AdjustmentSettings};
 pub use clipboard::CopyMode;
 pub use gradient::{Gradient, GradientShape};
 pub use resample::ResampleFilter;
@@ -71,6 +73,9 @@ pub enum Command {
     },
     Blur {
         sigma: f32,
+    },
+    ApplyAdjustment {
+        request: AdjustmentRequest,
     },
     Begin {
         brush: Brush,
@@ -609,6 +614,22 @@ impl Engine {
                             self.content_id = self.revision;
                         }
                     }
+                    Command::ApplyAdjustment { request } => {
+                        let (document, dirty) = adjustment_preview::prepare(
+                            &self.document,
+                            self.revision,
+                            self.selection.as_ref(),
+                            request,
+                        )?;
+                        if !dirty.is_empty() {
+                            let before = std::mem::replace(&mut self.document, document);
+                            self.dirty.extend(dirty);
+                            self.history
+                                .push(before, self.content_id, &self.document, true);
+                            self.revision += 1;
+                            self.content_id = self.revision;
+                        }
+                    }
                     command => {
                         if self.selection.as_ref().is_some_and(Selection::is_empty)
                             && matches!(
@@ -838,6 +859,18 @@ impl Engine {
 
     pub fn save(&self) -> Result<Vec<u8>, String> {
         storage::save(&self.document)
+    }
+    pub fn preview_adjustment(&self, request: AdjustmentRequest) -> Result<Vec<u8>, String> {
+        if self.stroke.is_some() {
+            return Err("请先结束当前笔画".into());
+        }
+        let (document, keys) = adjustment_preview::prepare(
+            &self.document,
+            self.revision,
+            self.selection.as_ref(),
+            request,
+        )?;
+        Ok(adjustment_preview::frame(&document, &keys))
     }
     pub fn import_layer(&mut self, bytes: &[u8], name: &str) -> Result<(), String> {
         if self.stroke.is_some() {

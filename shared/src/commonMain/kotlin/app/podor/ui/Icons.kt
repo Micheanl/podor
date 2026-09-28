@@ -31,6 +31,7 @@ enum class Glyph(val resource: DrawableResource) {
     Export(Res.drawable.ic_export),
     Settings(Res.drawable.ic_settings),
     Adjustments(Res.drawable.ic_adjustments),
+    Blur(Res.drawable.ic_blur),
     Close(Res.drawable.ic_close),
     Check(Res.drawable.ic_check),
     Chevron(Res.drawable.ic_chevron),
