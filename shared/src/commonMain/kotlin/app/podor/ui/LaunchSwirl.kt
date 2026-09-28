@@ -7,7 +7,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 
 @Composable
 internal fun LaunchSwirl(modifier: Modifier = Modifier) {
-    val renderer = remember { createLaunchSwirlRenderer() }
+    val renderer = remember(StudioTheme.appearance) { createLaunchSwirlRenderer() }
     var seconds by remember { mutableFloatStateOf(0f) }
     DisposableEffect(renderer) { onDispose { renderer?.close() } }
     LaunchedEffect(renderer) {

@@ -24,11 +24,9 @@ fun SymmetryControls(controller: StudioController) {
         ) {
             expanded = !expanded
         }
-        DropdownMenu(
+        StudioDropdownMenu(
             expanded,
             { expanded = false },
-            shape = StudioTheme.menuShape,
-            containerColor = StudioTheme.panel,
         ) {
             Column(
                 Modifier.width(StudioTheme.symmetryControlsWidth).padding(16.dp),

@@ -1,8 +1,10 @@
 package app.podor.ui
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import app.podor.domain.ClipboardAction
 import app.podor.presentation.StudioController
 
@@ -11,11 +13,9 @@ fun ClipboardMenu(controller: StudioController) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         ToolButton(Glyph.Clipboard, "剪贴板") { expanded = true }
-        DropdownMenu(
+        StudioDropdownMenu(
             expanded,
             { expanded = false },
-            shape = StudioTheme.menuShape,
-            containerColor = StudioTheme.panel,
         ) {
             ClipboardMenuItems(controller) { expanded = false }
         }
@@ -25,40 +25,31 @@ fun ClipboardMenu(controller: StudioController) {
 @Composable
 fun ClipboardMenuItems(controller: StudioController, onDismiss: () -> Unit) {
     val active = controller.document.layers.firstOrNull { it.id == controller.document.active }
-    ClipboardAction.entries.forEach { action ->
-        DropdownMenuItem(
-            text = { Text(tr(action.shortcut.label)) },
-            onClick = {
+    Row(Modifier.padding(horizontal = 8.dp)) {
+        ClipboardAction.entries.forEach { action ->
+            ToolButton(
+                when (action) {
+                    ClipboardAction.Copy -> Glyph.Copy
+                    ClipboardAction.CopyVisible -> Glyph.Layers
+                    ClipboardAction.Cut -> Glyph.Cut
+                    ClipboardAction.Paste -> Glyph.Clipboard
+                },
+                controller.shortcutLabel(action.shortcut),
+                enabled =
+                    controller.ready &&
+                        !controller.busy &&
+                        when (action) {
+                            ClipboardAction.Cut ->
+                                active != null && !active.locked && !active.alphaLocked
+                            ClipboardAction.Paste ->
+                                controller.document.layers.size < controller.document.maxLayers
+                            else -> active != null
+                        },
+                plain = true,
+            ) {
                 controller.clipboard(action)
                 onDismiss()
-            },
-            enabled =
-                controller.ready &&
-                    !controller.busy &&
-                    when (action) {
-                        ClipboardAction.Cut ->
-                            active != null && !active.locked && !active.alphaLocked
-                        ClipboardAction.Paste ->
-                            controller.document.layers.size < controller.document.maxLayers
-                        else -> active != null
-                    },
-            leadingIcon = {
-                StudioIcon(
-                    when (action) {
-                        ClipboardAction.Copy -> Glyph.Copy
-                        ClipboardAction.CopyVisible -> Glyph.Layers
-                        ClipboardAction.Cut -> Glyph.Cut
-                        ClipboardAction.Paste -> Glyph.Clipboard
-                    }
-                )
-            },
-            trailingIcon = {
-                Text(
-                    controller.preferences.shortcut(action.shortcut).display(),
-                    fontSize = StudioTheme.clipboardShortcutSize,
-                    color = StudioTheme.muted,
-                )
-            },
-        )
+            }
+        }
     }
 }

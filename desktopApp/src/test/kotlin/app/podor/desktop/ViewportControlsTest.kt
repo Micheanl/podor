@@ -62,6 +62,7 @@ class ViewportControlsTest {
                                 Files.write(path, it.bytes)
                             }
                         }
+                        repeat(200) { scene.render(frame++ * 16_666_667L).close() }
                         assertFalse(scene.hasInvalidations())
                         click(90f, 378f)
                         assertEquals(20f, value.value.rotation)

@@ -114,7 +114,7 @@ fun ColorWheel(value: HsvColor, onChange: (HsvColor) -> Unit, modifier: Modifier
                         drawCircle(StudioTheme.elevated, radius - thickness * 0.7f)
                         drawCircle(hues, radius, style = Stroke(thickness))
                         drawCircle(
-                            if (focused) StudioTheme.accent else Color.White.copy(alpha = 0.2f),
+                            if (focused) StudioTheme.accent else StudioTheme.feedbackInk.copy(alpha = 0.2f),
                             radius + thickness / 2f,
                             style = rim,
                         )

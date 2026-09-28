@@ -1,8 +1,7 @@
 package app.podor.desktop
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.*
+import app.podor.domain.Appearance
 import androidx.compose.ui.graphics.Color
 import app.podor.desktop.input.TabletInput
 import app.podor.domain.TabletInputMode
@@ -201,10 +200,15 @@ internal class NativeWindowChrome(
         user.SetWindowLongPtrW(handle, -4, procedure)
         user.SetWindowLongW(handle, -16, (originalStyle and Int.MIN_VALUE.inv()) or 0x00CF0000)
         val dwm = Native.load("dwmapi", DwmApi::class.java)
-        dwm.DwmSetWindowAttribute(handle, 20, IntByReference(1), 4)
         dwm.DwmSetWindowAttribute(handle, 33, IntByReference(2), 4)
-        dwm.DwmSetWindowAttribute(handle, 34, IntByReference(StudioTheme.border.colorRef()), 4)
+        updateAppearance(StudioTheme.appearance, StudioTheme.border)
         user.SetWindowPos(handle, null, 0, 0, 0, 0, 0x0037)
+    }
+
+    fun updateAppearance(appearance: Appearance, border: Color) {
+        val dwm = Native.load("dwmapi", DwmApi::class.java)
+        dwm.DwmSetWindowAttribute(handle, 20, IntByReference(if (appearance == Appearance.Dark) 1 else 0), 4)
+        dwm.DwmSetWindowAttribute(handle, 34, IntByReference(border.colorRef()), 4)
     }
 
     private fun hit(position: Long): Int? {
@@ -279,8 +283,12 @@ fun WindowsChrome(
     captionHit: (Int, Int) -> Boolean = { _, _ -> true },
 ) {
     val hit = rememberUpdatedState(captionHit)
+    var chrome by remember(window, mode) { mutableStateOf<NativeWindowChrome?>(null) }
+    DisposableEffect(chrome, StudioTheme.appearance) {
+        chrome?.updateAppearance(StudioTheme.appearance, StudioTheme.border)
+        onDispose {}
+    }
     DisposableEffect(window, mode) {
-        var chrome: NativeWindowChrome? = null
         var disposed = false
         fun install() {
             EventQueue.invokeLater {

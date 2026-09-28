@@ -16,7 +16,7 @@ import kotlin.math.min
 @Composable
 fun Modifier.borderTrail(active: Boolean, radius: Dp = StudioTheme.borderTrailRadius): Modifier {
     val progress = remember { Animatable(1f) }
-    LaunchedEffect(active) {
+    LaunchedEffect(active, StudioTheme.appearance) {
         if (active) {
             progress.snapTo(0f)
             progress.animateTo(1f, tween(StudioMotion.borderTrailMillis, easing = LinearEasing))

@@ -66,7 +66,7 @@ internal fun Modifier.controlFeedback(
                 drawContent()
                 val brightness = light.value
                 if (brightness > 0f) {
-                    drawRect(Color.White, alpha = brightness)
+                    drawRect(StudioTheme.feedbackInk, alpha = brightness)
                 }
             }
         }

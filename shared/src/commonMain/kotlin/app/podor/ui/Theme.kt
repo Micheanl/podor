@@ -6,16 +6,34 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.podor.domain.Appearance
 import app.podor.domain.Language
 
+internal val LocalPaintColor = compositionLocalOf { Color.Black }
+
 object StudioTheme {
-    val launchSwirlBack = Color(0xFF220011)
-    val launchSwirlFront = Color(0xFF00FFFF)
+    var appearance by mutableStateOf(Appearance.Dark)
+        internal set
+
+    private val light
+        get() = appearance == Appearance.Light
+
+    val feedbackInk
+        get() = if (light) Color.Black else Color.White
+
+    val menuTrailRadius = 12.dp
+    val quickTrailRadius = 22.dp
+    val launchSwirlBack
+        get() = if (light) Color(0xFFF3F4F8) else Color(0xFF220011)
+
+    val launchSwirlFront
+        get() = if (light) Color(0xFF9DAAC2) else Color(0xFF00FFFF)
+
     val launchSwirlPixelSize = 4.dp
     val launchWordmarkSize = 34.sp
     val launchWordmarkSpacing = 5.sp
@@ -26,7 +44,9 @@ object StudioTheme {
     val menuShape = RoundedCornerShape(12.dp)
     val modalShape = RoundedCornerShape(22.dp)
     val buttonLabelSize = 13.sp
-    val controlBorder = Color.White.copy(alpha = 0.08f)
+    val controlBorder
+        get() = if (light) Color.Black.copy(alpha = 0.09f) else Color.White.copy(alpha = 0.08f)
+
     val referenceHandle = 7.dp
     val referenceHitRadius = 12.dp
     val referenceOutline = 1.dp
@@ -42,9 +62,15 @@ object StudioTheme {
     val curveGuideDash = 4.dp
     val curveScaleHeight = 3.dp
     const val curveHistogramHeight = 0.65f
-    val curveRed = Color(0xFFE995A1)
-    val curveGreen = Color(0xFF92C9AE)
-    val curveBlue = Color(0xFF91B3EA)
+    val curveRed
+        get() = if (light) Color(0xFFAD3C52) else Color(0xFFE995A1)
+
+    val curveGreen
+        get() = if (light) Color(0xFF28784E) else Color(0xFF92C9AE)
+
+    val curveBlue
+        get() = if (light) Color(0xFF3E66B4) else Color(0xFF91B3EA)
+
     val brushLibraryGap = 8.dp
     val brushLibraryCaptionSize = 11.sp
     val brushLibraryFavoriteSize = 30.dp
@@ -91,21 +117,44 @@ object StudioTheme {
     val selectionDockGap = 4.dp
     val selectionDockBorder = 1.dp
     const val selectionDashLengthLimit = 16_000f
-    val background = Color(0xFF1C1C1E)
-    val panel = Color(0xFF242426)
-    val elevated = Color(0xFF303033)
-    val border = Color(0xFF404044)
-    val muted = Color(0xFFAAAAAF)
-    val accent = Color(0xFFE4E5E9)
-    val selection = Color(0xFF424449)
-    val selectionBorder = Color(0xFF74777E)
-    val onAccent = Color(0xFF202124)
-    val onSelection = Color(0xFFF5F5F7)
-    val text = Color(0xFFF5F5F7)
+    val background
+        get() = if (light) Color(0xFFEEEFF2) else Color(0xFF1C1C1E)
+
+    val panel
+        get() = if (light) Color(0xFFFAFAFC) else Color(0xFF242426)
+
+    val elevated
+        get() = if (light) Color(0xFFE4E6EB) else Color(0xFF303033)
+
+    val border
+        get() = if (light) Color(0xFFCDD0D7) else Color(0xFF404044)
+
+    val muted
+        get() = if (light) Color(0xFF626670) else Color(0xFFAAAAAF)
+
+    val accent
+        get() = if (light) Color(0xFF30343D) else Color(0xFFE4E5E9)
+
+    val selection
+        get() = if (light) Color(0xFFDCDDE5) else Color(0xFF424449)
+
+    val selectionBorder
+        get() = if (light) Color(0xFF9295A2) else Color(0xFF74777E)
+
+    val onAccent
+        get() = if (light) Color(0xFFFAFAFC) else Color(0xFF202124)
+
+    val onSelection
+        get() = if (light) Color(0xFF22252C) else Color(0xFFF5F5F7)
+
+    val text
+        get() = if (light) Color(0xFF22252C) else Color(0xFFF5F5F7)
+
     val hoverLight = 0.055f
     val pressLight = 0.085f
     val checkerLight = Color(0xFFDBDCDF)
     val checkerDark = Color(0xFFB9BBC0)
+    val paperPreview = Color.White
     val canvasGray = Color(0xFF73767D)
     val canvasCheckerSize = 12.dp
     val canvasBackgroundHintPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
@@ -174,14 +223,15 @@ object StudioTheme {
     val quickTrackHeight = 24.dp
     val quickThumbSize = 26.dp
     val quickShadow = 6.dp
-    val quickAccent = Color(0xFFA89BDC)
     const val layerLiftScale = 1.025f
     val workspaceWidth = 1200.dp
     val borderTrailRadius = 10.dp
     val cardTrailRadius = 16.dp
     val borderTrailWidth = 1.5.dp
     val borderTrailLength = 220.dp
-    val borderTrailLight = Color(0xFFE1E9F7)
+    val borderTrailLight
+        get() = if (light) Color(0xFF434B61) else Color(0xFFE1E9F7)
+
     const val borderTrailFraction = 0.28f
     val carouselCardWidth = 300.dp
     val carouselMinPreviewHeight = 96.dp
@@ -205,7 +255,9 @@ object StudioTheme {
     val windowButtonInset = 6.dp
     val windowIconSize = 12.dp
     val windowResizeBorder = 6.dp
-    val surfaceRim = Color(0xFF62616B)
+    val surfaceRim
+        get() = if (light) Color(0xFFB5B8C3) else Color(0xFF62616B)
+
     const val colorRingRadius = 0.455f
     const val colorRingWidth = 0.075f
     const val colorPlaneFraction = 0.54f
@@ -238,8 +290,16 @@ object StudioMotion {
 }
 
 @Composable
-fun PodorTheme(language: Language = Language.Chinese, content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalLanguage provides language) {
+fun PodorTheme(
+    language: Language = Language.Chinese,
+    appearance: Appearance? = null,
+    paintColor: Color = LocalPaintColor.current,
+    content: @Composable () -> Unit,
+) {
+    SideEffect { if (appearance != null) StudioTheme.appearance = appearance }
+    val base =
+        if (StudioTheme.appearance == Appearance.Light) lightColorScheme() else darkColorScheme()
+    CompositionLocalProvider(LocalLanguage provides language, LocalPaintColor provides paintColor) {
         MaterialTheme(
             shapes =
                 Shapes(
@@ -250,7 +310,7 @@ fun PodorTheme(language: Language = Language.Chinese, content: @Composable () ->
                     extraLarge = StudioTheme.modalShape,
                 ),
             colorScheme =
-                darkColorScheme(
+                base.copy(
                     primary = StudioTheme.accent,
                     onPrimary = StudioTheme.onAccent,
                     secondary = StudioTheme.accent,
@@ -269,6 +329,9 @@ fun PodorTheme(language: Language = Language.Chinese, content: @Composable () ->
                     onSecondaryContainer = StudioTheme.text,
                     onSurface = StudioTheme.text,
                     onSurfaceVariant = StudioTheme.muted,
+                    onBackground = StudioTheme.text,
+                    inverseSurface = StudioTheme.text,
+                    inverseOnSurface = StudioTheme.panel,
                     outline = StudioTheme.border,
                 ),
             content = content,

@@ -10,6 +10,12 @@ enum class Language {
 }
 
 @Serializable
+enum class Appearance(val label: String) {
+    Dark("深色"),
+    Light("浅色"),
+}
+
+@Serializable
 enum class TabletInputMode(val label: String) {
     Automatic("自动选择"),
     WindowsInk("Windows Ink"),
@@ -101,6 +107,7 @@ enum class ShortcutAction(val label: String, val default: Shortcut) {
 data class Preferences(
     val tabletInputMode: TabletInputMode = TabletInputMode.Automatic,
     val language: Language = Language.Chinese,
+    val appearance: Appearance = Appearance.Dark,
     val startupScreen: StartupScreen = StartupScreen.Workspace,
     val canvasBackground: CanvasBackground = StudioDefaults.canvasBackground,
     val shortcuts: Map<ShortcutAction, Shortcut> = emptyMap(),

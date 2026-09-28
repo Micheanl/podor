@@ -11,6 +11,13 @@ import org.jetbrains.compose.resources.painterResource
 
 enum class Glyph(val resource: DrawableResource) {
     Brush(Res.drawable.ic_brush),
+    Sun(Res.drawable.ic_sun),
+    Moon(Res.drawable.ic_moon),
+    BrushSize(Res.drawable.ic_brushsize),
+    Opacity(Res.drawable.ic_opacity),
+    Stabilize(Res.drawable.ic_stabilize),
+    Deselect(Res.drawable.ic_deselect),
+
     Eraser(Res.drawable.ic_eraser),
     Picker(Res.drawable.ic_picker),
     Hand(Res.drawable.ic_hand),

@@ -30,11 +30,9 @@ fun ViewportControls(viewport: Viewport, fitLabel: String, onChange: (Viewport) 
                     color = StudioTheme.muted,
                 )
             }
-            DropdownMenu(
+            StudioDropdownMenu(
                 zoomExpanded,
                 { zoomExpanded = false },
-                shape = StudioTheme.menuShape,
-                containerColor = StudioTheme.panel,
             ) {
                 Column(Modifier.width(StudioTheme.quickControlsWidth).padding(16.dp)) {
                     LabeledSlider(
@@ -77,11 +75,9 @@ fun ViewportControls(viewport: Viewport, fitLabel: String, onChange: (Viewport) 
                     color = if (viewport.rotation == 0f) StudioTheme.muted else StudioTheme.accent,
                 )
             }
-            DropdownMenu(
+            StudioDropdownMenu(
                 expanded,
                 { expanded = false },
-                shape = StudioTheme.menuShape,
-                containerColor = StudioTheme.panel,
             ) {
                 Column(Modifier.width(StudioTheme.viewControlsWidth).padding(16.dp)) {
                     LabeledSlider(

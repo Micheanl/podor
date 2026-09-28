@@ -60,7 +60,7 @@ fun SettingsDialog(controller: StudioController, onDismiss: () -> Unit, updates:
                     .padding(6.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                ToolButton(Glyph.Globe, "语言", tab == 0) {
+                ToolButton(Glyph.Settings, "通用", tab == 0) {
                     tab = 0
                     recording = null
                 }
@@ -91,6 +91,21 @@ fun SettingsDialog(controller: StudioController, onDismiss: () -> Unit, updates:
                             controller.navigate(WorkspaceDestination.InstallUpdate(release, installer))
                         }
                         0 -> {
+                            SectionLabel("外观")
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Appearance.entries.forEach { appearance ->
+                                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                                        ToolButton(
+                                            if (appearance == Appearance.Dark) Glyph.Moon else Glyph.Sun,
+                                            appearance.label,
+                                            selected = controller.preferences.appearance == appearance,
+                                            plain = true,
+                                        ) {
+                                            controller.updatePreferences(controller.preferences.copy(appearance = appearance))
+                                        }
+                                    }
+                                }
+                            }
                             SectionLabel("语言")
                             Language.entries.forEach { language ->
                                 ChoiceSurface(

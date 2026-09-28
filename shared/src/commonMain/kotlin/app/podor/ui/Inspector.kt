@@ -97,18 +97,9 @@ fun Inspector(
                 }
             }
         }
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            StudioIcon(if (controller.hasUnsavedChanges) Glyph.Brush else Glyph.Check, StudioTheme.accent, Modifier.size(13.dp))
-            Text(
-                tr(if (controller.hasUnsavedChanges) "有未保存的改动" else controller.status),
-                Modifier.padding(start = 8.dp).weight(1f),
-                fontSize = 10.sp,
-                color = StudioTheme.muted,
-                maxLines = 1,
-            )
-        }
+        HintIcon(
+            if (controller.hasUnsavedChanges) Glyph.Brush else Glyph.Check,
+            if (controller.hasUnsavedChanges) "有未保存的改动" else controller.status,
+        )
     }
 }

@@ -31,7 +31,11 @@ fun StudioApp(
     windowControls: (@Composable () -> Unit)? = null,
     onTitleDragRegion: (Rect) -> Unit = {},
 ) {
-    PodorTheme(controller.preferences.language) {
+    PodorTheme(
+        controller.preferences.language,
+        controller.preferences.appearance,
+        androidx.compose.ui.graphics.Color(controller.brush.color),
+    ) {
         var panel by remember { mutableStateOf(StudioPanel.Brushes) }
         var showInspector by remember { mutableStateOf(false) }
         var inspectorExpanded by remember { mutableStateOf(false) }
@@ -320,7 +324,6 @@ fun StudioApp(
                                 }
                             CanvasFooter(
                                 controller,
-                                compact,
                                 Modifier.align(Alignment.BottomCenter),
                             )
                             if (!controller.ready)

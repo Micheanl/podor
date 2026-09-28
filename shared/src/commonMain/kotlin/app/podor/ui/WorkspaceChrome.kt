@@ -60,102 +60,29 @@ fun StudioHeader(
             }
             Box {
                 ToolButton(Glyph.Folder, "工程菜单") { menu = true }
-                DropdownMenu(
+                StudioDropdownMenu(
                     menu,
                     { menu = false },
-                    shape = StudioTheme.menuShape,
-                    containerColor = StudioTheme.panel,
                 ) {
-                    if (integrated && compact) {
-                        DropdownMenuItem(
-                            { Text(controller.shortcutLabel(ShortcutAction.Undo)) },
-                            {
-                                controller.command("undo")
-                                menu = false
-                            },
-                            enabled = controller.document.canUndo,
-                        )
-                        DropdownMenuItem(
-                            { Text(controller.shortcutLabel(ShortcutAction.Redo)) },
-                            {
-                                controller.command("redo")
-                                menu = false
-                            },
-                            enabled = controller.document.canRedo,
-                        )
+                    FlowRow(Modifier.width(192.dp).padding(8.dp), maxItemsInEachRow = 4) {
+                        ToolButton(Glyph.Plus, "新建画布", plain = true) { onDialog(StudioDialog.New); menu = false }
+                        ToolButton(Glyph.Folder, "打开工程 / 图片", plain = true) { onDialog(StudioDialog.Open); menu = false }
+                        ToolButton(Glyph.Save, "保存工程", plain = true) { controller.file(StudioController.FileAction.Save); menu = false }
+                        ToolButton(Glyph.Export, "导出图像", plain = true) { onDialog(StudioDialog.Export); menu = false }
+                        ToolButton(Glyph.Copy, "另存为", plain = true) { controller.file(StudioController.FileAction.SaveAs); menu = false }
+                        ToolButton(Glyph.Trash, "清空当前图层", enabled = controller.document.layers.none {
+                            it.id == controller.document.active && (it.locked || it.alphaLocked)
+                        }, plain = true) { onDialog(StudioDialog.Clear); menu = false }
+                        ToolButton(Glyph.Settings, "设置", plain = true) { onDialog(StudioDialog.Settings); menu = false }
+                        ToolButton(Glyph.Deselect, controller.shortcutLabel(ShortcutAction.Deselect),
+                            enabled = controller.document.selection != null, plain = true) { controller.clearSelection(); menu = false }
+                        if (integrated && compact) {
+                            ToolButton(Glyph.Undo, controller.shortcutLabel(ShortcutAction.Undo), enabled = controller.document.canUndo, plain = true) { controller.command("undo"); menu = false }
+                            ToolButton(Glyph.Redo, controller.shortcutLabel(ShortcutAction.Redo), enabled = controller.document.canRedo, plain = true) { controller.command("redo"); menu = false }
+                        }
+                        if (compact) ReferenceMenu(controller)
+                        if (compact && controller.clipboardAvailable) ClipboardMenu(controller)
                     }
-                    DropdownMenuItem(
-                        { Text(tr("新建画布")) },
-                        {
-                            onDialog(StudioDialog.New)
-                            menu = false
-                        },
-                        leadingIcon = { StudioIcon(Glyph.Plus) },
-                    )
-                    DropdownMenuItem(
-                        { Text(tr("打开工程 / 图片")) },
-                        {
-                            onDialog(StudioDialog.Open)
-                            menu = false
-                        },
-                        leadingIcon = { StudioIcon(Glyph.Folder) },
-                    )
-                    DropdownMenuItem(
-                        { Text(tr("保存工程")) },
-                        {
-                            controller.file(StudioController.FileAction.Save)
-                            menu = false
-                        },
-                        leadingIcon = { StudioIcon(Glyph.Save) },
-                    )
-                    DropdownMenuItem(
-                        { Text(tr("导出图像")) },
-                        {
-                            onDialog(StudioDialog.Export)
-                            menu = false
-                        },
-                        leadingIcon = { StudioIcon(Glyph.Export) },
-                    )
-                    DropdownMenuItem(
-                        { Text(tr("另存为")) },
-                        {
-                            controller.file(StudioController.FileAction.SaveAs)
-                            menu = false
-                        },
-                        leadingIcon = { StudioIcon(Glyph.Copy) },
-                    )
-                    HorizontalDivider(color = StudioTheme.border)
-                    if (compact) ReferenceMenuItems(controller) { menu = false }
-                    if (compact && controller.clipboardAvailable) {
-                        ClipboardMenuItems(controller) { menu = false }
-                        HorizontalDivider(color = StudioTheme.border)
-                    }
-                    DropdownMenuItem(
-                        { Text(tr("清空当前图层")) },
-                        {
-                            onDialog(StudioDialog.Clear)
-                            menu = false
-                        },
-                        enabled =
-                            controller.document.layers.none {
-                                it.id == controller.document.active && (it.locked || it.alphaLocked)
-                            },
-                    )
-                    DropdownMenuItem(
-                        { Text(tr("设置")) },
-                        {
-                            onDialog(StudioDialog.Settings)
-                            menu = false
-                        },
-                    )
-                    DropdownMenuItem(
-                        { Text(controller.shortcutLabel(ShortcutAction.Deselect)) },
-                        {
-                            controller.clearSelection()
-                            menu = false
-                        },
-                        enabled = controller.document.selection != null,
-                    )
                 }
             }
             ToolButton(Glyph.Home, "作品首页") { controller.home() }
@@ -258,31 +185,27 @@ fun StudioTools(controller: StudioController, compact: Boolean = false) {
             ToolButton(Glyph.More, "更多工具", controller.tool !in listOf(Tool.Brush, Tool.Eraser)) {
                 more = true
             }
-            DropdownMenu(
+            StudioDropdownMenu(
                 more,
                 { more = false },
-                containerColor = StudioTheme.panel,
-                shape = StudioTheme.menuShape,
             ) {
-                listOf(
-                        Tool.Select,
-                        Tool.Fill,
-                        Tool.Picker,
-                        Tool.Hand,
-                        Tool.MoveLayer,
-                        Tool.TransformLayer,
-                        Tool.Gradient,
-                        Tool.Smudge,
-                    )
-                    .forEach { tool ->
-                        DropdownMenuItem(
-                            { Text(tr(tool.label)) },
-                            {
-                                controller.tool = tool
-                                more = false
-                            },
-                        )
+                FlowRow(Modifier.width(192.dp).padding(8.dp), maxItemsInEachRow = 4) {
+                    listOf(
+                        Tool.Select to Glyph.Selection,
+                        Tool.Fill to Glyph.Fill,
+                        Tool.Picker to Glyph.Picker,
+                        Tool.Hand to Glyph.Hand,
+                        Tool.MoveLayer to Glyph.Move,
+                        Tool.TransformLayer to Glyph.Transform,
+                        Tool.Gradient to Glyph.Gradient,
+                        Tool.Smudge to Glyph.Smudge,
+                    ).forEach { (tool, glyph) ->
+                        ToolButton(glyph, tool.label, selected = controller.tool == tool, plain = true) {
+                            controller.tool = tool
+                            more = false
+                        }
                     }
+                }
             }
         }
     else {
@@ -386,7 +309,7 @@ private fun QuickToolButton(
 }
 
 @Composable
-fun CanvasFooter(controller: StudioController, compact: Boolean, modifier: Modifier = Modifier) {
+fun CanvasFooter(controller: StudioController, modifier: Modifier = Modifier) {
     val active = controller.document.layers.firstOrNull { it.id == controller.document.active }
     Row(
         modifier.fillMaxWidth().height(46.dp).padding(horizontal = 22.dp),
@@ -400,16 +323,7 @@ fun CanvasFooter(controller: StudioController, compact: Boolean, modifier: Modif
             )
             Spacer(Modifier.width(8.dp))
         }
-        Text(
-            if (compact) "${controller.document.width} × ${controller.document.height}"
-            else
-                "${tr(active?.name ?: "图层")} · ${tr(if (controller.tool == Tool.Select) controller.selectionKind.label else controller.tool.label)}",
-            fontSize = 10.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = StudioTheme.muted.copy(alpha = 0.8f),
-            modifier = Modifier.weight(1f),
-        )
+        Spacer(Modifier.weight(1f))
         CanvasBackgroundMenu(controller)
         ViewportControls(controller.viewport, controller.shortcutLabel(ShortcutAction.Fit)) {
             controller.viewport = it

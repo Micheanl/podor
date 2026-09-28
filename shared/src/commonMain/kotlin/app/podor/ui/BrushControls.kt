@@ -35,6 +35,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrushControls(controller: StudioController) {
     var editing by remember { mutableStateOf(false) }
@@ -113,6 +114,8 @@ fun BrushControls(controller: StudioController) {
                         controller.brush.size,
                         1f..256f,
                         "${controller.brush.size.roundToInt()} px",
+                        tint = Color(controller.brush.color),
+                        glyph = Glyph.BrushSize,
                     ) {
                         controller.brush = controller.brush.copy(size = it)
                     }
@@ -121,6 +124,8 @@ fun BrushControls(controller: StudioController) {
                         strength,
                         0.01f..1f,
                         "${(strength*100).roundToInt()}%",
+                        tint = Color(controller.brush.color),
+                        glyph = if (smudge) Glyph.Smudge else Glyph.Opacity,
                     ) {
                         if (smudge) controller.smudgeStrength = it
                         else controller.brush = controller.brush.copy(opacity = it)
@@ -129,8 +134,9 @@ fun BrushControls(controller: StudioController) {
                         "稳笔",
                         controller.brush.preset.stabilization,
                         0f..1f,
-                        if (controller.brush.preset.stabilization == 0f) tr("关闭")
-                        else "${(controller.brush.preset.stabilization * 100).roundToInt()}%",
+                        "${(controller.brush.preset.stabilization * 100).roundToInt()}%",
+                        tint = Color(controller.brush.color),
+                        glyph = Glyph.Stabilize,
                     ) {
                         controller.brush =
                             controller.brush.copy(
@@ -147,7 +153,7 @@ fun BrushControls(controller: StudioController) {
                     Box(Modifier.weight(1f)) {
                         SectionLabel("笔刷库", "${brushes.size}/${allBrushes.size}")
                     }
-                    ToolButton(Glyph.Search, "搜索笔刷", selected = searching) {
+                    ToolButton(Glyph.Search, "搜索笔刷", selected = searching, plain = true) {
                         searching = !searching
                         if (!searching) controller.brushLibraryQuery = ""
                     }
@@ -163,14 +169,13 @@ fun BrushControls(controller: StudioController) {
                             glyph(group),
                             group.label,
                             selected = group != BrushCollection.All,
+                            plain = true,
                         ) {
                             collections = !collections
                         }
-                        DropdownMenu(
+                        StudioDropdownMenu(
                             collections,
                             { collections = false },
-                            shape = StudioTheme.menuShape,
-                            containerColor = StudioTheme.panel,
                         ) {
                             BrushCollection.entries.forEach { collection ->
                                 DropdownMenuItem(
@@ -274,7 +279,9 @@ fun BrushControls(controller: StudioController) {
                 StudioIcon(Glyph.Hand, StudioTheme.muted, Modifier.size(18.dp))
                 Spacer(Modifier.width(10.dp))
                 Text(tr("手指绘画"), fontSize = 12.sp, modifier = Modifier.weight(1f))
-                Switch(controller.fingerDrawing, { controller.fingerDrawing = it })
+                CompositionLocalProvider(LocalRippleConfiguration provides null) {
+                    Switch(controller.fingerDrawing, { controller.fingerDrawing = it })
+                }
             }
         }
     }

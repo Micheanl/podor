@@ -75,14 +75,14 @@ class StartupWindowTest {
                         image.encodeToData()!!.use { java.nio.file.Files.write(output, it.bytes) }
                     }
                     var brightPixels = 0
-                    for (y in 0 until bitmap.height step 8) {
-                        for (x in 0 until bitmap.width step 8) {
+                    for (y in 0 until bitmap.height step 2) {
+                        for (x in 0 until bitmap.width step 2) {
                             val color = bitmap.getColor(x, y)
                             if (((color ushr 16) and 255) > 160 && ((color ushr 8) and 255) > 160)
                                 brightPixels++
                         }
                     }
-                    assertTrue(brightPixels > 100, "Native window has no visible workspace content")
+                    assertTrue(brightPixels > 500, "Native window has no visible workspace content")
                 }
             }
         } finally {

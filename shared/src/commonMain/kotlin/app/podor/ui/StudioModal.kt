@@ -63,7 +63,7 @@ fun StudioModal(
             if (it) 0f else 1f
         }
     val dismiss = { visible.targetState = false }
-    val rim = remember {
+    val rim = remember(StudioTheme.appearance) {
         Brush.linearGradient(
             listOf(
                 StudioTheme.surfaceRim,

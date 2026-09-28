@@ -67,7 +67,11 @@ fun WorkspaceHome(controller: StudioController, updates: UpdateController? = nul
                 }
             if (byName) filtered.sortedBy { it.reference.name.lowercase() } else filtered
         }
-    PodorTheme(controller.preferences.language) {
+    PodorTheme(
+        controller.preferences.language,
+        controller.preferences.appearance,
+        androidx.compose.ui.graphics.Color(controller.brush.color),
+    ) {
         Surface(Modifier.fillMaxSize(), color = StudioTheme.background) {
             BoxWithConstraints(
                 Modifier.fillMaxSize()
@@ -115,37 +119,11 @@ fun WorkspaceHome(controller: StudioController, updates: UpdateController? = nul
                             fontSize = 30.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
-                        if (narrow) {
-                            ToolButton(
-                                Glyph.Folder,
-                                "打开作品",
-                                enabled = controller.ready && !controller.busy,
-                            ) {
-                                controller.file(StudioController.FileAction.Open)
-                            }
-                            ToolButton(
-                                Glyph.Plus,
-                                "新建画布",
-                                prominent = true,
-                                enabled = controller.ready && !controller.busy,
-                            ) {
-                                dialog = StudioDialog.New
-                            }
-                        } else {
-                            ActionButton(
-                                "打开作品",
-                                { controller.file(StudioController.FileAction.Open) },
-                                enabled = controller.ready && !controller.busy,
-                                glyph = Glyph.Folder,
-                                primary = false,
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            ActionButton(
-                                "新建画布",
-                                { dialog = StudioDialog.New },
-                                enabled = controller.ready && !controller.busy,
-                                glyph = Glyph.Plus,
-                            )
+                        ToolButton(Glyph.Folder, "打开作品", plain = true, enabled = controller.ready && !controller.busy) {
+                            controller.file(StudioController.FileAction.Open)
+                        }
+                        ToolButton(Glyph.Plus, "新建画布", plain = true, enabled = controller.ready && !controller.busy) {
+                            dialog = StudioDialog.New
                         }
                     }
                     if (controller.hasCanvas) {
@@ -238,7 +216,6 @@ fun WorkspaceHome(controller: StudioController, updates: UpdateController? = nul
                             ProjectCard(controller, project, selected, select, previewHeight)
                         }
                     }
-                    Text(tr("作品仅在手动保存时写入文件"), fontSize = 11.sp, color = StudioTheme.muted)
                 }
                 StudioDialogs(controller, dialog, updates) { dialog = StudioDialog.None }
             }
@@ -293,11 +270,9 @@ private fun ProjectCard(
         ) {
             if (preview == null) StudioIcon(Glyph.Layers, StudioTheme.muted.copy(alpha = 0.4f))
             else ArtworkPreview(preview, project.width, project.height, Modifier.fillMaxSize())
-            DropdownMenu(
+            StudioDropdownMenu(
                 menu,
                 { menu = false },
-                shape = StudioTheme.menuShape,
-                containerColor = StudioTheme.panel,
             ) {
                 DropdownMenuItem(
                     { Text(tr("从列表移除")) },
@@ -315,7 +290,11 @@ private fun ProjectCard(
 @Composable
 fun UnsavedChangesDialog(controller: StudioController) {
     if (controller.pendingNavigation == null) return
-    PodorTheme(controller.preferences.language) {
+    PodorTheme(
+        controller.preferences.language,
+        controller.preferences.appearance,
+        androidx.compose.ui.graphics.Color(controller.brush.color),
+    ) {
         StudioModal("保存这份作品？", Glyph.Save, { controller.resolveUnsaved(UnsavedChoice.Cancel) }) {
             Text(controller.projectReference?.name ?: tr("未命名"), fontSize = 18.sp)
             Text(tr("未保存的改动会丢失。"), color = StudioTheme.muted, fontSize = 13.sp)

@@ -44,13 +44,14 @@ fun ToolButton(
     selected: Boolean = false,
     enabled: Boolean = true,
     prominent: Boolean = false,
+    plain: Boolean = false,
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     val translatedLabel = tr(label)
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
-    val header = LocalHeaderButtons.current
+    val header = LocalHeaderButtons.current || plain
     val shape = CircleShape
     val filled = selected || prominent
     val tint =
@@ -131,6 +132,8 @@ fun LabeledSlider(
     display: String,
     onChangeFinished: (() -> Unit)? = null,
     trackColors: List<Color>? = null,
+    tint: Color = LocalPaintColor.current,
+    glyph: Glyph? = null,
     onChange: (Float) -> Unit,
 ) {
     val translatedLabel = tr(label)
@@ -153,7 +156,8 @@ fun LabeledSlider(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(translatedLabel, fontSize = 12.sp, color = StudioTheme.muted)
+            if (glyph == null) Text(translatedLabel, fontSize = 12.sp, color = StudioTheme.muted)
+            else HintIcon(glyph, label)
             Text(
                 display,
                 modifier =
@@ -214,7 +218,7 @@ fun LabeledSlider(
                     )
                 else
                     ColorSliderThumb(
-                        StudioTheme.quickAccent,
+                        tint,
                         Modifier.size(StudioTheme.quickThumbSize).graphicsLayer {
                             scaleX = thumbScale.value
                             scaleY = thumbScale.value
@@ -237,7 +241,7 @@ fun LabeledSlider(
                         drawStopIndicator = null,
                         colors =
                             SliderDefaults.colors(
-                                activeTrackColor = StudioTheme.quickAccent,
+                                activeTrackColor = tint,
                                 inactiveTrackColor = StudioTheme.border,
                             ),
                     )
@@ -259,7 +263,7 @@ fun ColorSwatch(value: Long, selected: Boolean, onClick: () -> Unit) {
             .background(StudioTheme.background)
             .border(
                 if (selected) 2.dp else 1.dp,
-                if (selected) StudioTheme.accent else Color.White.copy(alpha = 0.08f),
+                if (selected) StudioTheme.accent else StudioTheme.controlBorder,
                 CircleShape,
             )
             .semantics {

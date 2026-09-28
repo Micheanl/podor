@@ -64,11 +64,9 @@ fun SelectionDock(controller: StudioController, modifier: Modifier = Modifier) {
             ) {
                 expanded = !expanded
             }
-            DropdownMenu(
+            StudioDropdownMenu(
                 expanded,
                 { expanded = false },
-                shape = StudioTheme.menuShape,
-                containerColor = StudioTheme.panel,
             ) {
                 SelectionMode.entries.forEach { mode ->
                     DropdownMenuItem(
@@ -111,11 +109,9 @@ private fun ColorSelectionOptions(controller: StudioController) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         ToolButton(Glyph.Adjustments, "魔棒设置", selected = expanded) { expanded = !expanded }
-        DropdownMenu(
+        StudioDropdownMenu(
             expanded,
             { expanded = false },
-            shape = StudioTheme.menuShape,
-            containerColor = StudioTheme.panel,
         ) {
             Column(
                 Modifier.width(StudioTheme.colorSelectionWidth)

@@ -220,6 +220,7 @@ class DrawingControlsTest {
                             Files.write(output, it.bytes)
                         }
                     }
+                    repeat(20) { dock.render(4_000_000_000L + it * 16_666_667L).close() }
                     assertFalse(dock.hasInvalidations())
                 }
             } finally {

@@ -37,7 +37,11 @@ fun PodorApp(
     onTitleDragRegion: (Rect) -> Unit = {},
     titleBar: @Composable (Boolean) -> Unit = {},
 ) {
-    CompositionLocalProvider(LocalLanguage provides controller.preferences.language) {
+    PodorTheme(
+        controller.preferences.language,
+        controller.preferences.appearance,
+        androidx.compose.ui.graphics.Color(controller.brush.color),
+    ) {
         val integrated = titleBarHeight > 0.dp && !controller.showWorkspace
         StudioLaunch(
             controller.ready,

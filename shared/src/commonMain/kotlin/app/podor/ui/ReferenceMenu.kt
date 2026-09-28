@@ -1,8 +1,10 @@
 package app.podor.ui
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import app.podor.presentation.StudioController
 
 @Composable
@@ -16,11 +18,9 @@ fun ReferenceMenu(controller: StudioController) {
         ) {
             expanded = true
         }
-        DropdownMenu(
+        StudioDropdownMenu(
             expanded,
             { expanded = false },
-            containerColor = StudioTheme.panel,
-            shape = StudioTheme.menuShape,
         ) {
             ReferenceMenuItems(controller) { expanded = false }
         }
@@ -30,33 +30,32 @@ fun ReferenceMenu(controller: StudioController) {
 @Composable
 fun ReferenceMenuItems(controller: StudioController, close: () -> Unit) {
     val references = controller.references
-    DropdownMenuItem(
-        { Text(tr("导入参考图")) },
-        {
+    Row(Modifier.padding(horizontal = 8.dp)) {
+        ToolButton(Glyph.ImportImage, "导入参考图", enabled = references.canAdd, plain = true) {
             references.load(false, controller.document)
             close()
-        },
-        enabled = references.canAdd,
-        leadingIcon = { StudioIcon(Glyph.ImportImage) },
-    )
-    DropdownMenuItem(
-        { Text(controller.shortcutLabel(app.podor.domain.ShortcutAction.PasteReference)) },
-        {
+        }
+        ToolButton(
+            Glyph.Clipboard,
+            controller.shortcutLabel(app.podor.domain.ShortcutAction.PasteReference),
+            enabled = references.canAdd && references.canPaste,
+            plain = true,
+        ) {
             references.load(true, controller.document)
             close()
-        },
-        enabled = references.canAdd && references.canPaste,
-        leadingIcon = { StudioIcon(Glyph.Clipboard) },
-    )
-    if (references.images.isNotEmpty()) {
-        DropdownMenuItem(
-            { Text(tr(if (references.visible) "收起参考图" else "显示参考图")) },
-            {
+        }
+        if (references.images.isNotEmpty()) {
+            ToolButton(
+                if (references.visible) Glyph.Hidden else Glyph.Eye,
+                if (references.visible) "收起参考图" else "显示参考图",
+                plain = true,
+            ) {
                 references.visible = !references.visible
                 close()
-            },
-            leadingIcon = { StudioIcon(if (references.visible) Glyph.Hidden else Glyph.Eye) },
-        )
+            }
+        }
+    }
+    if (references.images.isNotEmpty()) {
         HorizontalDivider(color = StudioTheme.border)
         references.images.forEach { reference ->
             DropdownMenuItem(

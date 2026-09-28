@@ -68,11 +68,9 @@ fun CanvasBackgroundMenu(controller: StudioController) {
         ToolButton(Glyph.AlphaLock, "画布背景", selected = background != CanvasBackground.White) {
             expanded = !expanded
         }
-        DropdownMenu(
+        StudioDropdownMenu(
             expanded,
             { expanded = false },
-            shape = StudioTheme.menuShape,
-            containerColor = StudioTheme.panel,
         ) {
             CanvasBackground.entries.forEach { mode ->
                 DropdownMenuItem(

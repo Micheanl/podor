@@ -64,7 +64,7 @@ fun NewCanvasDialog(controller: StudioController, onDismiss: () -> Unit) {
                     Box(
                         Modifier.size(previewWidth, previewHeight)
                             .shadow(12.dp, RoundedCornerShape(3.dp))
-                            .background(StudioTheme.text, RoundedCornerShape(3.dp))
+                            .background(StudioTheme.paperPreview, RoundedCornerShape(3.dp))
                     )
                 }
                 Row(

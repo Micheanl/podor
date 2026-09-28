@@ -109,6 +109,7 @@ fun QuickBrushControls(controller: StudioController, colorsOnly: Boolean = false
                 controller.brush.size,
                 StudioDefaults.minBrushSize..StudioDefaults.maxBrushSize,
                 "${controller.brush.size.roundToInt()} px",
+                tint = Color(controller.brush.color),
             ) {
                 controller.brush = controller.brush.copy(size = it)
             }
@@ -118,6 +119,7 @@ fun QuickBrushControls(controller: StudioController, colorsOnly: Boolean = false
                 strength,
                 0.01f..1f,
                 "${(strength * 100).roundToInt()}%",
+                tint = Color(controller.brush.color),
             ) {
                 if (smudge) controller.smudgeStrength = it
                 else controller.brush = controller.brush.copy(opacity = it)
@@ -174,6 +176,7 @@ private fun CapsuleSlider(
     range: ClosedFloatingPointRange<Float>,
     display: String,
     colors: List<Color>? = null,
+    tint: Color = LocalPaintColor.current,
     onChange: (Float) -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -189,15 +192,21 @@ private fun CapsuleSlider(
             .height(StudioTheme.quickControlHeight)
             .shadow(StudioTheme.quickShadow, CircleShape)
             .background(StudioTheme.panel, CircleShape)
+            .borderTrail(true, StudioTheme.quickTrailRadius)
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            description,
+        HintIcon(
+            when (label) {
+                "大小" -> Glyph.BrushSize
+                "不透明度" -> Glyph.Opacity
+                "涂抹强度" -> Glyph.Smudge
+                "色相" -> Glyph.Palette
+                "饱和度" -> Glyph.Gradient
+                else -> Glyph.Sun
+            },
+            label,
             Modifier.width(48.dp),
-            color = StudioTheme.muted,
-            fontSize = 10.sp,
-            maxLines = 1,
         )
         Slider(
             value,
@@ -222,7 +231,7 @@ private fun CapsuleSlider(
                         ),
                         thumb,
                     )
-                else ColorSliderThumb(StudioTheme.quickAccent, thumb)
+                else ColorSliderThumb(tint, thumb)
             },
             track = { state ->
                 Box(
@@ -241,7 +250,7 @@ private fun CapsuleSlider(
                                         .coerceIn(0f, 1f)
                                 )
                                 .fillMaxHeight()
-                                .background(StudioTheme.quickAccent)
+                                .background(tint)
                         )
                 }
             },
