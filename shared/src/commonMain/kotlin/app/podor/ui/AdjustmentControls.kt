@@ -2,6 +2,7 @@ package app.podor.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
@@ -9,6 +10,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.sp
 import app.podor.domain.*
 import app.podor.presentation.StudioController
@@ -36,6 +39,8 @@ fun AdjustmentControls(controller: StudioController) {
                 LabeledSlider("饱和度", settings.saturation, -1f..1f, settings.saturation.percent()) {
                     controller.updateAdjustment(settings.copy(saturation = it))
                 }
+            } else if (settings.kind == AdjustmentKind.Curves) {
+                CurvesControls(controller)
             } else {
                 LabeledSlider(
                     "半径",
@@ -112,6 +117,14 @@ fun AdjustmentControls(controller: StudioController) {
         primary = false,
         enabled = enabled,
     )
+    ActionButton(
+        "曲线",
+        { controller.prepareAdjustment(AdjustmentKind.Curves) },
+        modifier = Modifier.fillMaxWidth(),
+        glyph = Glyph.Curves,
+        primary = false,
+        enabled = enabled,
+    )
     HorizontalDivider(color = StudioTheme.border)
     Column {
         SectionLabel("填充设置")
@@ -133,8 +146,11 @@ private fun Float.percent() = (this * 100).roundToInt().toString()
 @Composable
 fun AdjustmentDock(controller: StudioController, modifier: Modifier = Modifier) {
     val preview = controller.adjustmentPreview ?: return
+    val focus = remember { FocusRequester() }
     Row(
         modifier
+            .focusRequester(focus)
+            .focusable()
             .clip(CircleShape)
             .background(StudioTheme.panel)
             .border(StudioTheme.selectionDockBorder, StudioTheme.border, CircleShape)
@@ -146,6 +162,7 @@ fun AdjustmentDock(controller: StudioController, modifier: Modifier = Modifier) 
             preview.comparing = !preview.comparing
         }
         ToolButton(Glyph.Rotate, "重置调整", enabled = !preview.committing) {
+            focus.requestFocus()
             preview.comparing = false
             controller.updateAdjustment(preview.initialSettings)
         }
@@ -156,7 +173,8 @@ fun AdjustmentDock(controller: StudioController, modifier: Modifier = Modifier) 
             Glyph.Check,
             "确认调整",
             prominent = true,
-            enabled = !preview.updating && preview.changed && !preview.committing,
+            enabled =
+                !preview.updating && preview.changed && !preview.committing && preview.inputValid,
         ) {
             controller.commitAdjustment()
         }

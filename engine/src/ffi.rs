@@ -42,6 +42,12 @@ pub fn dispatch(handle: u64, operation: u32, bytes: &[u8]) -> Result<Vec<u8>, St
     let mut map = engines().lock().map_err(|_| "引擎状态异常")?;
     let engine = map.get_mut(&handle).ok_or("画布已关闭")?;
     match operation {
+        17 => {
+            if !bytes.is_empty() {
+                return Err("曲线直方图请求无效".into());
+            }
+            Ok(engine.curve_histogram())
+        }
         16 => {
             if bytes.len() > MAX_COMMAND_BYTES {
                 return Err("命令过长".into());

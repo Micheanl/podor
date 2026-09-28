@@ -19,6 +19,7 @@ pub const MAX_SELECTION_OUTLINE_SEGMENTS: usize = 32_768;
 pub const MAX_SELECTION_OUTLINE_LENGTH: u64 = 65_536;
 pub const SELECTION_PREVIEW_TILE_SIZE: u32 = 512;
 pub const MAX_PALETTE_COLORS: usize = 24;
+pub const MAX_CURVE_POINTS: usize = 16;
 pub const MAX_COMMAND_BYTES: usize = 4096;
 pub const MAX_SELECTION_COMMAND_BYTES: usize = MAX_SELECTION_POINTS * 64 + 1024;
 pub const MAX_CLIPBOARD_BYTES: usize = MAX_PIXELS as usize * 4 + 1024 * 1024;

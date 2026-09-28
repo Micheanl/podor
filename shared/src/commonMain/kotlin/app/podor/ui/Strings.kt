@@ -25,6 +25,18 @@ fun trValue(value: String, language: Language): String {
 
 private val english =
     mapOf(
+        "曲线" to "Curves",
+        "曲线编辑器" to "Curve editor",
+        "曲线控制点无效" to "Invalid curve points",
+        "曲线直方图请求无效" to "Invalid histogram request",
+        "红色通道" to "Red channel",
+        "绿色通道" to "Green channel",
+        "蓝色通道" to "Blue channel",
+        "输入" to "Input",
+        "输出" to "Output",
+        "点击加点，拖动调整" to "Click to add, drag to adjust",
+        "删除控制点" to "Delete point",
+        "重置通道" to "Reset channel",
         "画布背景" to "Canvas background",
         "白色" to "White",
         "灰色" to "Gray",

@@ -4,6 +4,7 @@ mod blending;
 mod canvas;
 mod clipboard;
 mod color_selection;
+mod curves;
 mod dab;
 mod ffi;
 mod gradient;
@@ -914,6 +915,9 @@ impl Engine {
             &keys,
             self.transparent_frame,
         ))
+    }
+    pub fn curve_histogram(&self) -> Vec<u8> {
+        serde_json::to_vec(&curves::histogram(&self.document, self.selection.as_ref())).unwrap()
     }
     pub fn import_layer(&mut self, bytes: &[u8], name: &str) -> Result<(), String> {
         if self.stroke.is_some() {

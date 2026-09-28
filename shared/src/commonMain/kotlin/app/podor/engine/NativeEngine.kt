@@ -32,4 +32,5 @@ object EngineOperation {
     const val PALETTE = 14
     const val SELECTION_OUTLINE = 15
     const val ADJUSTMENT_PREVIEW = 16
+    const val CURVE_HISTOGRAM = 17
 }

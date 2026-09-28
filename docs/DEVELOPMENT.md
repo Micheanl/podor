@@ -28,6 +28,8 @@ MSI 在 `desktopApp/build/release/<版本>/main/msi/`。`:desktopApp:createDistr
 
 调整面板可预览明暗、对比度、饱和度和高斯模糊，交互参考 [GIMP 色彩调整](https://docs.gimp.org/3.0/en/gimp-tool-brightness-contrast.html)。底部提供原图对比、重置、取消和确认，Enter 应用，Esc 取消；预览时可平移、缩放画布。Rust 从原图共享未修改的图块，后台计算选区内效果并合成变化区域，不改动作品或历史。快速拖动合并为最新参数，持续拖动时仍显示已完成的预览；取消后返回的结果会丢弃。确认前核对图层与版本，应用记一次撤销，结果与预览一致。`adjustment-performance.txt` 记录大画布、混合图层下的更新和主线程响应，不代表实际显示帧率。
 
+曲线提供 RGB 总曲线及独立通道、直方图、拖点和 0–255 数值输入，交互参考 [GIMP 曲线](https://docs.gimp.org/3.0/en/gimp-tool-curves.html)。每通道最多 16 个点，使用 [PCHIP 分段三次插值](https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.PchipInterpolator.html)生成查找表，保留控制点、不越过相邻极值。先应用总曲线，再应用通道曲线；保留 Alpha，按选区覆盖率混合。直方图在进入调整时后台计算，按透明度和选区覆盖率加权，拖点时复用。
+
 画布旋转和镜像由 Compose 变换图块，`Viewport` 统一正反坐标换算，旋转后的可见范围由视口四角反算，保留图块裁剪。Windows 已检查 Direct3D 下 4096 × 4096 画布连续切换视图时复用原像素帧。
 
 Windows 指针消息在接收线程读取，再通过 AWT 交给 Compose 命中检测。笔和触摸共用输入队列，排队上限 64 批，每批最多 256 点，每轮最多派发 8 批；溢出或系统取消会撤回当前笔画。未添加轮询定时器，光栅化继续在后台执行。

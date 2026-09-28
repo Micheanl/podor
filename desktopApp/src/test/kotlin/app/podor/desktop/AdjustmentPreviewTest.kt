@@ -83,6 +83,40 @@ class AdjustmentPreviewTest {
             render().close()
         }
 
+        suspend fun number(x: Float, y: Float, value: String) {
+            click(x, y)
+            delay(20)
+            scene.sendKeyEvent(KeyEvent(Key.A, KeyEventType.KeyDown, isCtrlPressed = true))
+            scene.sendKeyEvent(KeyEvent(Key.A, KeyEventType.KeyUp, isCtrlPressed = true))
+            render().close()
+            delay(20)
+            for (digit in value) {
+                val typed =
+                    java.awt.event.KeyEvent(
+                        java.awt.Canvas(),
+                        java.awt.event.KeyEvent.KEY_TYPED,
+                        System.currentTimeMillis(),
+                        0,
+                        java.awt.event.KeyEvent.VK_UNDEFINED,
+                        digit,
+                    )
+                assertTrue(
+                    scene.sendKeyEvent(
+                        KeyEvent(
+                            Key.Unknown,
+                            KeyEventType.Unknown,
+                            codePoint = digit.code,
+                            nativeEvent = typed,
+                        )
+                    ),
+                    "Numeric input did not receive typed character",
+                )
+                render().close()
+                delay(20)
+            }
+            settle()
+        }
+
         fun pixel() = render().use { it.toComposeImageBitmap().toPixelMap()[520, 480] }
 
         fun capture(name: String) {
@@ -128,6 +162,123 @@ class AdjustmentPreviewTest {
             scope.cancel()
         }
     }
+
+    @Test
+    fun curveEditorAddsMovesDeletesAndResetsPointsWithoutChangingTheOriginalUntilConfirmed() =
+        runBlocking {
+            session {
+                val original = withContext(Dispatchers.Main) { pixel() }
+                val source = withContext(Dispatchers.Main) { controller.frame }
+                withContext(Dispatchers.Main) {
+                    click(1298f, 194f)
+                    click(1190f, 545f)
+                }
+                waitFor {
+                    controller.adjustmentPreview != null && !controller.adjustmentPreview!!.updating
+                }
+                withContext(Dispatchers.Main) {
+                    settle()
+                    capture("curves-neutral")
+                    assertEquals(original, pixel())
+                    assertFalse(controller.adjustmentPreview!!.changed)
+                    assertEquals(4, controller.adjustmentPreview!!.histogram.size)
+                    click(1192f, 450f)
+                }
+                waitFor { !controller.adjustmentPreview!!.updating }
+                withContext(Dispatchers.Main) {
+                    assertEquals(3, controller.adjustmentPreview!!.settings.curves.rgb.points.size)
+                    val before = controller.adjustmentPreview!!.settings.curves.rgb.points[1]
+                    key(Key.DirectionUp)
+                    assertEquals(
+                        before.y + 1,
+                        controller.adjustmentPreview!!.settings.curves.rgb.points[1].y,
+                    )
+                    scene.sendPointerEvent(PointerEventType.Press, Offset(1192f, 449f))
+                    scene.sendPointerEvent(PointerEventType.Move, Offset(1210f, 402f))
+                    scene.sendPointerEvent(PointerEventType.Release, Offset(1210f, 402f))
+                    settle()
+                }
+                waitFor { !controller.adjustmentPreview!!.updating }
+                withContext(Dispatchers.Main) {
+                    assertNotEquals(original, pixel())
+                    assertSame(source, controller.frame)
+                    assertFalse(controller.hasUnsavedChanges)
+                    number(1250f, 685f, "180")
+                    capture("curves-number")
+                    assertEquals(
+                        180,
+                        controller.adjustmentPreview!!.settings.curves.rgb.points[1].y,
+                    )
+                    click(1210f, 462f)
+                    capture("curves-preview")
+                    key(Key.Delete)
+                }
+                waitFor { !controller.adjustmentPreview!!.updating }
+                withContext(Dispatchers.Main) {
+                    assertEquals(ToneCurve(), controller.adjustmentPreview!!.settings.curves.rgb)
+                    assertEquals(original, pixel())
+                    number(1250f, 685f, "999")
+                    assertFalse(controller.adjustmentPreview!!.inputValid)
+                    key(Key.Enter)
+                    assertNotNull(controller.adjustmentPreview)
+                    click(497f, 817f)
+                }
+                waitFor { !controller.adjustmentPreview!!.updating }
+                withContext(Dispatchers.Main) {
+                    assertTrue(controller.adjustmentPreview!!.inputValid)
+                    assertEquals(ColorCurves(), controller.adjustmentPreview!!.settings.curves)
+                    click(1155f, 325f)
+                    click(1192f, 450f)
+                }
+                waitFor { !controller.adjustmentPreview!!.updating }
+                withContext(Dispatchers.Main) {
+                    assertEquals(3, controller.adjustmentPreview!!.settings.curves.red.points.size)
+                    assertEquals(ToneCurve(), controller.adjustmentPreview!!.settings.curves.rgb)
+                    controller.updatePreferences(
+                        controller.preferences.copy(language = Language.English)
+                    )
+                    settle()
+                    capture("curves-english")
+                    controller.adjustmentPreview!!.comparing = true
+                    settle()
+                    assertEquals(original, pixel())
+                    controller.adjustmentPreview!!.comparing = false
+                    settle()
+                    key(Key.Enter)
+                }
+                waitFor { controller.adjustmentPreview == null && !controller.busy }
+                withContext(Dispatchers.Main) {
+                    assertTrue(controller.hasUnsavedChanges)
+                    controller.command("undo")
+                }
+                waitFor { !controller.document.canUndo && !controller.busy }
+                withContext(Dispatchers.Main) {
+                    assertFalse(controller.hasUnsavedChanges)
+                    controller.prepareAdjustment(AdjustmentKind.Curves)
+                }
+                waitFor {
+                    controller.adjustmentPreview != null && !controller.adjustmentPreview!!.updating
+                }
+                withContext(Dispatchers.Main) {
+                    controller.updateAdjustment(
+                        controller.adjustmentPreview!!
+                            .settings
+                            .copy(
+                                curves =
+                                    ColorCurves(blue = ToneCurve().insert(CurvePoint(100, 200)))
+                            )
+                    )
+                    key(Key.Escape)
+                    controller.file(StudioController.FileAction.Save)
+                }
+                waitFor { files.saved != null && !controller.busy }
+                assertContentEquals(files.bytes, files.saved)
+                withContext(Dispatchers.Main) {
+                    settle()
+                    assertFalse(scene.hasInvalidations())
+                }
+            }
+        }
 
     @Test
     fun hiddenLockedLayerRemainsHiddenWhileItsDisplayPropertiesAreEdited() = runBlocking {

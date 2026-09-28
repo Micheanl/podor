@@ -14,6 +14,18 @@ import androidx.compose.ui.unit.sp
 import app.podor.domain.Language
 
 object StudioTheme {
+    val curveGap = 8.dp
+    val curveLabelSize = 11.sp
+    val curveInset = 12.dp
+    val curveHitRadius = 14.dp
+    val curvePointRadius = 4.dp
+    val curveLine = 1.5.dp
+    val curveGuideDash = 4.dp
+    val curveScaleHeight = 3.dp
+    const val curveHistogramHeight = 0.65f
+    val curveRed = Color(0xFFE995A1)
+    val curveGreen = Color(0xFF92C9AE)
+    val curveBlue = Color(0xFF91B3EA)
     val brushLibraryGap = 8.dp
     val brushLibraryCaptionSize = 11.sp
     val brushLibraryFavoriteSize = 30.dp

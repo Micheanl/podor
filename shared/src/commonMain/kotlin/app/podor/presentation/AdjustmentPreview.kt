@@ -9,6 +9,7 @@ class AdjustmentPreview(
     val initialSettings: AdjustmentSettings,
     val previousTool: Tool,
     val original: RenderFrame,
+    val histogram: List<List<Float>> = emptyList(),
 ) {
     var settings by mutableStateOf(initialSettings)
         internal set
@@ -23,6 +24,7 @@ class AdjustmentPreview(
         internal set
 
     var comparing by mutableStateOf(false)
+    var inputValid by mutableStateOf(true)
 
     var committing by mutableStateOf(false)
         internal set

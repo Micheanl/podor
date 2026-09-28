@@ -509,6 +509,14 @@ class StudioController(
                                 is Action.PrepareAdjustment -> {
                                     finishDrawing()
                                     publishFrame()
+                                    val histogram =
+                                        if (action.kind == AdjustmentKind.Curves)
+                                            Json.decodeFromString<List<List<Float>>>(
+                                                engine
+                                                    .call(EngineOperation.CURVE_HISTOGRAM)
+                                                    .decodeToString()
+                                            )
+                                        else emptyList()
                                     withContext(Dispatchers.Main) {
                                         val active = info.layers.first { it.id == info.active }
                                         check(
@@ -537,6 +545,7 @@ class StudioController(
                                                 },
                                                 action.previousTool,
                                                 frame,
+                                                histogram,
                                             )
                                     }
                                 }
@@ -1200,7 +1209,15 @@ class StudioController(
 
     fun commitAdjustment() {
         val preview = adjustmentPreview ?: return
-        if (!ready || busy || preview.updating || !preview.changed || preview.committing) return
+        if (
+            !ready ||
+                busy ||
+                preview.updating ||
+                !preview.changed ||
+                preview.committing ||
+                !preview.inputValid
+        )
+            return
         preview.committing = true
         busy = true
         scope.launch { actions.send(Action.ApplyAdjustment(preview, preview.settings)) }

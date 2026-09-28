@@ -1,13 +1,17 @@
 package app.podor.desktop
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
+import androidx.compose.ui.unit.dp
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
 import app.podor.domain.*
 import app.podor.engine.*
 import app.podor.presentation.StudioController
-import app.podor.ui.StudioApp
+import app.podor.ui.*
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
@@ -73,7 +77,22 @@ class AdjustmentPerformanceTest {
                             isUndecorated = true
                             focusableWindowState = false
                             setBounds(-3400, -2200, 1360, 900)
-                            setContent { StudioApp(controller) }
+                            setContent {
+                                PodorTheme {
+                                    Row(Modifier.fillMaxSize().background(StudioTheme.background)) {
+                                        CanvasWorkspace(
+                                            controller,
+                                            Modifier.weight(1f).fillMaxHeight(),
+                                        )
+                                        Inspector(
+                                            controller,
+                                            StudioPanel.Adjustments,
+                                            {},
+                                            Modifier.width(300.dp).fillMaxHeight(),
+                                        )
+                                    }
+                                }
+                            }
                             isVisible = true
                         }
                     }
@@ -117,6 +136,14 @@ class AdjustmentPerformanceTest {
                                             blend =
                                                 LayerBlendMode.entries[
                                                         index % LayerBlendMode.entries.size],
+                                            curves =
+                                                ColorCurves(
+                                                    rgb =
+                                                        ToneCurve()
+                                                            .insert(
+                                                                CurvePoint(128, 40 + index % 160)
+                                                            )
+                                                ),
                                         )
                                     )
                                 }
@@ -128,6 +155,10 @@ class AdjustmentPerformanceTest {
                                         sigma = 14f,
                                         opacity = 0.45f,
                                         blend = LayerBlendMode.Multiply,
+                                        curves =
+                                            ColorCurves(
+                                                rgb = ToneCurve().insert(CurvePoint(128, 175))
+                                            ),
                                     )
                                     .also(controller::updateAdjustment)
                             }
@@ -145,7 +176,7 @@ class AdjustmentPerformanceTest {
                             assertFalse(controller.hasUnsavedChanges)
                             assertFalse(controller.document.canUndo)
                         }
-                        if (kind == AdjustmentKind.Tone || kind == AdjustmentKind.LayerBlend) {
+                        if (kind != AdjustmentKind.Blur) {
                             val received = mutableSetOf<AdjustmentSettings>()
                             intermediateFrames[kind] = received
                             repeat(90) { index ->
@@ -158,6 +189,12 @@ class AdjustmentPerformanceTest {
                                         expected.copy(
                                             brightness = 0.05f + index / 120f,
                                             opacity = 0.1f + index / 120f,
+                                            curves =
+                                                ColorCurves(
+                                                    rgb =
+                                                        ToneCurve()
+                                                            .insert(CurvePoint(128, 80 + index))
+                                                ),
                                         )
                                     )
                                 }

@@ -8,9 +8,10 @@ pub enum AdjustmentKind {
     Tone,
     Blur,
     LayerBlend,
+    Curves,
 }
 
-#[derive(Clone, Copy, Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct AdjustmentSettings {
     pub kind: AdjustmentKind,
     pub brightness: f32,
@@ -21,6 +22,8 @@ pub struct AdjustmentSettings {
     pub opacity: f32,
     #[serde(default)]
     pub blend: BlendMode,
+    #[serde(default)]
+    pub curves: crate::curves::Curves,
 }
 
 fn default_opacity() -> f32 {
@@ -59,6 +62,9 @@ pub fn prepare(
     let region = selection.map_or(bounds, Selection::bounds);
     let settings = request.settings;
     match settings.kind {
+        AdjustmentKind::Curves => {
+            crate::curves::apply(document.active_mut(), region, selection, &settings.curves)?
+        }
         AdjustmentKind::Tone => adjustments::tone(
             document.active_mut(),
             region,
