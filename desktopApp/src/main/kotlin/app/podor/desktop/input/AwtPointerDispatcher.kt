@@ -76,6 +76,7 @@ internal class AwtPointerDispatcher(private val window: Window) : AutoCloseable 
                     frame.points.map { PenSample(Offset(it.x - x, it.y - y), it.pressure) },
                     frame.eraser,
                     frame.phase == PointerPhase.Cancel,
+                    frame.barrel,
                 )
             else null
         fun send(

@@ -3,7 +3,8 @@ package app.podor.desktop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.graphics.Color
-import app.podor.desktop.input.WindowsPointerInput
+import app.podor.desktop.input.TabletInput
+import app.podor.domain.TabletInputMode
 import app.podor.ui.StudioTheme
 import com.sun.jna.Callback
 import com.sun.jna.Memory
@@ -114,7 +115,7 @@ internal object WindowHit {
     }
 }
 
-internal class NativeWindowChrome(window: Window) : AutoCloseable {
+internal class NativeWindowChrome(window: Window, mode: TabletInputMode = TabletInputMode.WindowsInk) : AutoCloseable {
     private val user = Native.load("user32", WindowApi::class.java)
     private val handle = Native.getWindowPointer(window)
     private val originalProcedure = user.GetWindowLongPtrW(handle, -4)
@@ -123,7 +124,7 @@ internal class NativeWindowChrome(window: Window) : AutoCloseable {
     private val point = Memory(8)
     private val monitor = Memory(40)
     private val children = mutableMapOf<Pointer, Pair<Pointer, WindowProcedure>>()
-    private val penInput = WindowsPointerInput(window, user)
+    private val penInput = TabletInput(window, user, mode)
     private val procedure =
         object : WindowProcedure {
             override fun invoke(
@@ -132,7 +133,7 @@ internal class NativeWindowChrome(window: Window) : AutoCloseable {
                 wParam: Long,
                 lParam: Long,
             ): Long {
-                if (penInput.message(message, wParam)) return 0L
+                if (penInput.message(message, wParam, lParam)) return 0L
                 when (message) {
                     0x0083 -> return 0L
                     0x0084 -> {
@@ -219,7 +220,7 @@ internal class NativeWindowChrome(window: Window) : AutoCloseable {
                                 wParam: Long,
                                 lParam: Long,
                             ): Long {
-                                if (penInput.message(message, wParam)) return 0L
+                                if (penInput.message(message, wParam, lParam)) return 0L
                                 if (message == 0x0084) {
                                     val target = hit(lParam)
                                     if (target != null && target != WindowHit.CLIENT) return -1L
@@ -255,11 +256,11 @@ internal class NativeWindowChrome(window: Window) : AutoCloseable {
 }
 
 @Composable
-fun WindowsChrome(window: Window) {
-    DisposableEffect(window) {
+fun WindowsChrome(window: Window, mode: TabletInputMode = TabletInputMode.WindowsInk) {
+    DisposableEffect(window, mode) {
         var chrome: NativeWindowChrome? = null
         fun install() {
-            if (chrome == null) chrome = NativeWindowChrome(window)
+            if (chrome == null) chrome = NativeWindowChrome(window, mode)
             chrome.attachChildren()
         }
         val listener =

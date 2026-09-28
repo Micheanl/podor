@@ -14,6 +14,10 @@ import androidx.compose.ui.unit.sp
 import app.podor.domain.Language
 
 object StudioTheme {
+    val buttonRimWidth = 2.dp
+    val buttonGradient = listOf(Color(0xFFE993AF), Color(0xFFE8B773), Color(0xFF84CDBA), Color(0xFF829BE4), Color(0xFFBA91DC), Color(0xFFE993AF))
+    const val buttonSecondaryRimAlpha = 0.45f
+    const val buttonDisabledAlpha = 0.35f
     val referenceHandle = 7.dp
     val referenceHitRadius = 12.dp
     val referenceOutline = 1.dp
@@ -188,6 +192,7 @@ object StudioTheme {
 }
 
 object StudioMotion {
+    const val buttonGradientMillis = 1100
     const val pressMillis = 90
     const val feedbackMillis = 160
     const val releaseMillis = 220

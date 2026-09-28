@@ -10,6 +10,13 @@ enum class Language {
 }
 
 @Serializable
+enum class TabletInputMode(val label: String) {
+    Automatic("自动选择"),
+    WindowsInk("Windows Ink"),
+    WinTab("WinTab"),
+}
+
+@Serializable
 data class BrushPack(
     val id: String,
     val name: String,
@@ -88,6 +95,7 @@ enum class ShortcutAction(val label: String, val default: Shortcut) {
 
 @Serializable
 data class Preferences(
+    val tabletInputMode: TabletInputMode = TabletInputMode.Automatic,
     val language: Language = Language.Chinese,
     val startupScreen: StartupScreen = StartupScreen.Workspace,
     val canvasBackground: CanvasBackground = StudioDefaults.canvasBackground,

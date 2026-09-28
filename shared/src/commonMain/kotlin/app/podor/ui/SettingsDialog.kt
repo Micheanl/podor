@@ -128,6 +128,21 @@ fun SettingsDialog(controller: StudioController, onDismiss: () -> Unit, updates:
                                     }
                                 }
                             }
+                            SectionLabel("数位板输入")
+                            TabletInputMode.entries.forEach { mode ->
+                                ChoiceSurface(
+                                    controller.preferences.tabletInputMode == mode,
+                                    { controller.updatePreferences(controller.preferences.copy(tabletInputMode = mode)) },
+                                    Modifier.fillMaxWidth(),
+                                ) {
+                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(tr(mode.label), Modifier.weight(1f), fontSize = 13.sp)
+                                        if (controller.preferences.tabletInputMode == mode) StudioIcon(Glyph.Check, StudioTheme.accent)
+                                    }
+                                }
+                            }
+                            Text(tr("自动优先使用 WinTab，驱动不可用时使用 Windows Ink。笔侧键按住落笔取色。"),
+                                fontSize = 12.sp, color = StudioTheme.muted)
                         }
                         1 -> {
                             ShortcutAction.entries.forEach { action ->

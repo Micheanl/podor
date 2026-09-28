@@ -8,6 +8,7 @@ data class PenInput(
     val samples: List<PenSample>,
     val eraser: Boolean,
     val cancelled: Boolean = false,
+    val barrel: Boolean = false,
 )
 
 interface PenEvent {

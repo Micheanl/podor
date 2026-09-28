@@ -3,7 +3,6 @@ package app.podor.ui
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.hoverable
@@ -125,22 +124,17 @@ fun ActionButton(
             onClick,
             modifier
                 .heightIn(min = StudioTheme.controlSize)
-                .controlFeedback(interaction, CircleShape, enabled),
+                .controlFeedback(interaction, CircleShape, enabled)
+                .gradientButtonSurface(interaction, primary, enabled, alwaysVisible = true),
             enabled = enabled,
             interactionSource = interaction,
             shape = CircleShape,
-            border =
-                BorderStroke(
-                    1.dp,
-                    if (enabled && primary) StudioTheme.selectionBorder.copy(alpha = 0.6f)
-                    else StudioTheme.border,
-                ),
             elevation = null,
             colors =
                 ButtonDefaults.buttonColors(
-                    containerColor = if (primary) StudioTheme.selection else StudioTheme.elevated,
+                    containerColor = Color.Transparent,
                     contentColor = if (primary) StudioTheme.onSelection else StudioTheme.text,
-                    disabledContainerColor = StudioTheme.elevated.copy(alpha = 0.5f),
+                    disabledContainerColor = Color.Transparent,
                     disabledContentColor = StudioTheme.muted.copy(alpha = 0.4f),
                 ),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),

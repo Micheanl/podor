@@ -56,7 +56,7 @@ fun main() {
             state = windowState,
             undecorated = customChrome,
         ) {
-            if (customChrome) WindowsChrome(window)
+            if (customChrome) WindowsChrome(window, controller.preferences.tabletInputMode)
             SideEffect {
                 windowRef = window
                 window.minimumSize =

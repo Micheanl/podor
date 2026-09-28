@@ -19,7 +19,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -64,11 +63,6 @@ fun ToolButton(
                 },
             )
     }
-    val selectionAlpha =
-        animateFloatAsState(
-            if (filled) 1f else 0f,
-            tween(StudioMotion.feedbackMillis, easing = StudioMotion.easing),
-        )
     val tint =
         animateColorAsState(
             when {
@@ -99,13 +93,7 @@ fun ToolButton(
                     onClick = onClick,
                 )
                 .controlFeedback(interaction, CircleShape, enabled)
-                .drawBehind { drawRect(StudioTheme.selection, alpha = selectionAlpha.value) }
-                .border(
-                    1.dp,
-                    if (filled) StudioTheme.selectionBorder.copy(alpha = 0.55f)
-                    else Color.Transparent,
-                    CircleShape,
-                )
+                .gradientButtonSurface(interaction, filled, enabled)
                 .semantics {
                     contentDescription = translatedLabel
                     this.selected = selected

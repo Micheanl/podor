@@ -226,7 +226,7 @@ fun CanvasWorkspace(
                         val pressure =
                             (pen?.samples?.lastOrNull()?.pressure
                                     ?: if (mouse) 1f else primary.pressure)
-                                .coerceIn(0.05f, 1f)
+                                .coerceIn(0f, 1f)
                         fun samples(): List<Triple<Float, Float, Float>> = buildList {
                             if (touch != null) {
                                 for (sample in touch.samples) {
@@ -250,7 +250,7 @@ fun CanvasWorkspace(
                                         Triple(
                                             point.x,
                                             point.y,
-                                            sample.pressure.coerceIn(0.05f, 1f),
+                                            sample.pressure.coerceIn(0f, 1f),
                                         )
                                     )
                                 }
@@ -274,7 +274,7 @@ fun CanvasWorkspace(
                             }
                         }
                         cursor =
-                            if (mouse && event.type != PointerEventType.Exit) position else null
+                            if ((mouse || pen != null) && event.type != PointerEventType.Exit) position else null
                         if (event.type == PointerEventType.Scroll) {
                             if (
                                 drawing ||
@@ -429,6 +429,18 @@ fun CanvasWorkspace(
                             continue
                         }
                         if (gesture) continue
+                        if (pen?.barrel == true && !drawing && primary.pressed && !primary.previousPressed) {
+                            val picked = controller.viewport.toDocument(position, viewSize, controller.document)
+                            if (picked.x >= 0 && picked.y >= 0 && picked.x < controller.document.width && picked.y < controller.document.height) {
+                                controller.command("pick") {
+                                    put("x", picked.x.toInt())
+                                    put("y", picked.y.toInt())
+                                }
+                            }
+                            gesture = true
+                            primary.consume()
+                            continue
+                        }
                         if (controller.tool == Tool.Gradient) {
                             if (
                                 (primary.type == PointerType.Touch || touch != null) &&
@@ -649,7 +661,7 @@ fun CanvasWorkspace(
                         } else if (
                             drawing &&
                                 primary.id == activePointer &&
-                                (position != primary.previousPosition ||
+                                (pen != null || position != primary.previousPosition ||
                                     (pen?.samples?.size ?: touch?.samples?.size ?: 0) > 1)
                         ) {
                             controller.points(samples())

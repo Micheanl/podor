@@ -25,6 +25,9 @@ fun trValue(value: String, language: Language): String {
 
 private val english =
     mapOf(
+        "数位板输入" to "Tablet input",
+        "自动选择" to "Automatic",
+        "自动优先使用 WinTab，驱动不可用时使用 Windows Ink。笔侧键按住落笔取色。" to "Automatic prefers WinTab and falls back to Windows Ink when unavailable. Hold the pen side button and tap to pick a color.",
         "参考图" to "References",
         "导入参考图" to "Import reference",
         "粘贴参考图" to "Paste reference",

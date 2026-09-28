@@ -12,6 +12,8 @@ internal class WindowsPointerInput(
     window: Window,
     private val user: WindowApi,
     private val api: WindowsPointerApi = Native.load("user32", WindowsPointerApi::class.java),
+    private val acceptPen: Boolean = true,
+    private val externalPenInRange: () -> Boolean = { false },
 ) : AutoCloseable {
     private val handle = Native.getWindowPointer(window)
     private val dispatcher = AwtPointerDispatcher(window)
@@ -59,7 +61,7 @@ internal class WindowsPointerInput(
         if (type.value == WindowsPointer.TOUCH) {
             if (message == WindowsPointer.DOWN) {
                 suppressedTouches.remove(id)
-                if (penInRange) suppressedTouches.add(id)
+                if (penInRange || externalPenInRange()) suppressedTouches.add(id)
             }
             val suppressed = id in suppressedTouches
             if (message == WindowsPointer.UP || message == WindowsPointer.LEAVE)
@@ -111,6 +113,7 @@ internal class WindowsPointerInput(
             return true
         }
         if (type.value != WindowsPointer.PEN) return false
+        if (!acceptPen) return true
         when (message) {
             WindowsPointer.DOWN,
             WindowsPointer.UP,
@@ -177,6 +180,7 @@ internal class WindowsPointerInput(
                 samples,
                 info.flags and (WindowsPointer.PEN_ERASER or WindowsPointer.PEN_INVERTED) != 0,
                 modifiers(),
+                barrel = info.flags and 1 != 0,
             )
         if (phase == PointerPhase.Down || phase == PointerPhase.Move) active = frame
         if (phase == PointerPhase.Up) active = null
@@ -195,7 +199,7 @@ internal class WindowsPointerInput(
         penInRange = false
     }
 
-    private fun cancelTouch() {
+    fun cancelTouch() {
         suppressedTouches.addAll(touch.ids)
         touch.cancel()
     }

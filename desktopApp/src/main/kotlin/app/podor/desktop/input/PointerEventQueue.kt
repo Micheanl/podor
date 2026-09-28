@@ -29,6 +29,7 @@ internal data class WindowPointerFrame(
     val modifiers: Int = 0,
     val time: Long = System.currentTimeMillis(),
     val touch: WindowTouchState? = null,
+    val barrel: Boolean = false,
 )
 
 internal class PointerEventQueue {
@@ -54,6 +55,8 @@ internal class PointerEventQueue {
             sameSource &&
                 last?.id == frame.id &&
                 last.eraser == frame.eraser &&
+                last.barrel == frame.barrel &&
+                last.modifiers == frame.modifiers &&
                 last.phase == frame.phase
         ) {
             if (frame.phase == PointerPhase.Hover) {

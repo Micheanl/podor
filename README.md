@@ -37,6 +37,8 @@ podor 是一款绘画与图像编辑软件，用 Rust 处理笔触和像素，�
 
 当前提供 Windows x64 安装包。其他平台仍需设备验证。PSD 支持 8 位 RGB 像素图层，颜色按 sRGB 读取；图层组、蒙版、特效和 ICC 色彩管理尚未支持。
 
+Wacom 可在设置中切换 WinTab / Windows Ink，支持压感、笔尾橡皮擦和侧键取色。自动模式优先使用 WinTab，驱动不可用时回退 Windows Ink。各型号仍需实机验证，倾斜与触控环暂未接入。
+
 ### 从源码运行
 
 准备 JDK 25、Rust stable 和平台 C++ 工具链，运行：
