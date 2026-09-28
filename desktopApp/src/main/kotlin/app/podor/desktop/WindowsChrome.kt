@@ -13,6 +13,7 @@ import com.sun.jna.Native
 import com.sun.jna.Pointer
 import com.sun.jna.ptr.IntByReference
 import com.sun.jna.win32.StdCallLibrary
+import java.awt.EventQueue
 import java.awt.Window
 import java.awt.event.WindowAdapter
 import java.awt.event.WindowEvent
@@ -280,18 +281,27 @@ fun WindowsChrome(
     val hit = rememberUpdatedState(captionHit)
     DisposableEffect(window, mode) {
         var chrome: NativeWindowChrome? = null
+        var disposed = false
         fun install() {
-            if (chrome == null)
-                chrome = NativeWindowChrome(window, mode) { x, y -> hit.value(x, y) }
-            chrome.attachChildren()
+            EventQueue.invokeLater {
+                if (!disposed && window.isShowing) {
+                    if (chrome == null)
+                        chrome = NativeWindowChrome(window, mode) { x, y -> hit.value(x, y) }
+                    chrome?.attachChildren()
+                    window.invalidate()
+                    window.validate()
+                    window.repaint()
+                }
+            }
         }
         val listener =
             object : WindowAdapter() {
                 override fun windowOpened(event: WindowEvent) = install()
             }
         window.addWindowListener(listener)
-        if (window.isDisplayable) install()
+        if (window.isShowing) install()
         onDispose {
+            disposed = true
             window.removeWindowListener(listener)
             chrome?.close()
         }
