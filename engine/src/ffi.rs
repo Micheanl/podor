@@ -42,6 +42,16 @@ pub fn dispatch(handle: u64, operation: u32, bytes: &[u8]) -> Result<Vec<u8>, St
     let mut map = engines().lock().map_err(|_| "引擎状态异常")?;
     let engine = map.get_mut(&handle).ok_or("画布已关闭")?;
     match operation {
+        14 => {
+            let [count] = bytes else {
+                return Err("色卡数量无效".into());
+            };
+            Ok(engine
+                .extract_palette(usize::from(*count))?
+                .into_iter()
+                .flatten()
+                .collect())
+        }
         13 => Ok(engine.selection_frame()),
         0 => {
             if bytes.len() > MAX_SELECTION_COMMAND_BYTES {

@@ -14,6 +14,7 @@ pub const MAX_STROKE_CACHE_BYTES: usize = 4 * 1024 * 1024;
 pub const MAX_SMUDGE_CACHE_BYTES: usize = 2 * 1024 * 1024;
 pub const MAX_RESAMPLE_CACHE_BYTES: usize = 4 * 1024 * 1024;
 pub const MAX_SELECTION_POINTS: usize = 4096;
+pub const MAX_PALETTE_COLORS: usize = 24;
 pub const MAX_COMMAND_BYTES: usize = 4096;
 pub const MAX_SELECTION_COMMAND_BYTES: usize = MAX_SELECTION_POINTS * 64 + 1024;
 pub const MAX_CLIPBOARD_BYTES: usize = MAX_PIXELS as usize * 4 + 1024 * 1024;

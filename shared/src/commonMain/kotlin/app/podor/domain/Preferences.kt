@@ -90,6 +90,7 @@ data class Preferences(
     val shortcuts: Map<ShortcutAction, Shortcut> = emptyMap(),
     val plugins: List<BrushPack> = emptyList(),
     val brushes: List<BrushPreset> = emptyList(),
+    val palette: List<Long> = emptyList(),
 ) {
     fun shortcut(action: ShortcutAction) = shortcuts[action] ?: action.default
 
@@ -120,7 +121,10 @@ data class Preferences(
     }
 
     fun valid() =
-        plugins.size <= 16 &&
+        palette.size <= StudioDefaults.maxPaletteColors &&
+            palette.distinct().size == palette.size &&
+            palette.all { it in 0xFF000000L..0xFFFFFFFFL } &&
+            plugins.size <= 16 &&
             plugins.all { it.valid() } &&
             plugins.map { it.id }.distinct().size == plugins.size &&
             brushes.size <= 64 &&

@@ -89,6 +89,7 @@ fun ColorControls(controller: StudioController) {
         )
         Box(Modifier.size(22.dp).clip(CircleShape).background(Color(color)))
     }
+    PersonalPalette(controller, color, ::changeColor)
     SectionLabel("工作室色卡", "${StudioDefaults.palette.size}")
     StudioDefaults.palette.chunked(6).forEach { row ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

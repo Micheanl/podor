@@ -14,6 +14,12 @@ import androidx.compose.ui.unit.sp
 import app.podor.domain.Language
 
 object StudioTheme {
+    val paletteShape = RoundedCornerShape(16.dp)
+    val palettePadding = 8.dp
+    val paletteGap = 8.dp
+    val paletteLabelSize = 12.sp
+    val paletteSwatchSize = 36.dp
+    val paletteProgressWidth = 2.dp
     val symmetryControlsWidth = 280.dp
     val symmetryGuideWidth = 1.dp
     val symmetryGuideHalo = 3.dp

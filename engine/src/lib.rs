@@ -12,6 +12,7 @@ mod jni_bridge;
 mod layers;
 pub mod model;
 mod openraster;
+mod palette;
 mod previews;
 mod psd;
 mod raster;
@@ -867,6 +868,12 @@ impl Engine {
     }
     pub fn thumbnail(&self) -> Vec<u8> {
         previews::thumbnail(&self.document)
+    }
+    pub fn extract_palette(&self, count: usize) -> Result<Vec<[u8; 3]>, String> {
+        if self.stroke.is_some() {
+            return Err("请先结束笔画".into());
+        }
+        palette::extract(&self.document, count)
     }
     pub fn previews(&mut self) -> Result<Vec<u8>, String> {
         if self

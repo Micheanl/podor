@@ -187,6 +187,9 @@ data class BrushSettings(
 data class CanvasPreset(val label: String, val width: Int, val height: Int)
 
 object StudioDefaults {
+    const val extractedPaletteSize = 12
+    const val maxPaletteColors = 24
+    const val paletteColumns = 6
     val symmetryMode = SymmetryMode.Off
     const val symmetryAxis = 0.5f
     const val symmetryGuides = true

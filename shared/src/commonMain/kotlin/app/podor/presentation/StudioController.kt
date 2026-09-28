@@ -70,6 +70,9 @@ class StudioController(
     var preferences by mutableStateOf(Preferences())
         private set
 
+    var extractingPalette by mutableStateOf(false)
+        private set
+
     val brushes: List<BrushPreset> by derivedStateOf {
         BrushPreset.entries +
             preferences.brushes +
@@ -142,6 +145,8 @@ class StudioController(
         data class Export(val options: ExportOptions) : Action
 
         data class Clipboard(val kind: ClipboardAction) : Action
+
+        data object ExtractPalette : Action
 
         data object Frame : Action
 
@@ -403,6 +408,29 @@ class StudioController(
                     for (action in actions) {
                         try {
                             when (action) {
+                                Action.ExtractPalette -> {
+                                    finishDrawing()
+                                    val bytes =
+                                        engine.call(
+                                            EngineOperation.PALETTE,
+                                            byteArrayOf(StudioDefaults.extractedPaletteSize.toByte()),
+                                        )
+                                    check(
+                                        bytes.size % 3 == 0 &&
+                                            bytes.size <= StudioDefaults.extractedPaletteSize * 3
+                                    )
+                                    val colors =
+                                        (bytes.indices step 3).map { offset ->
+                                            0xFF000000L or
+                                                ((bytes[offset].toLong() and 255) shl 16) or
+                                                ((bytes[offset + 1].toLong() and 255) shl 8) or
+                                                (bytes[offset + 2].toLong() and 255)
+                                        }
+                                    withContext(Dispatchers.Main) {
+                                        if (colors.isEmpty()) error = "画布上没有可提取的颜色"
+                                        else if (addPaletteColors(colors)) status = "已提取画布颜色"
+                                    }
+                                }
                                 Action.PrepareGradient -> {
                                     finishDrawing()
                                     val layers = readLayers()
@@ -872,6 +900,7 @@ class StudioController(
                             }
                         } finally {
                             withContext(Dispatchers.Main) {
+                                if (action == Action.ExtractPalette) extractingPalette = false
                                 if (action is Action.PrepareLayerMove) preparingLayerMove = false
                                 if (action == Action.PrepareGradient) preparingGradient = false
                                 busy = false
@@ -1131,6 +1160,27 @@ class StudioController(
         }
         preferences = value
         scope.launch { actions.send(Action.Settings(value)) }
+    }
+
+    fun addPaletteColors(colors: List<Long>): Boolean {
+        val palette = (preferences.palette + colors).distinct()
+        if (palette == preferences.palette) return true
+        if (palette.size > StudioDefaults.maxPaletteColors) {
+            error = "色卡空间不足，请先移除一些颜色"
+            return false
+        }
+        updatePreferences(preferences.copy(palette = palette))
+        return preferences.palette == palette
+    }
+
+    fun removePaletteColor(color: Long) {
+        updatePreferences(preferences.copy(palette = preferences.palette - color))
+    }
+
+    fun extractPalette() {
+        if (!ready || busy || extractingPalette || previewPending()) return
+        extractingPalette = true
+        scope.launch { actions.send(Action.ExtractPalette) }
     }
 
     fun saveBrush(name: String) {

@@ -27,4 +27,5 @@ object EngineOperation {
     const val PASTE_IMAGE = 11
     const val LAYER_BOUNDS = 12
     const val SELECTION_FRAME = 13
+    const val PALETTE = 14
 }
