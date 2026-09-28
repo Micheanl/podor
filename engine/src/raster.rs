@@ -13,14 +13,18 @@ pub fn stamp(
     dirty: &mut BTreeSet<TileKey>,
     remaining: &mut usize,
 ) -> Result<(), String> {
-    if brush.tip == BrushTip::Round && brush.aspect == 1.0 && brush.grain == 0.0 {
-        stamp_impl::<true>(doc, selection, brush, point, dirty, remaining)
-    } else {
-        stamp_impl::<false>(doc, selection, brush, point, dirty, remaining)
+    let simple = brush.tip == BrushTip::Round && brush.aspect == 1.0 && brush.grain == 0.0;
+    match (simple, brush.symmetry.mode != SymmetryMode::Off) {
+        (true, false) => stamp_impl::<true, false>(doc, selection, brush, point, dirty, remaining),
+        (false, false) => {
+            stamp_impl::<false, false>(doc, selection, brush, point, dirty, remaining)
+        }
+        (true, true) => stamp_impl::<true, true>(doc, selection, brush, point, dirty, remaining),
+        (false, true) => stamp_impl::<false, true>(doc, selection, brush, point, dirty, remaining),
     }
 }
 
-fn stamp_impl<const SIMPLE: bool>(
+fn stamp_impl<const SIMPLE: bool, const SYMMETRIC: bool>(
     doc: &mut Document,
     selection: Option<&Selection>,
     brush: Brush,
@@ -32,84 +36,123 @@ fn stamp_impl<const SIMPLE: bool>(
     if opacity == 0.0 {
         return Ok(());
     }
-    let dab = crate::dab::Dab::new(doc.bounds(), selection, brush, point);
-    let Rect {
-        left,
-        top,
-        right,
-        bottom,
-    } = dab.bounds;
+    let (dabs, count) = if SYMMETRIC {
+        crate::dab::Dab::symmetric(doc.bounds(), selection, brush, point)
+    } else {
+        (
+            [crate::dab::Dab::new(doc.bounds(), selection, brush, point); 4],
+            1,
+        )
+    };
     let region = selection.map_or(doc.bounds(), Selection::bounds);
-    if left >= right || top >= bottom {
-        return Ok(());
-    }
     let layer = doc.active_mut();
     let alpha_locked = layer.alpha_locked;
-    for ty in top / TILE_SIZE..=(bottom - 1) / TILE_SIZE {
-        for tx in left / TILE_SIZE..=(right - 1) / TILE_SIZE {
-            let key = (tx, ty);
-            if selection.is_some_and(|selection| {
-                !selection.intersects(Rect {
+    for (index, dab) in dabs[..count].iter().enumerate() {
+        let Rect {
+            left,
+            top,
+            right,
+            bottom,
+        } = dab.bounds;
+        if left >= right || top >= bottom {
+            continue;
+        }
+        for ty in top / TILE_SIZE..=(bottom - 1) / TILE_SIZE {
+            for tx in left / TILE_SIZE..=(right - 1) / TILE_SIZE {
+                let key = (tx, ty);
+                let mut bounds = Rect {
                     left: left.max(tx * TILE_SIZE),
                     top: top.max(ty * TILE_SIZE),
                     right: right.min((tx + 1) * TILE_SIZE),
                     bottom: bottom.min((ty + 1) * TILE_SIZE),
-                })
-            }) {
-                continue;
-            }
-            if (brush.eraser || alpha_locked) && !layer.tiles.contains_key(&key) {
-                continue;
-            }
-            if !layer.tiles.contains_key(&key) {
-                if *remaining == 0 {
-                    return Err("当前工程已达到像素内存上限".into());
-                }
-                *remaining -= 1;
-            }
-            let pixels = Arc::make_mut(
-                layer
-                    .tiles
-                    .entry(key)
-                    .or_insert_with(|| Arc::new(vec![0; TILE_BYTES])),
-            );
-            let mut changed = false;
-            for y in top.max(ty * TILE_SIZE)..bottom.min((ty + 1) * TILE_SIZE) {
-                let mask = selection.and_then(|selection| selection.row(y));
-                for x in left.max(tx * TILE_SIZE)..right.min((tx + 1) * TILE_SIZE) {
-                    let selected = mask.map_or(255, |row| row[(x - region.left) as usize]);
-                    if selected == 0 {
+                };
+                if SYMMETRIC {
+                    let tile_bounds = Rect {
+                        left: tx * TILE_SIZE,
+                        top: ty * TILE_SIZE,
+                        right: (tx + 1) * TILE_SIZE,
+                        bottom: (ty + 1) * TILE_SIZE,
+                    };
+                    if dabs[..index]
+                        .iter()
+                        .any(|other| other.bounds.intersect(tile_bounds).is_some())
+                    {
                         continue;
                     }
-                    let coverage = dab.coverage::<SIMPLE>(x, y);
-                    let alpha = (coverage * opacity * f32::from(selected)).round() as u32;
-                    if alpha == 0 {
-                        continue;
-                    }
-                    let offset = (((y % TILE_SIZE) * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
-                    let pixel = &mut pixels[offset..offset + 4];
-                    let old = [pixel[0], pixel[1], pixel[2], pixel[3]];
-                    let inverse = 255 - alpha;
-                    if brush.eraser {
-                        for value in pixel.iter_mut() {
-                            *value = (u32::from(*value) * inverse / 255) as u8;
+                    for other in &dabs[index + 1..count] {
+                        if let Some(part) = other.bounds.intersect(tile_bounds) {
+                            bounds.left = bounds.left.min(part.left);
+                            bounds.top = bounds.top.min(part.top);
+                            bounds.right = bounds.right.max(part.right);
+                            bounds.bottom = bounds.bottom.max(part.bottom);
                         }
-                    } else if alpha_locked {
-                        crate::blending::paint_preserving_alpha(pixel, brush.color, alpha);
-                    } else {
-                        for (channel, value) in pixel.iter_mut().enumerate().take(3) {
-                            *value = ((u32::from(brush.color[channel]) * alpha
-                                + u32::from(*value) * inverse
-                                + 127)
-                                / 255) as u8;
-                        }
-                        pixel[3] = (alpha + (u32::from(pixel[3]) * inverse + 127) / 255) as u8;
                     }
-                    changed |= pixel != old;
                 }
-            }
-            if changed {
-                dirty.insert(key);
+                if selection.is_some_and(|selection| !selection.intersects(bounds)) {
+                    continue;
+                }
+                if (brush.eraser || alpha_locked) && !layer.tiles.contains_key(&key) {
+                    continue;
+                }
+                if !layer.tiles.contains_key(&key) {
+                    if *remaining == 0 {
+                        return Err("当前工程已达到像素内存上限".into());
+                    }
+                    *remaining -= 1;
+                }
+                let pixels = Arc::make_mut(
+                    layer
+                        .tiles
+                        .entry(key)
+                        .or_insert_with(|| Arc::new(vec![0; TILE_BYTES])),
+                );
+                let mut changed = false;
+                for y in bounds.top..bounds.bottom {
+                    let mask = selection.and_then(|selection| selection.row(y));
+                    for x in bounds.left..bounds.right {
+                        let selected = mask.map_or(255, |row| row[(x - region.left) as usize]);
+                        if selected == 0 {
+                            continue;
+                        }
+                        let coverage = if SYMMETRIC {
+                            dabs[..count]
+                                .iter()
+                                .filter(|part| part.bounds.contains(x, y))
+                                .fold(0.0f32, |coverage, part| {
+                                    coverage.max(part.coverage::<SIMPLE>(x, y))
+                                })
+                        } else {
+                            dab.coverage::<SIMPLE>(x, y)
+                        };
+                        let alpha = (coverage * opacity * f32::from(selected)).round() as u32;
+                        if alpha == 0 {
+                            continue;
+                        }
+                        let offset = (((y % TILE_SIZE) * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
+                        let pixel = &mut pixels[offset..offset + 4];
+                        let old = [pixel[0], pixel[1], pixel[2], pixel[3]];
+                        let inverse = 255 - alpha;
+                        if brush.eraser {
+                            for value in pixel.iter_mut() {
+                                *value = (u32::from(*value) * inverse / 255) as u8;
+                            }
+                        } else if alpha_locked {
+                            crate::blending::paint_preserving_alpha(pixel, brush.color, alpha);
+                        } else {
+                            for (channel, value) in pixel.iter_mut().enumerate().take(3) {
+                                *value = ((u32::from(brush.color[channel]) * alpha
+                                    + u32::from(*value) * inverse
+                                    + 127)
+                                    / 255) as u8;
+                            }
+                            pixel[3] = (alpha + (u32::from(pixel[3]) * inverse + 127) / 255) as u8;
+                        }
+                        changed |= pixel != old;
+                    }
+                }
+                if changed {
+                    dirty.insert(key);
+                }
             }
         }
     }

@@ -5,6 +5,8 @@ import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.geometry.Offset
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
+import app.podor.domain.SymmetryMode
+import app.podor.domain.SymmetrySettings
 import app.podor.engine.EngineOperation
 import app.podor.engine.createNativeEngine
 import app.podor.presentation.StudioController
@@ -21,6 +23,13 @@ import org.junit.Assume.assumeTrue
 class PaintingPerformanceTest {
     @Test
     fun multilayerPaintingRefreshesDirtyTilesWhileDesktopRemainsResponsive() =
+        painting(SymmetryMode.Off, "painting-performance.txt")
+
+    @Test
+    fun fourWaySymmetryRefreshesDirtyTilesWhileDesktopRemainsResponsive() =
+        painting(SymmetryMode.Quadrant, "symmetry-performance.txt")
+
+    private fun painting(symmetry: SymmetryMode, reportName: String) =
         runBlocking<Unit> {
             assumeTrue(System.getenv("PODOR_GPU_TEST") == "1")
             NativeLoader.load()
@@ -116,6 +125,7 @@ class PaintingPerformanceTest {
                     }
                 try {
                     withContext(Dispatchers.Main) {
+                        controller.symmetry = SymmetrySettings(mode = symmetry)
                         controller.brush =
                             controller.brush.copy(
                                 size = 256f,
@@ -191,12 +201,13 @@ class PaintingPerformanceTest {
                     assertEquals(originalRevision + 1, controller.document.revision)
                     val api = nativeWindow.renderApi.toString()
                     assertTrue(api in listOf("DIRECT3D", "OPENGL", "METAL"))
-                    val report = Path.of("build/reports/painting-performance.txt")
+                    val report = Path.of("build/reports/$reportName")
                     Files.createDirectories(report.parent)
                     Files.writeString(
                         report,
                         """
                     Renderer: $api
+                    Symmetry: $symmetry
                     1360 x 900 native StudioApp window outside the visible desktop; 2048 x 2048 canvas, 8 mixed layers, brush 256 px, 480 samples.
                     Pressure curve: ${controller.brush.preset.pressureCurve}; size response: ${controller.brush.preset.sizePressure}; opacity response: ${controller.brush.preset.opacityPressure}.
                     Input batch to published pixel frame: ${summary(inputMillis)}
@@ -207,6 +218,11 @@ class PaintingPerformanceTest {
                 """
                             .trimIndent() + "\n" + slowDispatches.joinToString("\n\n"),
                     )
+                    if (symmetry != SymmetryMode.Off) {
+                        val dispatch = dispatchMillis.sorted()
+                        assertTrue(dispatch[dispatch.size * 95 / 100] < 50.0, "Symmetry dispatch p95 exceeded 50 ms")
+                        assertTrue(dispatch.last() < 250.0, "Symmetry blocked the main thread for ${dispatch.last()} ms")
+                    }
                 }
             } finally {
                 withContext(Dispatchers.Main) {

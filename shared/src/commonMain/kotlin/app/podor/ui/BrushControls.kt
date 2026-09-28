@@ -59,6 +59,7 @@ fun BrushControls(controller: StudioController) {
                             fontSize = 13.sp,
                             modifier = Modifier.weight(1f),
                         )
+                        SymmetryControls(controller)
                         ToolButton(Glyph.Adjustments, "编辑笔刷") { editing = true }
                     }
                     BrushStrokePreview(

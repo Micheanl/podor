@@ -34,6 +34,7 @@ import app.podor.domain.GradientHandle
 import app.podor.domain.SelectionGesture
 import app.podor.domain.SelectionKind
 import app.podor.domain.StudioDefaults
+import app.podor.domain.SymmetryMode
 import app.podor.domain.Tool
 import app.podor.domain.TouchGesture
 import app.podor.domain.TransformGesture
@@ -703,6 +704,7 @@ fun CanvasWorkspace(
         controller.gradientPreview?.let {
             GradientOverlay(controller, it, viewSize, Modifier.matchParentSize())
         }
+        SymmetryGuides(controller, viewSize, Modifier.matchParentSize())
         Canvas(Modifier.matchParentSize().graphicsLayer()) {
             val document = controller.document
             val scale = controller.viewport.scale(viewSize, document)
@@ -782,13 +784,23 @@ fun CanvasWorkspace(
                         controller.tool == Tool.Smudge
                 ) {
                     val radius = (controller.brush.size * scale * 0.5f).coerceAtLeast(2f)
-                    drawCircle(
-                        Color.Black.copy(alpha = 0.55f),
-                        radius + 1f,
-                        position,
-                        style = Stroke(1f),
-                    )
-                    drawCircle(Color.White.copy(alpha = 0.9f), radius, position, style = Stroke(1f))
+                    fun cursor(at: Offset) {
+                        drawCircle(
+                            Color.Black.copy(alpha = 0.55f),
+                            radius + 1f,
+                            at,
+                            style = Stroke(1f),
+                        )
+                        drawCircle(Color.White.copy(alpha = 0.9f), radius, at, style = Stroke(1f))
+                    }
+                    if (controller.tool == Tool.Smudge || controller.symmetry.mode == SymmetryMode.Off)
+                        cursor(position)
+                    else {
+                        val point = controller.viewport.toDocument(position, viewSize, document)
+                        controller.symmetry.forEachPoint(point, document) {
+                            cursor(controller.viewport.toView(it, viewSize, document))
+                        }
+                    }
                 }
             }
         }

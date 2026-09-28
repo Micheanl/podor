@@ -66,6 +66,7 @@ class StudioController(
 
     var brush by mutableStateOf(BrushSettings())
     var smudgeStrength by mutableStateOf(StudioDefaults.smudgeStrength)
+    var symmetry by mutableStateOf(SymmetrySettings())
     var preferences by mutableStateOf(Preferences())
         private set
 
@@ -351,6 +352,7 @@ class StudioController(
                         frame = RenderFrame()
                         previews = RenderPreviews()
                         viewport = Viewport()
+                        symmetry = SymmetrySettings()
                         projectReference = reference
                         hasCanvas = true
                         showWorkspace = false
@@ -1024,6 +1026,7 @@ class StudioController(
         if (!ready || busy) return
         val settings = brush
         val smudge = tool == Tool.Smudge && !stylusEraser
+        val symmetry = if (tool == Tool.Brush || tool == Tool.Eraser) symmetry else SymmetrySettings()
         actions.send(
             Action.Command(
                 jsonCommand("begin") {
@@ -1031,6 +1034,11 @@ class StudioController(
                         put("size", settings.size)
                         put("opacity", if (smudge) smudgeStrength else settings.opacity)
                         put("smudge", smudge)
+                        putJsonObject("symmetry") {
+                            put("mode", symmetry.mode.name.lowercase())
+                            put("x", symmetry.x)
+                            put("y", symmetry.y)
+                        }
                         put("hardness", settings.preset.hardness)
                         put("tip", settings.preset.tip.name.lowercase())
                         put("aspect", settings.preset.aspect)

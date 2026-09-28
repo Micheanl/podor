@@ -14,6 +14,12 @@ import androidx.compose.ui.unit.sp
 import app.podor.domain.Language
 
 object StudioTheme {
+    val symmetryControlsWidth = 280.dp
+    val symmetryGuideWidth = 1.dp
+    val symmetryGuideHalo = 3.dp
+    val symmetryGuideDash = 7.dp
+    val symmetryGuideColor = Color(0xFFE9B3C1).copy(alpha = 0.8f)
+    val symmetryGuideShade = Color.Black.copy(alpha = 0.3f)
     val gradientHandleRadius = 6.dp
     val gradientDockWidth = 590.dp
     val transformHitRadius = 13.dp

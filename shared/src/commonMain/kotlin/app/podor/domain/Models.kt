@@ -187,6 +187,9 @@ data class BrushSettings(
 data class CanvasPreset(val label: String, val width: Int, val height: Int)
 
 object StudioDefaults {
+    val symmetryMode = SymmetryMode.Off
+    const val symmetryAxis = 0.5f
+    const val symmetryGuides = true
     const val maxClipboardBytes = 65 * 1024 * 1024
     val selectionKind = SelectionKind.Rectangle
     const val maxSelectionPoints = 4096

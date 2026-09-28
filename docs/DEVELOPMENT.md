@@ -60,6 +60,8 @@ Windows 图片剪贴板提供 PNG 和系统图片格式，保留透明像素。C
 
 工程保留图层，普通图片不保留图层。PNG、WebP 支持透明，WebP 导出为无损编码。JPEG 叠加白底，可调整质量。导入会处理 EXIF 方向，不保留元数据，不转换 ICC 配置。
 
+画笔面板的镜像图标打开对称设置，提供左右、上下和双轴模式，交互参考 [Procreate 对称辅助线](https://help.procreate.com/procreate/handbook/guides/guides-symmetry)。轴线按半像素对齐，随画布旋转和镜像，参考线与镜像光标不写入像素。设置只用于当前作品，切换作品恢复关闭；目前适用于画笔、橡皮，涂抹不参与。Rust 在稳笔和间距采样后反射笔尖角度与颗粒坐标，同一落笔内的重叠覆盖取最大值，避免轴线处加深。最多处理四个笔尖，重复图块只访问一次，选区、锁定和内存预算照常生效，整笔共享一次撤销。`PODOR_GPU_TEST=1` 包含双轴绘画与普通绘画的响应对比，报告在 `desktopApp/build/reports/symmetry-performance.txt`。
+
 PSD 支持 8 位 RGB 平面像素图层导入导出，保留层序、Unicode 名称、可见性、不透明度、锁定标记和八种混合模式。按 [Adobe PSD 规范](https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/) 读取 Raw、PackBits、ZIP 和 ZIP 预测压缩；分层文件按行解码写入稀疏图块，限制累计解码量与实际像素内存。图层组、蒙版、剪贴图层、混合颜色带和其他特效明确报错。画布外像素会裁切，颜色按 sRGB 读取，手动保存另存为 `.podor`，不覆盖来源 PSD。无图层的 RGB 合成图也可打开，额外 Alpha 通道不会误当透明度。
 
 PSD 导出逐行 PackBits 编码，合成只缓存一排像素图块和压缩后的通道。GIMP 3.2.6 已检查十个导出样本；八种模式的预览逐像素一致，重算图层的通道误差不超过 2/255。反向导入 GIMP 的三层样本，合成通道差值不超过 1/255。GIMP 不恢复完整图层锁定；Photoshop 本机兼容性尚未验证。

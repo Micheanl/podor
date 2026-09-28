@@ -190,6 +190,8 @@ pub struct Brush {
     #[serde(default)]
     pub smudge: bool,
     #[serde(default)]
+    pub symmetry: Symmetry,
+    #[serde(default)]
     pub tip: BrushTip,
     #[serde(default = "default_aspect")]
     pub aspect: f32,
@@ -238,6 +240,7 @@ impl Default for Brush {
             color: [0, 0, 0],
             eraser: false,
             smudge: false,
+            symmetry: Symmetry::default(),
             tip: BrushTip::Round,
             aspect: 1.0,
             angle: 0.0,
@@ -254,6 +257,16 @@ impl Default for Brush {
 
 impl Brush {
     pub fn validate(self) -> Result<Self, String> {
+        if !self.symmetry.x.is_finite()
+            || !self.symmetry.y.is_finite()
+            || !(0.0..=1.0).contains(&self.symmetry.x)
+            || !(0.0..=1.0).contains(&self.symmetry.y)
+        {
+            return Err("对称轴位置无效".into());
+        }
+        if self.smudge && self.symmetry.mode != SymmetryMode::Off {
+            return Err("涂抹暂不支持对称绘画".into());
+        }
         if !self.size.is_finite()
             || !(1.0..=256.0).contains(&self.size)
             || !self.opacity.is_finite()
@@ -305,4 +318,32 @@ pub struct Sample {
     pub x: f32,
     pub y: f32,
     pub pressure: f32,
+}
+
+#[derive(Clone, Copy, Default, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum SymmetryMode {
+    #[default]
+    Off,
+    Vertical,
+    Horizontal,
+    Quadrant,
+}
+
+#[derive(Clone, Copy, Deserialize)]
+#[serde(default)]
+pub struct Symmetry {
+    pub mode: SymmetryMode,
+    pub x: f32,
+    pub y: f32,
+}
+
+impl Default for Symmetry {
+    fn default() -> Self {
+        Self {
+            mode: SymmetryMode::Off,
+            x: 0.5,
+            y: 0.5,
+        }
+    }
 }
