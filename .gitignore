@@ -16,3 +16,4 @@ captures/
 *.jks
 androidApp/src/main/jniLibs/
 iosApp/*.xcodeproj/
+.zcodeignore
