@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="branding/cover.png" alt="podor" width="100%" />
+  <img src="branding/cover.png" alt="podor，浅色英文界面与插画宣传图" width="100%" />
 </p>
 
 <p align="center">
