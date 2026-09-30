@@ -1,11 +1,24 @@
+import org.gradle.api.tasks.compile.JavaCompile
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.desktop.application.tasks.AbstractJLinkTask
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.compose)
     alias(libs.plugins.compose.compiler)
 }
+
+val jvmTargetVersion = libs.versions.jvmTarget.get()
+
+java {
+    sourceCompatibility = JavaVersion.toVersion(jvmTargetVersion)
+    targetCompatibility = JavaVersion.toVersion(jvmTargetVersion)
+}
+
+kotlin { compilerOptions { jvmTarget.set(JvmTarget.fromTarget(jvmTargetVersion)) } }
+
+tasks.withType<JavaCompile>().configureEach { options.release.set(jvmTargetVersion.toInt()) }
 
 dependencies {
     implementation(project(":shared"))

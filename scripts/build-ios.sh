@@ -8,7 +8,7 @@ cd iosApp
 xcodegen generate
 xcodebuild -project podor.xcodeproj -scheme podor -configuration Release \
   -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-  -derivedDataPath build/simulator CODE_SIGNING_ALLOWED=NO build
+  -derivedDataPath build/simulator ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO build
 xcodebuild -project podor.xcodeproj -scheme podor -configuration Release \
   -sdk iphoneos -destination 'generic/platform=iOS' \
   -derivedDataPath build/device-derived -archivePath build/device/podor.xcarchive \

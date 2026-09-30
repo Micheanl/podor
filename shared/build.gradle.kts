@@ -1,4 +1,6 @@
 import java.util.Properties
+import org.gradle.api.tasks.compile.JavaCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -9,6 +11,7 @@ plugins {
 }
 
 val appVersion = libs.versions.podor.get()
+val jvmTargetVersion = libs.versions.jvmTarget.get()
 val channelFile = rootProject.file("release/channel.properties")
 val generatedBuildInfo = layout.buildDirectory.dir("generated/buildInfo")
 val generateBuildInfo = tasks.register("generateBuildInfo") {
@@ -33,7 +36,7 @@ val generateBuildInfo = tasks.register("generateBuildInfo") {
 }
 
 kotlin {
-    jvm()
+    jvm { compilerOptions { jvmTarget.set(JvmTarget.fromTarget(jvmTargetVersion)) } }
     android {
         namespace = "app.podor.shared"
         compileSdk = libs.versions.compileSdk.get().toInt()
@@ -76,6 +79,12 @@ kotlin {
         getByName("androidMain").kotlin.srcDir("src/jvmBridgeMain/kotlin")
         findByName("iosMain")?.kotlin?.srcDir("src/skiaMain/kotlin")
     }
+}
+
+tasks.withType<JavaCompile>().matching { it.name.endsWith("Java") }.configureEach {
+    sourceCompatibility = jvmTargetVersion
+    targetCompatibility = jvmTargetVersion
+    options.release.set(jvmTargetVersion.toInt())
 }
 
 compose.resources {
