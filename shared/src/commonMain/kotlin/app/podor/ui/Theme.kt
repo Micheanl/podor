@@ -37,16 +37,6 @@ object StudioTheme {
 
     val menuTrailRadius = 12.dp
     val quickTrailRadius = 22.dp
-    val launchSwirlBack
-        get() = if (light) Color(0xFFF3F4F8) else Color(0xFF220011)
-
-    val launchSwirlFront
-        get() = if (light) Color(0xFF9DAAC2) else Color(0xFF00FFFF)
-
-    val launchSwirlPixelSize = 4.dp
-    val launchWordmarkSize = 34.sp
-    val launchWordmarkSpacing = 5.sp
-    val launchWordmarkGap = 20.dp
     val hairline = 0.75.dp
     val buttonShape = RoundedCornerShape(5.dp)
     val cardShape = RoundedCornerShape(7.dp)
@@ -350,7 +340,6 @@ object StudioTheme {
     val projectCardWidth = 240.dp
     val projectPreviewHeight = 174.dp
     const val exportColumns = 3
-    val launchIconSize = 88.dp
     val minimumWindowWidth = 400.dp
     val minimumWindowHeight = 600.dp
     val windowTitleHeight = 44.dp
@@ -400,15 +389,6 @@ object StudioMotion {
     val dismissMillis
         get() = if (reducedMotion) 0 else 120
 
-    val launchHoldMillis
-        get() = if (reducedMotion) 0 else 600
-
-    const val launchSwirlSpeed = 0.9f
-    val revealMillis
-        get() = if (reducedMotion) 0 else 400
-
-    const val dissolveTextureSize = 96
-    const val dissolveSoftness = 0.12f
     val easing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
     val exitEasing = CubicBezierEasing(0.4f, 0f, 1f, 1f)
 }

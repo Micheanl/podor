@@ -5,7 +5,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -26,7 +25,7 @@ import app.podor.ui.PodorApp
 import app.podor.ui.StudioTheme
 import app.podor.ui.borderTrail
 import app.podor.ui.input.nativeTouchGuard
-import app.podor.ui.rememberStudioStartupReady
+import app.podor.ui.studioStartupReady
 import java.awt.Dimension
 import org.jetbrains.compose.resources.painterResource
 
@@ -53,7 +52,7 @@ fun main() {
                 controller.close()
             }
         }
-        if (!rememberStudioStartupReady(controller)) return@application
+        if (!studioStartupReady(controller)) return@application
         val windowState = rememberWindowState(width = 1360.dp, height = 900.dp)
         val customChrome = remember { System.getProperty("os.name").startsWith("Windows") }
         Window(
@@ -87,7 +86,7 @@ fun main() {
                     updates,
                     titleBarHeight = if (customChrome) StudioTheme.windowTitleHeight else 0.dp,
                     onTitleDragRegion = { dragRegion = it },
-                ) { launching ->
+                ) {
                     if (customChrome)
                         WindowTitleBar(
                             language = controller.preferences.language,
@@ -101,8 +100,7 @@ fun main() {
                             },
                             onClose = { controller.navigate(WorkspaceDestination.Exit) },
                             background =
-                                if (launching) Color.Transparent
-                                else if (controller.showWorkspace) StudioTheme.background
+                                if (controller.showWorkspace) StudioTheme.background
                                 else StudioTheme.panel,
                         )
                 }

@@ -12,12 +12,13 @@ android {
         applicationId = "app.podor"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.compileSdk.get().toInt()
-        versionCode = 1
+        versionCode = libs.versions.podor.get().split('.').map(String::toInt).let {
+            it[0] * 1_000_000 + it[1] * 1_000 + it[2]
+        }
         versionName = libs.versions.podor.get()
         ndk { abiFilters += setOf("arm64-v8a", "x86_64") }
     }
     sourceSets["main"].jniLibs.srcDir("src/main/jniLibs")
-    sourceSets["main"].res.srcDir("../shared/src/commonMain/composeResources")
     packaging.resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
 }
 

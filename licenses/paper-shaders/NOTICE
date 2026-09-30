@@ -1,8 +1,0 @@
-Paper Shaders — Copyright Paper Design, Inc.
-https://github.com/paper-design/shaders
-Revision: 43cd68db79fa0b1759f72ffc941b3238e2a3954c
-Apache License 2.0
-
-LaunchSwirlShader.kt adapts the dithering shader's swirl field and Bayer threshold.
-Modified for SkSL/AGSL, top-left canvas coordinates, arithmetic Bayer lookup,
-and the reference's pixel-grid alignment. Other shader shapes are omitted.

@@ -264,6 +264,9 @@ class StudioController(
     var ready by mutableStateOf(false)
         private set
 
+    var startupFailed by mutableStateOf(false)
+        private set
+
     var busy by mutableStateOf(false)
         private set
 
@@ -2397,7 +2400,10 @@ class StudioController(
                 } catch (cancel: CancellationException) {
                     throw cancel
                 } catch (exception: Throwable) {
-                    withContext(Dispatchers.Main) { error = exception.message ?: "绘图引擎加载失败" }
+                    withContext(Dispatchers.Main) {
+                        error = exception.message ?: "绘图引擎加载失败"
+                        if (!ready) startupFailed = true
+                    }
                 } finally {
                     withContext(NonCancellable) {
                         engine?.let {

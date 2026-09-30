@@ -650,7 +650,6 @@ private val english =
         "保留图层与透明度" to "Layers and transparency",
         "图层名称包含不支持的字符" to "Layer name contains unsupported characters",
         "缩略图生成失败" to "Could not generate thumbnails",
-        "跳过启动动画" to "Skip intro",
         "画笔" to "Brush",
         "笔刷库" to "Brush library",
         "橡皮" to "Eraser",

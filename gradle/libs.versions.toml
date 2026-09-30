@@ -1,5 +1,5 @@
 [versions]
-podor = "0.3.2"
+podor = "0.4.0"
 kotlin = "2.4.20"
 jvmTarget = "25"
 compose = "1.12.1"

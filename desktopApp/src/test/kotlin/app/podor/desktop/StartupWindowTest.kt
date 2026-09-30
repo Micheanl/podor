@@ -2,6 +2,7 @@ package app.podor.desktop
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.draw.drawWithContent
@@ -14,9 +15,10 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.*
 import kotlinx.coroutines.*
 
+@OptIn(ExperimentalComposeUiApi::class)
 class StartupWindowTest {
     @Test
-    fun undecoratedWindowDrawsStartupAndWorkspace() = runBlocking {
+    fun undecoratedWindowDrawsInitialWorkspaceWithoutAnIntro() = runBlocking {
         org.junit.Assume.assumeTrue(System.getenv("PODOR_GPU_TEST") == "1")
         org.junit.Assume.assumeTrue(System.getProperty("os.name").startsWith("Windows"))
         NativeLoader.load()
@@ -58,8 +60,8 @@ class StartupWindowTest {
                 while (!withContext(Dispatchers.Main) { controller.ready }) delay(20)
             }
             println("Startup frames: ${frames.get()}, backend: ${window.renderApi}")
-            delay(4000)
             withContext(Dispatchers.Main) {
+                window.renderImmediately()
                 fun layer(component: java.awt.Component): org.jetbrains.skiko.SkiaLayer? {
                     if (component is org.jetbrains.skiko.SkiaLayer) return component
                     return (component as? java.awt.Container)?.components?.firstNotNullOfOrNull {

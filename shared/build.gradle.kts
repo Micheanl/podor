@@ -44,6 +44,7 @@ kotlin {
     }
     if (System.getProperty("os.name").contains("Mac")) {
         listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
+            target.compilations.getByName("main").defaultSourceSet.kotlin.srcDir("src/skiaMain/kotlin")
             target.compilations.getByName("main").cinterops.create("podor") {
                 definitionFile.set(project.file("src/nativeInterop/cinterop/podor.def"))
                 includeDirs(rootProject.file("engine/include"))
@@ -77,7 +78,6 @@ kotlin {
             dependencies { implementation(compose.desktop.currentOs) }
         }
         getByName("androidMain").kotlin.srcDir("src/jvmBridgeMain/kotlin")
-        findByName("iosMain")?.kotlin?.srcDir("src/skiaMain/kotlin")
     }
 }
 

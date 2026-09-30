@@ -39,7 +39,7 @@ class StartupAppearanceTest {
         val scene =
             withContext(Dispatchers.Main) {
                 ImageComposeScene(400, 300) {
-                    if (rememberStudioStartupReady(controller)) PodorApp(controller)
+                    PodorApp(controller)
                 }
             }
         var frame = 0L
@@ -57,21 +57,19 @@ class StartupAppearanceTest {
                 while (!withContext(Dispatchers.Main) { controller.ready }) delay(10)
             }
             withContext(Dispatchers.Main) {
-                var visible = false
-                repeat(10) {
-                    scene.render(frame++ * 16_666_667L).use { image ->
-                        val pixel = image.toComposeImageBitmap().toPixelMap()[10, 80]
-                        if (pixel.alpha > 0f) {
-                            visible = true
-                            assertEquals(Appearance.Light, StudioTheme.appearance)
-                            assertTrue(
-                                pixel.red > 0.4f,
-                                "A dark startup frame was rendered before the light theme",
-                            )
-                        }
-                    }
+                scene.render(frame++ * 16_666_667L).use { image ->
+                    val pixel = image.toComposeImageBitmap().toPixelMap()[10, 80]
+                    assertEquals(1f, pixel.alpha)
+                    assertEquals(Appearance.Light, StudioTheme.appearance)
+                    assertTrue(
+                        pixel.red > 0.4f,
+                        "A dark startup frame was rendered before the light theme",
+                    )
                 }
-                assertTrue(visible)
+                assertTrue(controller.document.maxLayers > 0)
+                assertEquals(1, controller.document.rasterLayerCount)
+                assertTrue(controller.frame.tiles.isEmpty())
+                assertFalse(controller.startupFailed)
             }
         } finally {
             releaseRead.complete(Unit)
