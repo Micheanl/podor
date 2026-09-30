@@ -15,7 +15,9 @@ fn extracts_dominant_colors_without_background_and_keeps_the_document_unchanged(
         });
     }
     engine.document.layers[0]
-        .tiles
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
         .insert((0, 0), Arc::new(tile));
     let before = engine.save().unwrap();
     let state = engine.state();
@@ -42,7 +44,9 @@ fn uses_visible_blended_colors_and_respects_opacity_and_tile_edges() {
         .take(TILE_BYTES)
         .collect();
     engine.document.layers[0]
-        .tiles
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
         .insert((0, 0), Arc::new(tile));
     engine.command(Command::AddLayer).unwrap();
     let top: Vec<_> = [128, 128, 128, 255]
@@ -51,7 +55,9 @@ fn uses_visible_blended_colors_and_respects_opacity_and_tile_edges() {
         .take(TILE_BYTES)
         .collect();
     engine.document.layers[1]
-        .tiles
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
         .insert((0, 0), Arc::new(top));
     engine.document.layers[1].blend = BlendMode::Multiply;
     assert_eq!(engine.extract_palette(12).unwrap(), vec![[100, 50, 25]]);
@@ -60,12 +66,18 @@ fn uses_visible_blended_colors_and_respects_opacity_and_tile_edges() {
     engine.document.layers[1].visible = true;
     engine.document.layers[1].opacity = 0.0;
     assert_eq!(engine.extract_palette(12).unwrap(), vec![[200, 100, 50]]);
-    engine.document.layers[0].tiles.clear();
+    engine.document.layers[0]
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
+        .clear();
     let mut edge = vec![0; TILE_BYTES];
     edge[..4].copy_from_slice(&[64, 0, 32, 128]);
     edge[16..20].copy_from_slice(&[0, 255, 0, 255]);
     engine.document.layers[0]
-        .tiles
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
         .insert((0, 0), Arc::new(edge));
     assert_eq!(engine.extract_palette(12).unwrap(), vec![[128, 0, 64]]);
 }
@@ -79,6 +91,7 @@ fn empty_canvas_limits_and_active_strokes_are_handled() {
     engine
         .command(Command::Begin {
             brush: Brush::default(),
+            assistant: None,
         })
         .unwrap();
     assert!(engine.extract_palette(12).is_err());
@@ -98,7 +111,9 @@ fn gradient_quantization_is_bounded_deterministic_and_preserves_color_range() {
             }
         }
         engine.document.layers[0]
-            .tiles
+            .raster_mut()
+            .unwrap()
+            .tiles_mut()
             .insert((tx, 0), Arc::new(tile));
     }
     let palette = engine.extract_palette(12).unwrap();

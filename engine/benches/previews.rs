@@ -6,6 +6,8 @@ fn main() {
         let mut engine = Engine::new(edge, edge).unwrap();
         engine
             .command(Command::Fill {
+                contiguous: true,
+                merged: false,
                 x: 0,
                 y: 0,
                 color: [139, 41, 66, 255],

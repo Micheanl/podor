@@ -27,6 +27,8 @@ fn painting(
     if alpha_locked {
         engine
             .command(Command::Fill {
+                contiguous: true,
+                merged: false,
                 x: 0,
                 y: 0,
                 color: [139, 41, 66, 128],
@@ -64,7 +66,12 @@ fn painting(
     let start = Instant::now();
     let mut bytes = 0;
     for stroke in 0..100 {
-        engine.command(Command::Begin { brush }).unwrap();
+        engine
+            .command(Command::Begin {
+                brush,
+                assistant: None,
+            })
+            .unwrap();
         let samples: Vec<_> = (0..120)
             .map(|i| Sample {
                 x: 100.0 + i as f32 * 12.0,

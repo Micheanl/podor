@@ -27,12 +27,11 @@ pub fn prepare(
     selection: Option<&Selection>,
     value: Gradient,
 ) -> Result<BTreeMap<TileKey, Tile>, String> {
-    let layer = doc.layers.iter().find(|l| l.id == doc.active).unwrap();
-    if layer.locked {
-        return Err("图层已锁定，请先解锁".into());
-    }
-    if !layer.visible {
-        return Err("请先显示当前图层".into());
+    let index = crate::groups::check_editable(doc, doc.active, true)?;
+    let layer = &doc.layers[index];
+    let raster = layer.raster()?;
+    if raster.is_indexed() {
+        return Err("索引色渐变尚未支持，请先转换为 RGBA".into());
     }
     let dx = value.end[0] - value.start[0];
     let dy = value.end[1] - value.start[1];
@@ -48,17 +47,17 @@ pub fn prepare(
     {
         return Err("渐变参数无效".into());
     }
-    let mut output = layer.tiles.clone();
+    let mut output = raster.tiles().clone();
     if value.opacity == 0.0 || (value.from[3] == 0 && value.to[3] == 0) {
         return Ok(output);
     }
     let region = selection.map_or(doc.bounds(), Selection::bounds);
-    let budget = MAX_DOCUMENT_BYTES / TILE_BYTES - (doc.tile_count() - layer.tiles.len());
+    let budget = MAX_DOCUMENT_BYTES / TILE_BYTES - (doc.tile_count() - raster.tiles().len());
     let mut retained = HashSet::new();
     let radius = length_squared.sqrt();
     for ty in region.top / TILE_SIZE..region.bottom.div_ceil(TILE_SIZE) {
         for tx in region.left / TILE_SIZE..region.right.div_ceil(TILE_SIZE) {
-            let old = layer.tiles.get(&(tx, ty));
+            let old = raster.tiles().get(&(tx, ty));
             if layer.alpha_locked && old.is_none() {
                 continue;
             }
@@ -130,7 +129,8 @@ pub fn prepare(
         .layers
         .iter()
         .filter(|other| other.id != layer.id)
-        .flat_map(|l| l.tiles.values())
+        .filter_map(Layer::raster_opt)
+        .flat_map(|raster| raster.tiles().values())
         .chain(output.values())
     {
         retained.remove(&Arc::as_ptr(tile));

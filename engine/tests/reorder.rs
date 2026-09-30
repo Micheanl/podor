@@ -21,7 +21,9 @@ fn reorder_inserts_without_swapping_other_layers_and_preserves_pixels_and_histor
         let mut pixels = vec![0; TILE_BYTES];
         pixels[..4].copy_from_slice(&[id as u8 * 50, 0, 0, 255]);
         engine.document.layers[(id - 1) as usize]
-            .tiles
+            .raster_mut()
+            .unwrap()
+            .tiles_mut()
             .insert((0, 0), Arc::new(pixels));
     }
     engine.document.layers[0].locked = true;
@@ -33,7 +35,7 @@ fn reorder_inserts_without_swapping_other_layers_and_preserves_pixels_and_histor
         .document
         .layers
         .iter()
-        .map(|layer| layer.tiles[&(0, 0)].clone())
+        .map(|layer| layer.raster().unwrap().tiles()[&(0, 0)].clone())
         .collect();
     let initial = engine.command(Command::Pick { x: 0, y: 0 }).unwrap();
     assert_eq!(initial["color"][0], 200);
@@ -57,7 +59,7 @@ fn reorder_inserts_without_swapping_other_layers_and_preserves_pixels_and_histor
     for layer in &engine.document.layers {
         assert!(Arc::ptr_eq(
             &tiles[layer.id as usize - 1],
-            &layer.tiles[&(0, 0)]
+            &layer.raster().unwrap().tiles()[&(0, 0)]
         ));
     }
     let after = engine.save().unwrap();
@@ -113,7 +115,9 @@ fn reorder_only_dirties_tiles_in_the_crossed_layers() {
             engine.command(Command::AddLayer).unwrap();
         }
         engine.document.layers[(id - 1) as usize]
-            .tiles
+            .raster_mut()
+            .unwrap()
+            .tiles_mut()
             .insert((id - 1, 0), Arc::new(vec![255; TILE_BYTES]));
     }
     engine.frame();

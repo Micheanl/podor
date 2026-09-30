@@ -24,7 +24,9 @@ fn polygon() -> Value {
 
 fn pixel(engine: &Engine, x: u32, y: u32) -> [u8; 4] {
     engine.document.layers[0]
-        .tiles
+        .raster()
+        .unwrap()
+        .tiles()
         .get(&(x / TILE_SIZE, y / TILE_SIZE))
         .map_or([0; 4], |tile| {
             let index = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -35,6 +37,8 @@ fn pixel(engine: &Engine, x: u32, y: u32) -> [u8; 4] {
 fn fill(engine: &mut Engine, x: u32, y: u32, color: [u8; 4]) {
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x,
             y,
             color,
@@ -139,6 +143,8 @@ fn flood_does_not_cross_unselected_holes_or_disconnected_lobes() {
     let before = engine.save().unwrap();
     assert!(engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 32,
             y: 24,
             color: [255; 4],
@@ -164,7 +170,9 @@ fn patterned() -> Engine {
     engine
         .document
         .active_mut()
-        .tiles
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
         .insert((0, 0), Arc::new(tile));
     engine
 }
@@ -232,6 +240,7 @@ fn brushes_erasers_and_alpha_lock_respect_lasso_and_ellipse() {
                         eraser,
                         ..Brush::default()
                     },
+                    assistant: None,
                 })
                 .unwrap();
             engine
@@ -333,6 +342,7 @@ fn painting_outside_curved_selection_does_not_allocate_empty_tiles() {
                 size: 16.0,
                 ..Brush::default()
             },
+            assistant: None,
         })
         .unwrap();
     engine

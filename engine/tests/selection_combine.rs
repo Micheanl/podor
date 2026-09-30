@@ -100,6 +100,7 @@ fn subtraction_keeps_holes_in_strokes_copy_gradient_and_saved_pixels() {
                 color: [180, 30, 60],
                 ..Default::default()
             },
+            assistant: None,
         })
         .unwrap();
     engine
@@ -110,7 +111,12 @@ fn subtraction_keeps_holes_in_strokes_copy_gradient_and_saved_pixels() {
         }])
         .unwrap();
     engine.command(Command::End).unwrap();
-    let tile = engine.document.layers[0].tiles.get(&(0, 0)).unwrap();
+    let tile = engine.document.layers[0]
+        .raster()
+        .unwrap()
+        .tiles()
+        .get(&(0, 0))
+        .unwrap();
     for y in 0..64 {
         for x in 0..64 {
             assert_eq!(tile[(y * 128 + x) * 4 + 3], selected[y * 64 + x]);
@@ -126,20 +132,24 @@ fn subtraction_keeps_holes_in_strokes_copy_gradient_and_saved_pixels() {
     assert_eq!((info.width, info.height), (56, 56));
     assert_eq!(image[(20 * 56 + 20) * 4 + 3], 0);
     engine.command(Command::Undo).unwrap();
-    assert!(engine.document.layers[0].tiles.is_empty());
+    assert!(engine.document.layers[0]
+        .raster()
+        .unwrap()
+        .tiles()
+        .is_empty());
     engine.command(Command::Redo).unwrap();
     assert_eq!(engine.save().unwrap(), saved);
     let revision = engine.state()["revision"].clone();
     command(&mut engine, json!({"type":"gradient","id":1,"revision":revision,"settings":{"start":[0,0],"end":[64,64],"from":[0,0,0,255],"to":[255,255,255,255],"opacity":1,"shape":"linear"}})).unwrap();
     assert_eq!(
-        engine.document.layers[0].tiles[&(0, 0)][(30 * 128 + 30) * 4 + 3],
+        engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)][(30 * 128 + 30) * 4 + 3],
         0
     );
     let project = engine.save().unwrap();
     engine.load(&project).unwrap();
     assert_eq!(engine.state()["selection"], Value::Null);
     assert_eq!(
-        engine.document.layers[0].tiles[&(0, 0)][(30 * 128 + 30) * 4 + 3],
+        engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)][(30 * 128 + 30) * 4 + 3],
         0
     );
 }
@@ -154,6 +164,8 @@ fn empty_selection_never_becomes_unrestricted_painting_or_creates_history() {
     let saved = engine.save().unwrap();
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color: [255, 0, 0, 255],
@@ -169,6 +181,7 @@ fn empty_selection_never_becomes_unrestricted_painting_or_creates_history() {
     engine
         .command(Command::Begin {
             brush: Brush::default(),
+            assistant: None,
         })
         .unwrap();
     engine

@@ -10,6 +10,8 @@ class AdjustmentPreview(
     val previousTool: Tool,
     val original: RenderFrame,
     val histogram: List<List<Float>> = emptyList(),
+    val selectionId: Long = 0,
+    val nodeEditing: Boolean = false,
 ) {
     var settings by mutableStateOf(initialSettings)
         internal set

@@ -27,6 +27,8 @@ struct ParsedLayer {
     bounds: [u32; 4],
     mode: [u8; 4],
     opacity: u8,
+    clipping: u8,
+    clipped_as_group: Option<bool>,
     flags: u8,
     protection: u32,
     name: String,
@@ -92,7 +94,7 @@ fn parse(bytes: &[u8]) -> Parsed {
         assert_eq!(info.take(4), b"8BIM");
         let mode = info.take(4).try_into().unwrap();
         let opacity = info.take(1)[0];
-        assert_eq!(info.take(1), [0]);
+        let clipping = info.take(1)[0];
         let flags = info.take(1)[0];
         assert_eq!(info.take(1), [0]);
         let mut extra = Reader {
@@ -105,6 +107,7 @@ fn parse(bytes: &[u8]) -> Parsed {
         extra.take((legacy_length + 1).div_ceil(4) * 4 - 1);
         let mut name = None;
         let mut protection = 0;
+        let mut clipped_as_group = None;
         while extra.offset < extra.bytes.len() {
             assert_eq!(extra.take(4), b"8BIM");
             let key = extra.take(4);
@@ -121,6 +124,11 @@ fn parse(bytes: &[u8]) -> Parsed {
             if key == b"lspf" {
                 protection = u32::from_be_bytes(data.try_into().unwrap());
             }
+            if key == b"clbl" {
+                assert_eq!(data.len(), 4);
+                assert_eq!(&data[1..], &[0; 3]);
+                clipped_as_group = Some(data[0] != 0);
+            }
             if !data.len().is_multiple_of(2) {
                 extra.take(1);
             }
@@ -129,6 +137,8 @@ fn parse(bytes: &[u8]) -> Parsed {
             bounds,
             mode,
             opacity,
+            clipping,
+            clipped_as_group,
             flags,
             protection,
             name: name.unwrap(),
@@ -207,6 +217,8 @@ fn export(engine: &Engine) -> Vec<u8> {
 fn fill(engine: &mut Engine, color: [u8; 4]) {
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color,
@@ -324,7 +336,9 @@ fn packbits_handles_long_runs_literal_boundaries_and_partial_tiles() {
                     255,
                 ];
                 let tile = engine.document.layers[0]
-                    .tiles
+                    .raster_mut()
+                    .unwrap()
+                    .tiles_mut()
                     .entry((x / TILE_SIZE, 0))
                     .or_insert_with(|| Arc::new(vec![0; TILE_BYTES]));
                 let offset = ((y * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -346,10 +360,13 @@ fn sparse_layers_keep_offsets_empty_layers_and_transparent_gaps() {
     let mut engine = Engine::new(513, 385).unwrap();
     let mut pixels = vec![0; TILE_BYTES];
     pixels[..4].copy_from_slice(&[40, 80, 120, 128]);
-    engine.document.layers[0].tiles = BTreeMap::from([
-        ((1, 1), Arc::new(pixels.clone())),
-        ((3, 2), Arc::new(pixels)),
-    ]);
+    engine.document.layers[0]
+        .raster_mut()
+        .unwrap()
+        .set_tiles(BTreeMap::from([
+            ((1, 1), Arc::new(pixels.clone())),
+            ((3, 2), Arc::new(pixels)),
+        ]));
     for _ in 1..MAX_LAYERS {
         engine.command(Command::AddLayer).unwrap();
     }
@@ -373,4 +390,140 @@ fn fixture(name: &str, bytes: &[u8]) {
         std::fs::create_dir_all(&directory).unwrap();
         std::fs::write(std::path::Path::new(&directory).join(name), bytes).unwrap();
     }
+}
+
+#[test]
+fn indexed_layers_export_original_straight_colors_and_remain_editable_rgb_layers() {
+    let colors = vec![
+        [0, 0, 0, 0],
+        [7, 150, 233, 1],
+        [40, 200, 80, 128],
+        [250, 30, 40, 255],
+    ];
+    let mut engine = Engine::new(129, 2).unwrap();
+    engine.document.palette = Some(IndexedPalette {
+        colors: colors.clone(),
+        transparent: 0,
+        order: vec![0, 1, 2, 3],
+    });
+    let mut first = vec![0; INDEX_TILE_BYTES];
+    first[0] = 1;
+    first[1] = 3;
+    let mut last = vec![0; INDEX_TILE_BYTES];
+    last[0] = 2;
+    engine.document.layers[0].content =
+        podor_engine::model::LayerContent::Raster(RasterPlane::Indexed(BTreeMap::from([
+            ((0, 0), Arc::new(first)),
+            ((1, 0), Arc::new(last)),
+        ])));
+    let mut upper = Layer::new(2, "Indexed upper".into());
+    let mut pixels = vec![0; INDEX_TILE_BYTES];
+    pixels[TILE_SIZE as usize] = 3;
+    upper.content = podor_engine::model::LayerContent::Raster(RasterPlane::Indexed(
+        BTreeMap::from([((0, 0), Arc::new(pixels))]),
+    ));
+    upper.visible = false;
+    engine.document.layers.push(upper);
+    engine.document.next_id = 3;
+    engine.document.validate().unwrap();
+    let before = engine.save().unwrap();
+    let state = engine.state();
+    let encoded = export(&engine);
+    let parsed = parse(&encoded);
+    assert_eq!(parsed.layers.len(), 2);
+    assert_eq!(&parsed.layers[0].pixels[..4], &colors[1]);
+    assert_eq!(&parsed.layers[0].pixels[4..8], &colors[3]);
+    assert_eq!(&parsed.layers[0].pixels[128 * 4..129 * 4], &colors[2]);
+    assert_eq!(parsed.layers[1].flags & 2, 2);
+    assert_eq!(&parsed.layers[1].pixels[128 * 4..129 * 4], &colors[3]);
+    let mut reopened = Engine::new(1, 1).unwrap();
+    reopened.load(&encoded).unwrap();
+    assert!(reopened.document.palette.is_none());
+    assert_eq!(reopened.document.layers.len(), 2);
+    for x in [0, 1, 128] {
+        let expected = engine.document.layers[0]
+            .rgba_tile(engine.document.palette.as_ref(), (x / TILE_SIZE, 0))
+            .unwrap();
+        let actual = reopened.document.layers[0]
+            .rgba_tile(None, (x / TILE_SIZE, 0))
+            .unwrap();
+        let offset = (x % TILE_SIZE * 4) as usize;
+        assert_eq!(&expected[offset..offset + 4], &actual[offset..offset + 4]);
+    }
+    assert_eq!(before, engine.save().unwrap());
+    assert_eq!(state, engine.state());
+}
+
+#[test]
+fn indexed_clip_chain_exports_straight_channels_explicit_group_flags_and_matching_merged_image() {
+    let colors = vec![
+        [0, 0, 0, 0],
+        [7, 150, 233, 1],
+        [40, 200, 80, 128],
+        [250, 30, 40, 255],
+    ];
+    let mut engine = Engine::new(3, 1).unwrap();
+    engine.document.palette = Some(IndexedPalette {
+        colors: colors.clone(),
+        transparent: 0,
+        order: vec![0, 1, 2, 3],
+    });
+    let indices = [3, 1, 2];
+    engine.document.layers.clear();
+    for (offset, &index) in indices.iter().enumerate() {
+        let mut layer = Layer::new(offset as u32 + 1, format!("Layer {offset}"));
+        let mut tile = vec![0; INDEX_TILE_BYTES];
+        tile[..3].fill(index);
+        layer.content = podor_engine::model::LayerContent::Raster(RasterPlane::Indexed(
+            BTreeMap::from([((0, 0), Arc::new(tile))]),
+        ));
+        layer.clipping = offset != 0;
+        engine.document.layers.push(layer);
+    }
+    engine.document.next_id = 4;
+    engine.document.active = 3;
+    engine.document.validate().unwrap();
+    let original_indices = engine
+        .document
+        .layers
+        .iter()
+        .map(|layer| layer.raster().unwrap().tiles()[&(0, 0)].clone())
+        .collect::<Vec<_>>();
+    let before = engine.save().unwrap();
+    let state = engine.state();
+    let encoded = export(&engine);
+    let parsed = parse(&encoded);
+    for (offset, layer) in parsed.layers.iter().enumerate() {
+        assert_eq!(layer.clipping, u8::from(offset != 0));
+        assert_eq!(layer.clipped_as_group, Some(true));
+        assert_eq!(layer.pixels, [colors[indices[offset] as usize]; 3].concat());
+    }
+    let expected_png = engine
+        .export_image(ExportOptions {
+            transparent: true,
+            ..Default::default()
+        })
+        .unwrap();
+    let mut reader = png::Decoder::new(expected_png.as_slice())
+        .read_info()
+        .unwrap();
+    let mut expected = vec![0; reader.output_buffer_size()];
+    let info = reader.next_frame(&mut expected).unwrap();
+    expected.truncate(info.buffer_size());
+    assert_eq!(parsed.merged, expected);
+    let mut reopened = Engine::new(1, 1).unwrap();
+    reopened.load(&encoded).unwrap();
+    assert!(reopened.document.palette.is_none());
+    assert_eq!(
+        &engine.frame_with_background(true)[24..36],
+        &reopened.frame_with_background(true)[24..36]
+    );
+    for (layer, tile) in engine.document.layers.iter().zip(original_indices) {
+        assert!(Arc::ptr_eq(
+            &layer.raster().unwrap().tiles()[&(0, 0)],
+            &tile
+        ));
+    }
+    assert_eq!(before, engine.save().unwrap());
+    assert_eq!(state, engine.state());
 }

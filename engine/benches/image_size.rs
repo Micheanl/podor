@@ -16,7 +16,7 @@ fn main() {
                 let mut layer = Layer::new(id, format!("Layer {id}"));
                 let mut tile = vec![0; TILE_BYTES];
                 tile[..4].copy_from_slice(&[128, 32, 64, 160]);
-                layer.tiles.insert(
+                layer.raster_mut().unwrap().tiles_mut().insert(
                     (
                         (id - 1) % (width / TILE_SIZE),
                         (id - 1) % (height / TILE_SIZE),
@@ -34,6 +34,8 @@ fn main() {
                 }
                 engine
                     .command(Command::Fill {
+                        contiguous: true,
+                        merged: false,
                         x: 0,
                         y: 0,
                         color: [100, 60, 90, 200],

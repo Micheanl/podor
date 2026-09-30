@@ -22,7 +22,8 @@ enum class StartupScreen(val label: String) {
 }
 
 sealed interface WorkspaceDestination {
-    data class New(val width: Int, val height: Int) : WorkspaceDestination
+    data class New(val width: Int, val height: Int, val palette: IndexedPalette? = null) :
+        WorkspaceDestination
 
     data class Open(val reference: ProjectReference? = null) : WorkspaceDestination
 

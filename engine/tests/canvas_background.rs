@@ -20,7 +20,11 @@ fn artwork(mode: BlendMode, active: u32) -> Engine {
                     });
                 }
             }
-            layer.tiles.insert(key, Arc::new(pixels));
+            layer
+                .raster_mut()
+                .unwrap()
+                .tiles_mut()
+                .insert(key, Arc::new(pixels));
         }
         if id == 1 {
             engine.document.layers[0] = layer;
@@ -123,6 +127,7 @@ fn transparent_stroke_cache_matches_export_across_blends_erasers_and_mode_switch
                             eraser,
                             ..Default::default()
                         },
+                        assistant: None,
                     })
                     .unwrap();
                 for (x, y) in [(115.0, 28.0), (130.0, 42.0), (152.0, 77.0)] {

@@ -34,4 +34,13 @@ object EngineOperation {
     const val ADJUSTMENT_PREVIEW = 16
     const val CURVE_HISTOGRAM = 17
     const val REFERENCE_IMAGE = 18
+    const val BRUSH_PREVIEW = 19
+    const val MASK_PREVIEWS = 20
+    const val MOVE_LAYERS = 21
+    const val PREVIEW_LAYER_ACTION = 22
+    const val VECTOR_SVG = 23
+    const val ANIMATION_FRAME = 24
+    const val ANIMATION_PREVIEWS = 25
+    const val ANIMATION_EXPORT = 26
+    const val ASEPRITE_EXPORT = 27
 }

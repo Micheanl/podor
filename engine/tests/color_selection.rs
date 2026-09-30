@@ -5,7 +5,9 @@ fn set_pixel(engine: &mut Engine, x: u32, y: u32, pixel: [u8; 4]) {
     let tile = engine
         .document
         .active_mut()
-        .tiles
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
         .entry((x / TILE_SIZE, y / TILE_SIZE))
         .or_insert_with(|| Arc::new(vec![0; TILE_BYTES]));
     let offset = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -215,13 +217,20 @@ fn selected_disconnected_island_clips_fill_and_can_be_undone() {
     select(&mut engine, 1, 1, 0, true, false, SelectionMode::Replace);
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 1,
             y: 1,
             color: [30, 40, 210, 255],
             tolerance: 0,
         })
         .unwrap();
-    let tile = engine.document.layers[0].tiles.get(&(0, 0)).unwrap();
+    let tile = engine.document.layers[0]
+        .raster()
+        .unwrap()
+        .tiles()
+        .get(&(0, 0))
+        .unwrap();
     assert_eq!(&tile[(128 + 1) * 4..(128 + 2) * 4], &[30, 40, 210, 255]);
     assert_eq!(&tile[(128 + 6) * 4..(128 + 7) * 4], &[180, 20, 30, 255]);
     engine.command(Command::Undo).unwrap();

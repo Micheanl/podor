@@ -19,7 +19,11 @@ fn fixture() -> Engine {
                 tile[i..i + 4].copy_from_slice(&[40 + (x % 64) as u8, 25, 70, 128]);
             }
         }
-        layer.tiles.insert(key, Arc::new(tile));
+        layer
+            .raster_mut()
+            .unwrap()
+            .tiles_mut()
+            .insert(key, Arc::new(tile));
     }
     engine.document.layers.push(layer);
     engine.document.active = 2;
@@ -58,7 +62,9 @@ fn layer_blend_preview_preserves_pixels_and_commits_properties_in_one_step() {
         let mut engine = fixture();
         for key in [(0, 0), (1, 1)] {
             engine.document.layers[0]
-                .tiles
+                .raster_mut()
+                .unwrap()
+                .tiles_mut()
                 .insert(key, Arc::new([90, 140, 70, 255].repeat(TILE_BYTES / 4)));
         }
         engine.document.layers[1].locked = true;
@@ -69,7 +75,7 @@ fn layer_blend_preview_preserves_pixels_and_commits_properties_in_one_step() {
         .unwrap();
         let before = engine.save().unwrap();
         let state = engine.state();
-        let source = engine.document.layers[1].tiles[&(0, 0)].clone();
+        let source = engine.document.layers[1].raster().unwrap().tiles()[&(0, 0)].clone();
         let mut value = request(&engine, "layer_blend", 0.0);
         value["settings"]["opacity"] = json!(0.23);
         value["settings"]["blend"] = json!(mode);
@@ -95,7 +101,7 @@ fn layer_blend_preview_preserves_pixels_and_commits_properties_in_one_step() {
         assert_eq!(engine.frame(), frame);
         assert!(Arc::ptr_eq(
             &source,
-            &engine.document.layers[1].tiles[&(0, 0)]
+            &engine.document.layers[1].raster().unwrap().tiles()[&(0, 0)]
         ));
         assert_eq!(engine.document.layers[1].opacity, 0.23);
         let after = engine.save().unwrap();
@@ -241,12 +247,12 @@ fn selection_holes_and_alpha_lock_are_preserved() {
         .unwrap();
         command(&mut engine, json!({"type":"combine_selection","mode":"subtract","selection":{"kind":"ellipse","left":20,"top":10,"right":60,"bottom":50}})).unwrap();
         engine.frame();
-        let old = engine.document.layers[1].tiles[&(0, 0)].clone();
+        let old = engine.document.layers[1].raster().unwrap().tiles()[&(0, 0)].clone();
         let value = request(&engine, kind, 0.3);
         let frame = preview(&engine, &value).unwrap();
         apply(&mut engine, &value).unwrap();
         assert_eq!(engine.frame(), frame);
-        let result = &engine.document.layers[1].tiles[&(0, 0)];
+        let result = &engine.document.layers[1].raster().unwrap().tiles()[&(0, 0)];
         for (a, b) in old.as_chunks::<4>().0.iter().zip(result.as_chunks::<4>().0) {
             assert_eq!(a[3], b[3]);
         }

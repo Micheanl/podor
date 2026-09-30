@@ -36,7 +36,7 @@ val buildEngine =
             environment("PATH", "${localCargo.parent};${System.getenv("PATH")}")
         }
         inputs.files(
-            rootProject.fileTree("engine") { include("src/**", "Cargo.toml") },
+            rootProject.fileTree("engine") { include("src/**", "assets/**", "Cargo.toml") },
             rootProject.file("Cargo.lock"),
         )
         outputs.file(
@@ -81,7 +81,8 @@ compose.desktop {
 
 tasks.test {
     jvmArgs("--enable-native-access=ALL-UNNAMED")
-    systemProperty("podor.test.classpath", sourceSets.test.get().runtimeClasspath.asPath)
+    val testClasspath = sourceSets.test.get().runtimeClasspath
+    doFirst { systemProperty("podor.test.classpath", testClasspath.asPath) }
 }
 
 tasks

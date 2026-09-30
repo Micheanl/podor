@@ -7,6 +7,8 @@ fn main() {
             let mut engine = Engine::new(edge, edge).unwrap();
             engine
                 .command(Command::Fill {
+                    contiguous: true,
+                    merged: false,
                     x: 0,
                     y: 0,
                     color: [139, 41, 66, 173],
@@ -27,6 +29,7 @@ fn main() {
             let start = Instant::now();
             engine
                 .command(Command::TransformLayer {
+                    mask_id: None,
                     id: 1,
                     revision,
                     transform,

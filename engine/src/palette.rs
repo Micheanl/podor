@@ -1,4 +1,4 @@
-use crate::{model::*, raster::composite_tile_background};
+use crate::{model::*, raster::FrameCompositor};
 use std::collections::BTreeSet;
 
 #[derive(Clone, Copy, Default)]
@@ -84,11 +84,12 @@ pub fn extract(doc: &Document, count: usize) -> Result<Vec<[u8; 3]>, String> {
         .layers
         .iter()
         .filter(|layer| layer.visible && layer.opacity > 0.0)
-        .flat_map(|layer| layer.tiles.keys().copied())
+        .flat_map(|layer| layer.content_keys(doc.bounds()))
         .collect();
     let mut histogram = vec![ColorBin::default(); 1 << 15];
+    let mut compositor = FrameCompositor::new(doc, true);
     for key in keys {
-        let tile = composite_tile_background(doc, key, true);
+        let tile = compositor.tile(doc, key);
         for y in 0..TILE_SIZE.min(doc.height - key.1 * TILE_SIZE) {
             for x in 0..TILE_SIZE.min(doc.width - key.0 * TILE_SIZE) {
                 let offset = ((y * TILE_SIZE + x) * 4) as usize;

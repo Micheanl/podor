@@ -104,15 +104,19 @@ fun QuickBrushControls(controller: StudioController, colorsOnly: Boolean = false
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (!colorsOnly) {
-            CapsuleSlider(
-                "大小",
-                controller.brush.size,
-                StudioDefaults.minBrushSize..StudioDefaults.maxBrushSize,
-                "${controller.brush.size.roundToInt()} px",
-                tint = Color(controller.brush.color),
-            ) {
-                controller.brush = controller.brush.copy(size = it)
-            }
+            if (controller.tool != Tool.LassoFill)
+                CapsuleSlider(
+                    "大小",
+                    controller.brush.size,
+                    StudioDefaults.minBrushSize..StudioDefaults.maxBrushSize,
+                    "${controller.brush.size.roundToInt()} px",
+                    tint = Color(controller.brush.color),
+                ) {
+                    controller.brush = controller.brush.copy(
+                        size = if (controller.brush.preset.raster == BrushRaster.Antialiased)
+                            it else it.roundToInt().toFloat()
+                    )
+                }
             val strength = if (smudge) controller.smudgeStrength else controller.brush.opacity
             CapsuleSlider(
                 if (smudge) "涂抹强度" else "不透明度",
@@ -125,7 +129,12 @@ fun QuickBrushControls(controller: StudioController, colorsOnly: Boolean = false
                 else controller.brush = controller.brush.copy(opacity = it)
             }
         }
-        if (colorsOnly || (controller.tool != Tool.Eraser && !smudge)) {
+        if (
+            colorsOnly ||
+                (controller.tool != Tool.Eraser &&
+                    !smudge &&
+                    !(controller.tool == Tool.LassoFill && controller.lassoErase))
+        ) {
             var hsv by remember { mutableStateOf(HsvColor.fromArgb(controller.brush.color)) }
             LaunchedEffect(controller.brush.color) {
                 if (hsv.toArgb() != controller.brush.color)

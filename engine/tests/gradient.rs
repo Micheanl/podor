@@ -24,7 +24,9 @@ fn apply(engine: &mut Engine, settings: Gradient) -> Result<(), String> {
 }
 fn pixel(engine: &Engine, x: u32, y: u32) -> [u8; 4] {
     engine.document.layers[0]
-        .tiles
+        .raster()
+        .unwrap()
+        .tiles()
         .get(&(x / TILE_SIZE, y / TILE_SIZE))
         .map_or([0; 4], |p| {
             let i = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -63,6 +65,8 @@ fn linear_gradient_crosses_tiles_and_restores_with_one_undo() {
 fn radial_transparency_composites_over_existing_premultiplied_pixels() {
     let mut e = Engine::new(260, 260).unwrap();
     e.command(Command::Fill {
+        contiguous: true,
+        merged: false,
         x: 0,
         y: 0,
         color: [40, 80, 120, 128],
@@ -184,7 +188,7 @@ fn no_op_and_failed_gradients_preserve_history_and_tile_storage() {
     apply(&mut e, options()).unwrap();
     let original = e.save().unwrap();
     let state = e.state();
-    let tile = e.document.layers[0].tiles[&(0, 0)].clone();
+    let tile = e.document.layers[0].raster().unwrap().tiles()[&(0, 0)].clone();
     apply(
         &mut e,
         Gradient {
@@ -194,7 +198,10 @@ fn no_op_and_failed_gradients_preserve_history_and_tile_storage() {
     )
     .unwrap();
     assert_eq!(e.state(), state);
-    assert!(Arc::ptr_eq(&tile, &e.document.layers[0].tiles[&(0, 0)]));
+    assert!(Arc::ptr_eq(
+        &tile,
+        &e.document.layers[0].raster().unwrap().tiles()[&(0, 0)]
+    ));
     for invalid in [
         Gradient {
             end: [0.5, 0.5],
@@ -241,14 +248,18 @@ fn document_and_undo_budgets_fail_atomically() {
         let mut layer = Layer::new(id, format!("{id}"));
         for y in 0..32 {
             for x in 0..32 {
-                layer.tiles.insert((x, y), pixels.clone());
+                layer
+                    .raster_mut()
+                    .unwrap()
+                    .tiles_mut()
+                    .insert((x, y), pixels.clone());
             }
         }
         e.document.layers.push(layer);
     }
     e.document.next_id = 4;
     assert!(apply(&mut e, options()).is_err());
-    assert!(e.document.layers[0].tiles.is_empty());
+    assert!(e.document.layers[0].raster().unwrap().tiles().is_empty());
     assert!(!e.state()["canUndo"].as_bool().unwrap());
     let mut e = Engine::new(4097, 4094).unwrap();
     for y in 0..32 {
@@ -262,13 +273,21 @@ fn document_and_undo_budgets_fail_atomically() {
                     }
                 }
             }
-            e.document.active_mut().tiles.insert((x, y), Arc::new(tile));
+            e.document
+                .active_mut()
+                .raster_mut()
+                .unwrap()
+                .tiles_mut()
+                .insert((x, y), Arc::new(tile));
         }
     }
-    let before = e.document.layers[0].tiles.clone();
+    let before = e.document.layers[0].raster().unwrap().tiles().clone();
     assert!(apply(&mut e, options()).is_err());
     for (key, tile) in before {
-        assert!(Arc::ptr_eq(&tile, &e.document.layers[0].tiles[&key]));
+        assert!(Arc::ptr_eq(
+            &tile,
+            &e.document.layers[0].raster().unwrap().tiles()[&key]
+        ));
     }
     assert!(!e.state()["canUndo"].as_bool().unwrap());
 }

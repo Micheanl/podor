@@ -11,6 +11,9 @@ pub fn translate(
     dy: i32,
     selection: Option<&crate::selection::Selection>,
 ) -> Result<BTreeMap<TileKey, Tile>, String> {
+    if doc.palette.is_some() {
+        return crate::indexed_geometry::translate(doc, id, dx, dy, selection);
+    }
     let layer = doc
         .layers
         .iter()
@@ -29,13 +32,14 @@ pub fn translate(
         return Err("移动距离超出画布尺寸".into());
     }
     if dx == 0 && dy == 0 {
-        return Ok(layer.tiles.clone());
+        return Ok(layer.raster()?.tiles().clone());
     }
-    let budget = MAX_DOCUMENT_BYTES / TILE_BYTES - (doc.tile_count() - layer.tiles.len());
+    let budget =
+        MAX_DOCUMENT_BYTES / TILE_BYTES - (doc.tile_count() - layer.raster()?.tiles().len());
     let tiles = if let Some(selection) = selection {
         let (stationary, selected) = split(doc, selection)?;
         let shifted = remap(&selected, doc.bounds(), doc.bounds(), dx, dy, budget)?;
-        let mut tiles = stationary.tiles;
+        let mut tiles = stationary.raster()?.tiles().clone();
         for (key, source) in shifted {
             if !tiles.contains_key(&key) && tiles.len() == budget {
                 return Err("工程像素超过内存限制".into());
@@ -64,12 +68,13 @@ pub fn translate(
         .layers
         .iter()
         .filter(|other| other.id != id)
-        .flat_map(|other| other.tiles.values())
+        .flat_map(|other| other.raster_buffers())
         .chain(tiles.values())
         .map(Arc::as_ptr)
         .collect();
     let retained: HashSet<_> = layer
-        .tiles
+        .raster()?
+        .tiles()
         .values()
         .map(Arc::as_ptr)
         .filter(|tile| !live.contains(tile))
@@ -89,7 +94,7 @@ pub fn remap(
     budget: usize,
 ) -> Result<BTreeMap<TileKey, Tile>, String> {
     let mut tiles = BTreeMap::<TileKey, Tile>::new();
-    for (&(tx, ty), pixels) in &layer.tiles {
+    for (&(tx, ty), pixels) in layer.raster()?.tiles() {
         let left = tx * TILE_SIZE;
         let top = ty * TILE_SIZE;
         let target_left = i64::from(left) + i64::from(dx);
@@ -156,37 +161,54 @@ pub fn remap(
     Ok(tiles)
 }
 
-pub fn frame(doc: &Document) -> Vec<u8> {
+pub fn frame(doc: &Document) -> Result<Vec<u8>, String> {
+    if doc
+        .layers
+        .iter()
+        .any(|layer| layer.is_group() || layer.is_adjustment() || layer.is_vector())
+    {
+        return Err("图层组或调整图层移动请使用完整合成预览".into());
+    }
     let layers: Vec<_> = doc
         .layers
         .iter()
         .filter(|layer| layer.visible && layer.opacity > 0.0)
         .collect();
-    let mut output = Vec::with_capacity(
-        16 + layers
+    let bytes = 16
+        + layers
             .iter()
-            .map(|layer| 8 + layer.tiles.len() * (8 + TILE_BYTES))
-            .sum::<usize>(),
-    );
+            .map(|layer| 8 + layer.raster_keys().count() * (8 + TILE_BYTES))
+            .sum::<usize>();
+    if bytes > MAX_LAYER_PREVIEW_BYTES {
+        return Err("图层预览超出内存限制".into());
+    }
+    let mut output = Vec::with_capacity(bytes);
     for value in [doc.width, doc.height, TILE_SIZE, layers.len() as u32] {
         output.extend(value.to_le_bytes());
     }
     for layer in layers {
         output.extend(layer.id.to_le_bytes());
-        output.extend((layer.tiles.len() as u32).to_le_bytes());
-        for (&(x, y), tile) in &layer.tiles {
+        output.extend((layer.raster()?.tiles().len() as u32).to_le_bytes());
+        for &(x, y) in layer.raster()?.tiles().keys() {
             output.extend(x.to_le_bytes());
             output.extend(y.to_le_bytes());
-            output.extend_from_slice(tile);
+            output.extend_from_slice(&crate::raster::masked_tile(
+                layer,
+                doc.palette.as_ref(),
+                (x, y),
+            ));
         }
     }
-    output
+    Ok(output)
 }
 
 pub fn split(
     doc: &Document,
     selection: &crate::selection::Selection,
 ) -> Result<(Layer, Layer), String> {
+    if doc.palette.is_some() {
+        return Err("索引色选区移动尚未支持，请先取消选区或转换为 RGBA".into());
+    }
     let (stationary, _) = crate::clipboard::cut(doc, Some(selection))?;
     let source = doc
         .layers
@@ -194,8 +216,8 @@ pub fn split(
         .find(|layer| layer.id == doc.active)
         .ok_or("图层不存在")?;
     let mut selected = source.clone();
-    selected.tiles.clear();
-    for (&key, tile) in &source.tiles {
+    selected.raster_mut()?.tiles_mut().clear();
+    for (&key, tile) in source.raster()?.tiles() {
         let Some(area) = (Rect {
             left: key.0 * TILE_SIZE,
             top: key.1 * TILE_SIZE,
@@ -224,7 +246,10 @@ pub fn split(
             }
         }
         if nonempty {
-            selected.tiles.insert(key, Arc::new(pixels));
+            selected
+                .raster_mut()?
+                .tiles_mut()
+                .insert(key, Arc::new(pixels));
         }
     }
     Ok((stationary, selected))
@@ -244,5 +269,5 @@ pub fn selection_frame(
         .ok_or("图层不存在")?;
     preview.layers[index] = selected;
     preview.layers.insert(index, stationary);
-    Ok(frame(&preview))
+    frame(&preview)
 }

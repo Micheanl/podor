@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import app.podor.domain.DocumentColorMode
 import app.podor.domain.ImageSize
 import app.podor.domain.ResampleFilter
 import app.podor.domain.StudioDefaults
@@ -30,7 +31,15 @@ import kotlin.math.roundToInt
 @Composable
 fun ImageSizeDialog(controller: StudioController, onDismiss: () -> Unit) {
     val original = remember { controller.document }
-    var settings by remember { mutableStateOf(ImageSize(original.width, original.height)) }
+    var settings by remember {
+        mutableStateOf(
+            ImageSize(original.width, original.height).let {
+                if (original.colorMode == DocumentColorMode.Indexed)
+                    it.copy(filter = ResampleFilter.Nearest)
+                else it
+            }
+        )
+    }
     StudioAlertDialog(
         title = "图像尺寸",
         glyph = Glyph.Fit,
@@ -46,12 +55,26 @@ fun ImageSizeDialog(controller: StudioController, onDismiss: () -> Unit) {
                     original.revision,
                 )
         },
-        text = { ImageSizeSettings(settings, controller.previews.images[0]) { settings = it } },
+        text = {
+            ImageSizeSettings(
+                settings,
+                controller.previews.images[0],
+                if (original.colorMode == DocumentColorMode.Indexed) listOf(ResampleFilter.Nearest)
+                else ResampleFilter.entries,
+            ) {
+                settings = it
+            }
+        },
     )
 }
 
 @Composable
-fun ImageSizeSettings(settings: ImageSize, preview: ImageBitmap?, onChange: (ImageSize) -> Unit) {
+fun ImageSizeSettings(
+    settings: ImageSize,
+    preview: ImageBitmap?,
+    filters: List<ResampleFilter> = ResampleFilter.entries,
+    onChange: (ImageSize) -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(StudioTheme.canvasSettingsGap)) {
         ImageSizePreview(settings, preview)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -105,7 +128,7 @@ fun ImageSizeSettings(settings: ImageSize, preview: ImageBitmap?, onChange: (Ima
             Modifier.fillMaxWidth().selectableGroup(),
             horizontalArrangement = Arrangement.spacedBy(StudioTheme.canvasFieldsGap),
         ) {
-            ResampleFilter.entries.forEach { filter ->
+            filters.forEach { filter ->
                 ChoiceSurface(
                     settings.filter == filter,
                     { onChange(settings.copy(filter = filter)) },

@@ -19,7 +19,9 @@ fn point(x: f32, y: f32) -> Sample {
 
 fn alpha(engine: &Engine, x: u32, y: u32) -> f64 {
     engine.document.layers[0]
-        .tiles
+        .raster()
+        .unwrap()
+        .tiles()
         .get(&(x / TILE_SIZE, y / TILE_SIZE))
         .map_or(0.0, |tile| {
             f64::from(tile[(((y % TILE_SIZE) * TILE_SIZE + x % TILE_SIZE) * 4 + 3) as usize])
@@ -31,6 +33,7 @@ fn draw(samples: &[Sample], amount: f32, batch: usize) -> Engine {
     engine
         .command(Command::Begin {
             brush: brush(amount),
+            assistant: None,
         })
         .unwrap();
     for points in samples.chunks(batch) {
@@ -88,7 +91,10 @@ fn stabilized_pixels_do_not_depend_on_batch_size() {
 fn pen_up_completes_the_endpoint_and_history_restores_the_whole_stroke() {
     let mut engine = Engine::new(256, 128).unwrap();
     engine
-        .command(Command::Begin { brush: brush(1.0) })
+        .command(Command::Begin {
+            brush: brush(1.0),
+            assistant: None,
+        })
         .unwrap();
     engine
         .samples(&[point(20.5, 64.5), point(210.5, 64.5)])
@@ -112,7 +118,10 @@ fn pen_up_completes_the_endpoint_and_history_restores_the_whole_stroke() {
 fn canceled_and_single_point_strokes_do_not_leave_a_tail() {
     let mut engine = Engine::new(256, 128).unwrap();
     engine
-        .command(Command::Begin { brush: brush(1.0) })
+        .command(Command::Begin {
+            brush: brush(1.0),
+            assistant: None,
+        })
         .unwrap();
     engine
         .samples(&[point(20.0, 64.0), point(210.0, 64.0)])
@@ -133,6 +142,8 @@ fn finishing_a_stabilized_eraser_respects_the_selection() {
     let mut engine = Engine::new(256, 128).unwrap();
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color: [139, 41, 66, 255],
@@ -156,6 +167,7 @@ fn finishing_a_stabilized_eraser_respects_the_selection() {
                 eraser: true,
                 ..brush(1.0)
             },
+            assistant: None,
         })
         .unwrap();
     engine
@@ -174,12 +186,16 @@ fn invalid_stabilization_cannot_start_or_mutate_a_stroke() {
         let mut engine = Engine::new(128, 128).unwrap();
         assert!(engine
             .command(Command::Begin {
-                brush: brush(amount)
+                brush: brush(amount),
+                assistant: None
             })
             .is_err());
         assert_eq!(engine.document.tile_count(), 0);
         engine
-            .command(Command::Begin { brush: brush(0.0) })
+            .command(Command::Begin {
+                brush: brush(0.0),
+                assistant: None,
+            })
             .unwrap();
     }
 }

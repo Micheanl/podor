@@ -23,6 +23,14 @@ enum class SelectionMode(val label: String) {
     @SerialName("intersect") Intersect("与选区相交"),
 }
 
+@Serializable
+enum class SelectionRefinement(val label: String) {
+    @SerialName("expand") Expand("扩展选区"),
+    @SerialName("contract") Contract("收缩选区"),
+    @SerialName("smooth") Smooth("平滑选区"),
+    @SerialName("feather") Feather("羽化选区"),
+}
+
 @Serializable data class SelectionPoint(val x: Float, val y: Float)
 
 @Serializable

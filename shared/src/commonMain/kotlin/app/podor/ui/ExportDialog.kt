@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.podor.domain.ExportFormat
 import app.podor.domain.ExportOptions
+import app.podor.domain.IndexedExportPolicy
+import app.podor.domain.requiresBakedExport
 import app.podor.presentation.StudioController
 import kotlin.math.roundToInt
 
@@ -45,7 +47,11 @@ fun ExportDialog(controller: StudioController, onDismiss: () -> Unit) {
                     confirmed = true
                     dismiss()
                 },
-                enabled = controller.ready && !controller.busy,
+                enabled =
+                    controller.ready &&
+                        !controller.busy &&
+                        (!controller.document.requiresBakedExport(options.format) ||
+                            options.bakeLayers),
                 glyph = Glyph.Export,
             )
         }
@@ -67,7 +73,8 @@ fun ExportSettings(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             ArtworkPreview(
-                controller.previews.images[0],
+                controller.previews.images[
+                        if (options.format == ExportFormat.Svg) controller.document.active else 0],
                 controller.document.width,
                 controller.document.height,
                 Modifier.fillMaxWidth().height(174.dp),
@@ -120,6 +127,8 @@ fun ExportSettings(
                             Text(
                                 tr(
                                     when {
+                                        format == ExportFormat.Svg -> "仅导出当前矢量图层"
+                                        format.preservesLayers && options.bakeLayers -> "烘焙副本"
                                         format.preservesLayers -> "保留图层"
                                         format == ExportFormat.Jpeg -> "高兼容"
                                         else -> "无损"
@@ -146,13 +155,19 @@ fun ExportSettings(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     StudioIcon(Glyph.Layers, StudioTheme.accent, Modifier.size(21.dp))
-                    Text(tr("保留图层与透明度"), fontSize = 13.sp, modifier = Modifier.weight(1f))
                     Text(
-                        "${controller.document.layers.size}",
+                        tr(if (options.bakeLayers) "烘焙副本" else "保留图层与透明度"),
+                        fontSize = 13.sp,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        "${if (options.bakeLayers) 1 else controller.document.layers.size}",
                         fontSize = 12.sp,
                         color = StudioTheme.muted,
                     )
                 }
+            } else if (options.format == ExportFormat.Svg) {
+                Text(tr("仅导出当前矢量图层"), fontSize = 13.sp)
             } else {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -169,6 +184,14 @@ fun ExportSettings(
                 }
             }
         }
+        if (controller.document.requiresBakedExport(options.format))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(tr("导出合成副本"), fontSize = 13.sp)
+                    Text(tr("合并副本中的所有图层"), fontSize = 11.sp, color = StudioTheme.muted)
+                }
+                Switch(options.bakeLayers, { onChange(options.copy(bakeLayers = it)) })
+            }
         AnimatedVisibility(
             options.format == ExportFormat.Jpeg,
             enter =
@@ -183,5 +206,25 @@ fun ExportSettings(
                 onChange(options.copy(quality = it.roundToInt()))
             }
         }
+        if (options.format == ExportFormat.IndexedPng)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    tr("调色板量化"),
+                    Modifier.weight(1f),
+                    fontSize = StudioTheme.colorSelectionLabelSize,
+                )
+                Switch(
+                    options.indexedPolicy == IndexedExportPolicy.Quantize,
+                    {
+                        onChange(
+                            options.copy(
+                                indexedPolicy =
+                                    if (it) IndexedExportPolicy.Quantize
+                                    else IndexedExportPolicy.Exact
+                            )
+                        )
+                    },
+                )
+            }
     }
 }

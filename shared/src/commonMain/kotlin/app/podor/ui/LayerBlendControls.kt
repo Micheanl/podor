@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.podor.domain.LayerBlendMode
+import app.podor.domain.LayerKind
 import app.podor.presentation.StudioController
 import kotlin.math.roundToInt
 
@@ -64,7 +65,11 @@ fun LayerBlendControls(controller: StudioController) {
             controller.updateAdjustment(settings.copy(opacity = it))
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            LayerBlendOptions(settings.blend) {
+            LayerBlendOptions(
+                settings.blend,
+                if (active.kind == LayerKind.Adjustment) listOf(LayerBlendMode.Normal)
+                else LayerBlendMode.entries,
+            ) {
                 controller.updateAdjustment(settings.copy(blend = it))
             }
         }
@@ -77,9 +82,13 @@ fun LayerBlendControls(controller: StudioController) {
 }
 
 @Composable
-fun LayerBlendOptions(current: LayerBlendMode, onSelect: (LayerBlendMode) -> Unit) {
+fun LayerBlendOptions(
+    current: LayerBlendMode,
+    modes: List<LayerBlendMode> = LayerBlendMode.entries,
+    onSelect: (LayerBlendMode) -> Unit,
+) {
     Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        LayerBlendMode.entries.chunked(2).forEach { row ->
+        modes.chunked(2).forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.forEach { mode ->
                     ChoiceSurface(mode == current, { onSelect(mode) }, Modifier.weight(1f)) {

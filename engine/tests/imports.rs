@@ -49,7 +49,12 @@ fn encoded(rgb: &[u8], width: u32, height: u32, jpeg: bool, orientation: u8) -> 
 
 fn pixel(engine: &Engine, x: u32, y: u32) -> [u8; 4] {
     let layer = &engine.document.layers[0];
-    let Some(tile) = layer.tiles.get(&(x / TILE_SIZE, y / TILE_SIZE)) else {
+    let Some(tile) = layer
+        .raster()
+        .unwrap()
+        .tiles()
+        .get(&(x / TILE_SIZE, y / TILE_SIZE))
+    else {
         return [0; 4];
     };
     let offset = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -195,6 +200,8 @@ fn damaged_images_preserve_document_history_selection_and_pixels() {
     let mut engine = Engine::new(16, 16).unwrap();
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color: [120, 30, 60, 255],

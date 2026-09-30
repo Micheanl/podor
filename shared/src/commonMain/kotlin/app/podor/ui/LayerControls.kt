@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
@@ -22,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.podor.domain.AdjustmentKind
 import app.podor.domain.LayerInfo
+import app.podor.domain.LayerKind
 import app.podor.presentation.StudioController
 import kotlin.math.roundToInt
 import kotlinx.serialization.json.put
@@ -42,22 +44,54 @@ private fun LayerListControls(controller: StudioController) {
     val layers = controller.document.layers
     val active = layers.firstOrNull { it.id == controller.document.active }
     val enabled = controller.ready && !controller.busy
-    val ordered = remember(layers) { layers.asReversed() }
+    val document = controller.document
+    val ordered = remember(document) { document.layerRows() }
+    var selecting by remember { mutableStateOf(false) }
+    var selectedIds by remember { mutableStateOf(emptySet<Int>()) }
+    val siblings = document.siblings(active?.parentId)
+    val activeIndex = siblings.indexOf(active)
+    val clippingBase = siblings.take(activeIndex.coerceAtLeast(0)).lastOrNull { !it.clipping }
+    val clippingAllowed =
+        if (active?.clipping == true)
+            active.kind != LayerKind.Adjustment ||
+                siblings.getOrNull(activeIndex + 1)?.clipping != true
+        else
+            clippingBase != null &&
+                clippingBase.kind != LayerKind.Adjustment &&
+                clippingBase.isolation != app.podor.domain.GroupIsolation.PassThrough &&
+                active?.isolation != app.podor.domain.GroupIsolation.PassThrough
+    val nodesAvailable = document.maxLayerNodes == 0 || layers.size < document.maxLayerNodes
+    val activeSubtree =
+        remember(layers, active?.id) {
+            layers.filter { it.id == active?.id || active?.id in document.ancestorIds(it.id) }
+        }
+    LaunchedEffect(layers) { selectedIds = selectedIds.intersect(layers.map { it.id }.toSet()) }
     var settings by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "${layers.size} / ${controller.document.maxLayers}",
+                "${document.drawableLayerCount} / ${document.maxLayers}",
                 Modifier.weight(1f),
                 fontSize = 11.sp,
                 color = StudioTheme.muted,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
             )
             if (active != null) {
+                ToolButton(
+                    Glyph.Clipping,
+                    if (active.clipping) "解除剪贴" else "剪贴到下方图层",
+                    selected = active.clipping,
+                    enabled = enabled && clippingAllowed && !active.effectiveLocked,
+                ) {
+                    controller.setLayerClipping(active.id, !active.clipping)
+                }
                 ToolButton(
                     Glyph.AlphaLock,
                     if (active.alphaLocked) "解除透明度锁定" else "锁定透明度",
                     selected = active.alphaLocked,
-                    enabled = enabled && !active.locked,
+                    enabled = enabled && !active.effectiveLocked && active.kind == LayerKind.Raster,
                 ) {
                     controller.setLayerProtection(active.id, alphaLocked = !active.alphaLocked)
                 }
@@ -73,20 +107,56 @@ private fun LayerListControls(controller: StudioController) {
             ToolButton(
                 Glyph.ImportImage,
                 "导入为图层",
-                enabled = enabled && layers.size < controller.document.maxLayers,
+                enabled =
+                    enabled &&
+                        document.drawableLayerCount < document.maxLayers &&
+                        nodesAvailable &&
+                        active?.effectiveLocked != true,
             ) {
                 controller.file(StudioController.FileAction.ImportLayer)
             }
             ToolButton(
                 Glyph.Plus,
                 "新建图层",
-                enabled = enabled && layers.size < controller.document.maxLayers,
+                enabled =
+                    enabled &&
+                        document.drawableLayerCount < document.maxLayers &&
+                        nodesAvailable &&
+                        active?.effectiveLocked != true,
             ) {
                 controller.command("add_layer")
             }
+            if (document.maxLayerNodes > 0)
+                LayerGroupControls(
+                    controller,
+                    active,
+                    enabled,
+                    selecting,
+                    selectedIds,
+                    onSelecting = {
+                        selecting = !selecting
+                        selectedIds = emptySet()
+                    },
+                    onGrouped = {
+                        selecting = false
+                        selectedIds = emptySet()
+                    },
+                )
         }
-        LayerList(controller, ordered, enabled, Modifier.weight(1f).fillMaxWidth())
+        LayerList(
+            controller,
+            ordered,
+            enabled,
+            Modifier.weight(1f).fillMaxWidth(),
+            selecting,
+            selectedIds,
+        ) { id ->
+            selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+        }
         if (active != null) {
+            if (document.maxLayerMasks > 0 && active.masks.isNotEmpty())
+                LayerMaskStackControls(controller, active, enabled)
+            if (active.kind == LayerKind.Vector) LayerVectorControls(controller, enabled)
             Column(
                 Modifier.fillMaxWidth()
                     .clip(StudioTheme.cardShape)
@@ -101,20 +171,40 @@ private fun LayerListControls(controller: StudioController) {
                         enabled = enabled && controller.adjustmentPreview == null,
                         primary = false,
                     )
+                    LayerMaskControls(controller, active, enabled)
+                    if (active.kind == LayerKind.Adjustment)
+                        ToolButton(
+                            Glyph.Curves,
+                            "编辑调整图层",
+                            enabled = enabled && !active.effectiveLocked && !document.maskEditing,
+                            plain = true,
+                        ) {
+                            controller.editAdjustmentLayer()
+                        }
                     ToolButton(Glyph.Adjustments, "图层设置", enabled = enabled) { settings = true }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     ToolButton(
                         Glyph.Copy,
                         "复制图层",
-                        enabled = enabled && layers.size < controller.document.maxLayers,
+                        enabled =
+                            enabled &&
+                                (document.maxLayerNodes == 0 ||
+                                    layers.size + activeSubtree.size <= document.maxLayerNodes) &&
+                                document.drawableLayerCount +
+                                    activeSubtree.count {
+                                        it.kind == LayerKind.Raster || it.kind == LayerKind.Vector
+                                    } <= document.maxLayers,
                     ) {
                         controller.command("duplicate_layer") { put("id", active.id) }
                     }
                     ToolButton(
                         Glyph.Up,
                         "上移图层",
-                        enabled = enabled && active.id != layers.last().id,
+                        enabled =
+                            enabled &&
+                                active.id != siblings.lastOrNull()?.id &&
+                                !active.effectiveLocked,
                     ) {
                         controller.command("move_layer") {
                             put("id", active.id)
@@ -124,7 +214,10 @@ private fun LayerListControls(controller: StudioController) {
                     ToolButton(
                         Glyph.Down,
                         "下移图层",
-                        enabled = enabled && active.id != layers.first().id,
+                        enabled =
+                            enabled &&
+                                active.id != siblings.firstOrNull()?.id &&
+                                !active.effectiveLocked,
                     ) {
                         controller.command("move_layer") {
                             put("id", active.id)
@@ -136,6 +229,7 @@ private fun LayerListControls(controller: StudioController) {
                         "合并可见图层",
                         enabled =
                             enabled &&
+                                document.animation == null &&
                                 layers.count { it.visible } >= 2 &&
                                 layers.none { it.visible && it.locked },
                     ) {
@@ -144,7 +238,8 @@ private fun LayerListControls(controller: StudioController) {
                     ToolButton(
                         Glyph.Trash,
                         "删除图层",
-                        enabled = enabled && layers.size > 1 && !active.locked,
+                        enabled =
+                            enabled && !active.effectiveLocked && activeSubtree.size < layers.size,
                     ) {
                         controller.command("remove_layer") { put("id", active.id) }
                     }
@@ -165,11 +260,12 @@ internal fun LayerRow(
     selected: Boolean,
     enabled: Boolean,
     modifier: Modifier,
+    selecting: Boolean = false,
+    onSelect: () -> Unit = { controller.selectLayer(layer.id) },
 ) {
     val background =
         animateColorAsState(
-            if (selected) StudioTheme.selection
-            else StudioTheme.elevated,
+            if (selected) StudioTheme.selection else StudioTheme.elevated,
             tween(StudioMotion.feedbackMillis),
         )
     Row(
@@ -183,16 +279,29 @@ internal fun LayerRow(
                 StudioTheme.layerShape,
             )
             .selectable(selected, enabled = enabled) {
-                controller.command("select_layer") { put("id", layer.id) }
+                onSelect()
             }
             .padding(
-                start = StudioTheme.layerPreviewInset,
+                start =
+                    StudioTheme.layerPreviewInset +
+                        (StudioTheme.layerIndent * layer.depth).coerceAtMost(
+                            StudioTheme.layerMaxIndent
+                        ),
                 top = StudioTheme.layerRowPadding,
                 bottom = StudioTheme.layerRowPadding,
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val dragLabel = "${tr(layer.name)} · ${tr("拖动缩略图排序")}"
+        if (layer.kind == LayerKind.Group)
+            ToolButton(
+                Glyph.Chevron,
+                "${tr(if (layer.closed) "展开" else "收起")} ${tr(layer.name)}",
+                enabled = enabled && !selecting,
+                plain = true,
+            ) {
+                controller.closeLayerGroup(layer)
+            }
+        val dragLabel = "${tr(layer.name)} · ${tr(if (layer.mask == null) "拖动缩略图排序" else "编辑图层")}"
         TooltipBox(
             positionProvider =
                 TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
@@ -213,10 +322,59 @@ internal fun LayerRow(
                 controller.document.height,
                 Modifier.size(StudioTheme.layerPreviewSize)
                     .semantics { contentDescription = dragLabel }
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(StudioTheme.background)
-                    .padding(3.dp),
+                    .then(
+                        if (layer.mask != null && selected && !controller.document.maskEditing)
+                            Modifier.border(
+                                StudioTheme.layerTargetBorder,
+                                StudioTheme.accent,
+                            )
+                        else Modifier
+                    ),
             )
+        }
+        layer.mask?.let { mask ->
+            Spacer(Modifier.width(StudioTheme.layerMaskPreviewGap))
+            val label = "${tr(layer.name)} · ${tr("编辑蒙版")}"
+            val editing = selected && controller.document.maskEditing
+            TooltipBox(
+                positionProvider =
+                    TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+                tooltip = {
+                    PlainTooltip(
+                        containerColor = StudioTheme.elevated,
+                        contentColor = StudioTheme.text,
+                    ) {
+                        Text(label)
+                    }
+                },
+                state = rememberTooltipState(),
+                enableUserInput = enabled,
+            ) {
+                Box(
+                    Modifier.size(StudioTheme.layerMaskPreviewSize)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(StudioTheme.elevated)
+                        .border(
+                            StudioTheme.layerTargetBorder,
+                            if (editing) StudioTheme.accent else StudioTheme.controlBorder,
+                            RoundedCornerShape(8.dp),
+                        )
+                        .selectable(editing, enabled = enabled && !selecting) {
+                            controller.selectLayer(layer.id, mask = true)
+                        }
+                        .semantics { contentDescription = label }
+                ) {
+                    ArtworkPreview(
+                        controller.previews.masks[layer.id],
+                        controller.document.width,
+                        controller.document.height,
+                        Modifier.fillMaxSize()
+                            .padding(StudioTheme.layerTargetBorder)
+                            .alpha(if (mask.enabled) 1f else StudioTheme.layerMaskDisabledAlpha),
+                        transparent = false,
+                    )
+                }
+            }
         }
         Column(Modifier.weight(1f).padding(start = 10.dp)) {
             Row(
@@ -231,13 +389,37 @@ internal fun LayerRow(
                     overflow = TextOverflow.Ellipsis,
                     color = if (selected) StudioTheme.accent else StudioTheme.text,
                 )
+                if (layer.kind == LayerKind.Group)
+                    StudioIcon(
+                        Glyph.Folder,
+                        StudioTheme.muted,
+                        Modifier.size(StudioTheme.layerStatusIconSize),
+                    )
+                if (layer.kind == LayerKind.Adjustment)
+                    StudioIcon(
+                        Glyph.Adjustments,
+                        StudioTheme.muted,
+                        Modifier.size(StudioTheme.layerStatusIconSize),
+                    )
+                if (selecting && selected)
+                    StudioIcon(
+                        Glyph.Check,
+                        StudioTheme.accent,
+                        Modifier.size(StudioTheme.layerStatusIconSize),
+                    )
                 if (layer.alphaLocked)
                     StudioIcon(
                         Glyph.AlphaLock,
                         StudioTheme.accent,
                         Modifier.size(StudioTheme.layerStatusIconSize),
                     )
-                if (layer.locked)
+                if (layer.clipping)
+                    StudioIcon(
+                        Glyph.Clipping,
+                        StudioTheme.muted,
+                        Modifier.size(StudioTheme.layerStatusIconSize),
+                    )
+                if (layer.effectiveLocked)
                     StudioIcon(
                         Glyph.Lock,
                         StudioTheme.muted,

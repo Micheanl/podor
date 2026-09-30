@@ -3,7 +3,9 @@ use podor_engine::{model::*, Command, Engine};
 fn pixel(engine: &Engine, x: u32, y: u32) -> [u8; 4] {
     let layer = &engine.document.layers[0];
     layer
-        .tiles
+        .raster()
+        .unwrap()
+        .tiles()
         .get(&(x / TILE_SIZE, y / TILE_SIZE))
         .map_or([0; 4], |tile| {
             let offset = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -20,7 +22,12 @@ fn point(x: f32, y: f32) -> Sample {
 }
 
 fn stroke(engine: &mut Engine, brush: Brush, points: &[Sample], batch: usize) {
-    engine.command(Command::Begin { brush }).unwrap();
+    engine
+        .command(Command::Begin {
+            brush,
+            assistant: None,
+        })
+        .unwrap();
     for points in points.chunks(batch) {
         engine.samples(points).unwrap();
     }
@@ -120,6 +127,8 @@ fn overlapping_copies_blend_once_and_leave_no_seam_on_axes() {
             for engine in [&mut left, &mut right, &mut both] {
                 engine
                     .command(Command::Fill {
+                        contiguous: true,
+                        merged: false,
                         x: 0,
                         y: 0,
                         color: [90, 40, 150, 200],
@@ -187,6 +196,7 @@ fn all_copies_share_one_history_entry_and_packet_boundaries_do_not_matter() {
     first
         .command(Command::Begin {
             brush: brush(SymmetryMode::Quadrant),
+            assistant: None,
         })
         .unwrap();
     first.samples(&[point(220.0, 240.0)]).unwrap();
@@ -218,6 +228,8 @@ fn selection_and_alpha_lock_limit_all_copies_without_changing_other_layers() {
     let mut engine = Engine::new(256, 256).unwrap();
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color: [50, 100, 200, 128],
@@ -272,7 +284,8 @@ fn legacy_brush_defaults_and_invalid_axes_leave_the_document_intact() {
         ] {
             assert!(engine
                 .command(Command::Begin {
-                    brush: Brush { symmetry, ..brush }
+                    brush: Brush { symmetry, ..brush },
+                    assistant: None
                 })
                 .is_err());
             assert_eq!(before, engine.save().unwrap());
@@ -283,7 +296,8 @@ fn legacy_brush_defaults_and_invalid_axes_leave_the_document_intact() {
             brush: Brush {
                 smudge: true,
                 ..self::brush(SymmetryMode::Vertical)
-            }
+            },
+            assistant: None
         })
         .is_err());
 }

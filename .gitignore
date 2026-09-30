@@ -10,6 +10,7 @@ local.properties
 .DS_Store
 captures/
 *.podor
+*.pod
 .env
 .env.*
 *.keystore

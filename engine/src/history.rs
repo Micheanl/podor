@@ -1,6 +1,5 @@
 use crate::model::*;
 use std::collections::{HashSet, VecDeque};
-use std::sync::Arc;
 
 #[derive(Default)]
 pub struct History {
@@ -36,21 +35,14 @@ impl History {
     }
 
     fn retained_bytes(&self, current: &Document) -> usize {
-        let live: HashSet<_> = current
-            .layers
-            .iter()
-            .flat_map(|layer| layer.tiles.values())
-            .map(Arc::as_ptr)
-            .collect();
+        let live: HashSet<_> = current.resources().map(|(ptr, _)| ptr).collect();
         let retained: HashSet<_> = self
             .undo
             .iter()
             .chain(self.redo.iter())
-            .flat_map(|snapshot| &snapshot.document.layers)
-            .flat_map(|layer| layer.tiles.values())
-            .map(Arc::as_ptr)
-            .filter(|ptr| !live.contains(ptr))
+            .flat_map(|snapshot| snapshot.document.resources())
+            .filter(|(ptr, _)| !live.contains(ptr))
             .collect();
-        retained.len() * TILE_BYTES
+        retained.into_iter().map(|(_, bytes)| bytes).sum()
     }
 }

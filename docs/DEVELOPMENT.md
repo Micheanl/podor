@@ -76,7 +76,7 @@ Windows 图片剪贴板提供 PNG 和系统图片格式，保留透明像素。C
 
 画笔面板的镜像图标打开对称设置，提供左右、上下和双轴模式，交互参考 [Procreate 对称辅助线](https://help.procreate.com/procreate/handbook/guides/guides-symmetry)。轴线按半像素对齐，随画布旋转和镜像，参考线与镜像光标不写入像素。设置只用于当前作品，切换作品恢复关闭；目前适用于画笔、橡皮，涂抹不参与。Rust 在稳笔和间距采样后反射笔尖角度与颗粒坐标，同一落笔内的重叠覆盖取最大值，避免轴线处加深。最多处理四个笔尖，重复图块只访问一次，选区、锁定和内存预算照常生效，整笔共享一次撤销。`PODOR_GPU_TEST=1` 包含双轴绘画与普通绘画的响应对比，报告在 `desktopApp/build/reports/symmetry-performance.txt`。
 
-PSD 支持 8 位 RGB 平面像素图层导入导出，保留层序、Unicode 名称、可见性、不透明度、锁定标记和八种混合模式。按 [Adobe PSD 规范](https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/) 读取 Raw、PackBits、ZIP 和 ZIP 预测压缩；分层文件按行解码写入稀疏图块，限制累计解码量与实际像素内存。图层组、蒙版、剪贴图层、混合颜色带和其他特效明确报错。画布外像素会裁切，颜色按 sRGB 读取，手动保存另存为 `.podor`，不覆盖来源 PSD。无图层的 RGB 合成图也可打开，额外 Alpha 通道不会误当透明度。
+PSD 支持 8 位 RGB 平面像素图层导入导出，保留层序、Unicode 名称、可见性、不透明度、锁定标记和八种混合模式。按 [Adobe PSD 规范](https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/) 读取 Raw、PackBits、ZIP 和 ZIP 预测压缩；分层文件按行解码写入稀疏图块，限制累计解码量与实际像素内存。图层组、蒙版、剪贴图层、混合颜色带和其他特效明确报错。画布外像素会裁切，颜色按 sRGB 读取，手动保存另存为 `.pod`，不覆盖来源 PSD。无图层的 RGB 合成图也可打开，额外 Alpha 通道不会误当透明度。
 
 PSD 导出逐行 PackBits 编码，合成只缓存一排像素图块和压缩后的通道。GIMP 3.2.6 已检查十个导出样本；八种模式的预览逐像素一致，重算图层的通道误差不超过 2/255。反向导入 GIMP 的三层样本，合成通道差值不超过 1/255。GIMP 不恢复完整图层锁定；Photoshop 本机兼容性尚未验证。
 
@@ -88,7 +88,7 @@ PSD 导出逐行 PackBits 编码，合成只缓存一排像素图块和压缩后
 
 [OpenRaster](https://www.openraster.org/baseline/layer-stack-spec.html)（`.ora`）导入导出保留平面图层的顺序、名称、可见性、不透明度和当前支持的八种混合模式。导出保留原始透明度，不添加白底；各层裁到有数据的块范围，PNG 按行编码，合成预览只缓存一排画布块。
 
-导入在后台解码，按图层偏移写入画布内的稀疏图块，画布外像素会裁切。普通 PNG 按行读取，交错 PNG 使用受尺寸限制的缓冲区，16 位通道转换为 8 位；图层组和其他混合模式会明确报错。文件目录、XML 和像素分别限制大小，解析失败保留当前作品。手动保存默认另存为 `.podor`，不覆盖来源 ORA。测试包含 GIMP 导出的多图层、交错 PNG、越界偏移和损坏文件。
+导入在后台解码，按图层偏移写入画布内的稀疏图块，画布外像素会裁切。普通 PNG 按行读取，交错 PNG 使用受尺寸限制的缓冲区，16 位通道转换为 8 位；图层组和其他混合模式会明确报错。文件目录、XML 和像素分别限制大小，解析失败保留当前作品。手动保存默认另存为 `.pod`，不覆盖来源 ORA。测试包含 GIMP 导出的多图层、交错 PNG、越界偏移和损坏文件。
 
 已用 GIMP 3.2.6 验证图层读取。GIMP 默认合成设置可能改变显示效果；将图层混合空间、合成空间设为 `RGB (from color profile)`，合成模式设为 `Union` 后，八种模式样本与 podor 的通道差值不超过 2/255，设置说明见 [GIMP 手册](https://docs.gimp.org/3.2/en/gimp-layer-new.html)。文件内的合成预览保持 podor 原貌。
 
@@ -122,6 +122,26 @@ Windows 可设置 `PODOR_GPU_TEST=1` 后运行 `scripts/check.ps1`，额外检�
 `image-resize-performance.txt` 记录大图重采样、画布刷新和主线程排队时间。平滑缩放使用预乘颜色的 Lanczos3 滤波，按行复用最多 4 MiB 缓存；像素模式使用最近邻。两种方式都保留图层，并在内存上限内支持一步撤销。
 
 交互式 Windows 会话可另设 `PODOR_INK_SYSTEM_TEST=1`，测试通过系统指针注入检查压感、笔尾擦除和重复鼠标事件。注入前逐点确认命中测试窗口，结束后关闭窗口。实体数位板、触控笔仍需设备验证；双指手势目前只有 Compose 输入模拟测试。
+
+## GitHub 多平台 CI
+
+`.github/workflows/check.yml` 在每次 push、pull request 和手动 `workflow_dispatch` 时运行。工作流使用 Gradle Wrapper、Temurin 27 和 Rust 1.98.1，分别在对应系统编译原生引擎与应用；不调用发布脚本，不创建 Release，也不部署登录服务。
+
+| 任务 | 构建与检查 | Actions Artifact |
+| --- | --- | --- |
+| Windows x64 | Rust 格式、Clippy、测试，`shared:jvmTest`、`desktopApp:test`、`desktopApp:packageMsi` | `podor-windows-x64`，包含 MSI |
+| macOS ARM64 | 同上，桌面打包任务为 `desktopApp:packageDmg` | `podor-macos-arm64`，包含 DMG |
+| Linux x64 | 同上，在 Xvfb 中运行 JVM 测试和 `desktopApp:packageDeb` | `podor-linux-x64`，包含 DEB |
+| Android | `scripts/build-android.sh` 编译 arm64-v8a、x86_64 原生库并运行 `androidApp:assembleDebug` | `podor-android-debug`，包含双 ABI Debug APK |
+| iOS | `scripts/build-ios.sh` 编译设备、模拟器原生库和 Kotlin 静态框架，再执行 Xcode 模拟器 build 与设备 archive | `podor-ios-unsigned`，包含下述三个 ZIP |
+
+三个桌面任务另外上传 `tests-windows-x64`、`tests-macos-arm64`、`tests-linux-x64`，保留 Gradle 测试报告和 JUnit XML；测试失败时也尝试上传已有报告。桌面 JNI 库随资源打包，测试和应用 launcher 均启用 `--enable-native-access=ALL-UNNAMED`。CI 不开启 Windows 系统剪贴板、原生指针注入和 GPU 性能测试所需的可选环境变量。
+
+Android 任务安装 `platforms;android-37.0`、Build Tools 37.0.0、NDK 30.0.16248370 和 cargo-ndk 4.1.2。原生库使用版本目录中的 minSdk 构建。APK 使用 Debug 签名，只验证编译与打包；没有运行设备或模拟器测试，也不产出商店发布包。
+
+iOS 使用 Apple Silicon 的 `xcode-27` runner，并通过 `DEVELOPER_DIR` 选定 Xcode 27 正式版。`podor-ios-simulator.zip` 包含 ARM64 模拟器应用；`podor-ios-device-unsigned.zip` 包含未签名的 `podor.xcarchive`；`podor-ios-frameworks.zip` 包含设备和模拟器的 `PodorShared` 静态框架。设备归档尚需开发者团队、证书及 provisioning profile 才能安装或发布，不能视为已完成真机验证。macOS 包也未进行签名或 notarization。
+
+构建结果以具体 Actions run 的成功状态和产物为准。离屏 Scene 测试不等于实体触控笔、系统集成或所有平台设备验收；最新工具链组合仍需分别通过这些 CI 任务。
 
 ## 其他平台
 

@@ -7,7 +7,9 @@ fn artwork() -> Engine {
         for y in 50..78 {
             let alpha = [0, 1, 32, 128, 254, 255][(x as usize - 124) % 6];
             let tile = engine.document.layers[0]
-                .tiles
+                .raster_mut()
+                .unwrap()
+                .tiles_mut()
                 .entry((x / TILE_SIZE, 0))
                 .or_insert_with(|| Arc::new(vec![0; TILE_BYTES]));
             let i = ((y * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -28,14 +30,17 @@ fn protect(engine: &mut Engine, alpha_locked: bool, locked: bool) {
 }
 
 fn pixel(engine: &Engine, x: u32, y: u32) -> [u8; 4] {
-    let tile = &engine.document.layers[0].tiles[&(x / TILE_SIZE, y / TILE_SIZE)];
+    let tile =
+        &engine.document.layers[0].raster().unwrap().tiles()[&(x / TILE_SIZE, y / TILE_SIZE)];
     let i = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
     tile[i..i + 4].try_into().unwrap()
 }
 
 fn mask(engine: &Engine) -> BTreeMap<TileKey, Vec<u8>> {
     engine.document.layers[0]
-        .tiles
+        .raster()
+        .unwrap()
+        .tiles()
         .iter()
         .map(|(key, tile)| (*key, tile.as_chunks::<4>().0.iter().map(|p| p[3]).collect()))
         .collect()
@@ -57,6 +62,7 @@ fn alpha_locked_brush_preserves_soft_edges_and_does_not_allocate_empty_tiles() {
                     stabilization: 0.5,
                     ..Brush::default()
                 },
+                assistant: None,
             })
             .unwrap();
         engine
@@ -105,6 +111,8 @@ fn locked_fill_blends_opacity_and_blur_keeps_alpha_and_selection() {
         .unwrap();
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 128,
             y: 64,
             color: [0, 0, 255, 128],
@@ -128,7 +136,7 @@ fn locked_fill_blends_opacity_and_blur_keeps_alpha_and_selection() {
     .unwrap();
     engine.command(tone).unwrap();
     assert_eq!(mask(&engine), before);
-    for tile in engine.document.layers[0].tiles.values() {
+    for tile in engine.document.layers[0].raster().unwrap().tiles().values() {
         assert!(tile
             .as_chunks::<4>()
             .0
@@ -139,6 +147,8 @@ fn locked_fill_blends_opacity_and_blur_keeps_alpha_and_selection() {
     engine.command(Command::Select { rect: None }).unwrap();
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color: [20, 80, 100, 255],
@@ -159,8 +169,11 @@ fn layer_lock_rejects_destructive_edits_and_keeps_state_atomic() {
     for command in [
         Command::Begin {
             brush: Brush::default(),
+            assistant: None,
         },
         Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 128,
             y: 64,
             color: [0; 4],
@@ -186,19 +199,24 @@ fn layer_lock_rejects_destructive_edits_and_keeps_state_atomic() {
             brush: Brush {
                 eraser: true,
                 ..Brush::default()
-            }
+            },
+            assistant: None
         })
         .is_err());
     protect(&mut engine, false, false);
     engine.command(Command::Clear).unwrap();
-    assert!(engine.document.layers[0].tiles.is_empty());
+    assert!(engine.document.layers[0]
+        .raster()
+        .unwrap()
+        .tiles()
+        .is_empty());
 }
 
 #[test]
 fn protection_persists_and_toggling_it_does_not_transfer_canvas_pixels() {
     let mut engine = artwork();
     engine.frame();
-    let original = engine.document.layers[0].tiles.clone();
+    let original = engine.document.layers[0].raster().unwrap().tiles().clone();
     protect(&mut engine, true, true);
     assert_eq!(engine.frame().len(), 16);
     engine
@@ -214,10 +232,13 @@ fn protection_persists_and_toggling_it_does_not_transfer_canvas_pixels() {
     engine.command(Command::Undo).unwrap();
     assert_eq!(engine.frame().len(), 16);
     for (key, tile) in &original {
-        assert!(Arc::ptr_eq(tile, &engine.document.layers[0].tiles[key]));
+        assert!(Arc::ptr_eq(
+            tile,
+            &engine.document.layers[0].raster().unwrap().tiles()[key]
+        ));
     }
     let saved = engine.save().unwrap();
-    assert!(saved.starts_with(b"PODOR\x02"));
+    assert!(saved.starts_with(b"PODOR\x0c"));
     let mut restored = Engine::new(1, 1).unwrap();
     restored.load(&saved).unwrap();
     assert_eq!(restored.state()["layers"][0]["alphaLocked"], true);
@@ -268,7 +289,7 @@ fn released_v1_project_migrates_without_changing_pixels_or_layer_properties() {
         include_bytes!("fixtures/project-v1.png")
     );
     let mut future = saved.clone();
-    future[5] = 3;
+    future[5] = 13;
     assert!(engine.load(&future).unwrap_err().contains("版本"));
     assert_eq!(engine.save().unwrap(), saved);
     assert!(engine.load(&saved[..saved.len() / 2]).is_err());

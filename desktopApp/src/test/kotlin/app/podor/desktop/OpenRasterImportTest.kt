@@ -32,7 +32,7 @@ class OpenRasterImportTest {
             val source = directory.resolve("drawing.$extension")
             val original = Files.readAllBytes(Path.of("../engine/tests/fixtures/gimp-layers.$extension"))
             Files.write(source, original)
-            val output = ProjectReference(directory.resolve("drawing.podor").toString(), "drawing")
+            val output = ProjectReference(directory.resolve("drawing.pod").toString(), "drawing")
             val disk = DesktopFiles(DesktopStorage(directory.resolve("data"))) { null }
             var writes = 0
             val files =
@@ -72,8 +72,17 @@ class OpenRasterImportTest {
                 awaitState {
                     controller.document.layers.size == 3 &&
                         !controller.busy &&
-                        controller.previews.images.keys == setOf(0, 1, 2, 3)
+                        controller.previews.images.keys ==
+                            controller.document.layers.map { it.id }.toSet() + 0
                 }
+                val layerIds =
+                    withContext(Dispatchers.Main) {
+                        controller.document.layers.map { it.id }.toSet()
+                    }
+                val paintId =
+                    withContext(Dispatchers.Main) {
+                        controller.document.layers.single { it.name == "Paint" }.id
+                    }
                 withContext(Dispatchers.Main) {
                     assertFalse(controller.projectReference!!.editable)
                     assertFalse(controller.showWorkspace)
@@ -84,13 +93,13 @@ class OpenRasterImportTest {
                     assertFalse(controller.document.layers[2].visible)
                     assertFalse(controller.hasUnsavedChanges)
                     assertEquals(0, writes)
-                    controller.command("select_layer") { put("id", 2) }
+                    controller.command("select_layer") { put("id", paintId) }
                 }
-                awaitState { controller.document.active == 2 }
+                awaitState { controller.document.active == paintId }
                 if (extension == "psd") {
                     withContext(Dispatchers.Main) {
                         assertTrue(controller.document.layers[1].alphaLocked)
-                        controller.setLayerProtection(2, alphaLocked = false)
+                        controller.setLayerProtection(paintId, alphaLocked = false)
                     }
                     awaitState { !controller.document.layers[1].alphaLocked }
                 }
@@ -118,7 +127,7 @@ class OpenRasterImportTest {
                 awaitState {
                     !controller.busy &&
                         controller.document.revision > beforeReopen &&
-                        controller.document.active == 2 &&
+                        controller.document.active == paintId &&
                         controller.previews.revision == controller.document.revision
                 }
                 val document = withContext(Dispatchers.Main) { controller.document }
@@ -135,7 +144,7 @@ class OpenRasterImportTest {
                     assertEquals(document, controller.document)
                     assertSame(pixels, controller.frame)
                     assertEquals(output, controller.projectReference)
-                    assertEquals(setOf(0, 1, 2, 3), controller.previews.images.keys)
+                    assertEquals(layerIds + 0, controller.previews.images.keys)
                     assertFalse(controller.hasUnsavedChanges)
                     assertTrue(controller.recentProjects.none { it.reference.id == bad.toString() })
                 }

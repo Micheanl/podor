@@ -18,12 +18,24 @@ image = { version = "0.25.10", default-features = false, features = ["jpeg", "we
 tiff = "0.11.3"
 zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2"] }
 roxmltree = "0.21.1"
+tiny-skia = { version = "0.12.0", default-features = false, features = ["std", "simd"] }
+kurbo = "0.13.1"
+gif = { version = "0.14.2", default-features = false, features = ["std", "raii_no_panic"] }
+color_quant = "2.0.0"
+weezl = "0.1.12"
+
+[dev-dependencies]
+image = { version = "0.25.10", default-features = false, features = ["gif"] }
 
 [target.'cfg(not(target_os = "ios"))'.dependencies]
 jni = "0.21"
 
 [[bench]]
 name = "painting"
+harness = false
+
+[[bench]]
+name = "brush_materials"
 harness = false
 
 [[bench]]

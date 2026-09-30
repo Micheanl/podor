@@ -22,12 +22,16 @@ fn fixture() -> Engine {
             }
         }
         engine.document.layers[0]
-            .tiles
+            .raster_mut()
+            .unwrap()
+            .tiles_mut()
             .insert((tx as u32, 0), Arc::new(pixels));
     }
     let mut other = Layer::new(2, "Other".into());
     other
-        .tiles
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
         .insert((0, 0), Arc::new([10, 20, 30, 40].repeat(TILE_BYTES / 4)));
     engine.document.layers.push(other);
     engine.document.next_id = 3;
@@ -63,7 +67,7 @@ fn curves_match_independent_linear_mapping_preserve_alpha_selection_and_other_la
     .unwrap();
     engine.document.layers[0].alpha_locked = true;
     let source = engine.document.layers[0].clone();
-    let other = engine.document.layers[1].tiles[&(0, 0)].clone();
+    let other = engine.document.layers[1].raster().unwrap().tiles()[&(0, 0)].clone();
     let saved = engine.save().unwrap();
     let state = engine.state();
     let value = request(
@@ -78,8 +82,8 @@ fn curves_match_independent_linear_mapping_preserve_alpha_selection_and_other_la
     assert_eq!(engine.state(), state);
     apply(&mut engine, &value).unwrap();
     assert_eq!(engine.frame_with_background(true), result);
-    for (&(tx, ty), pixels) in &source.tiles {
-        let actual = &engine.document.layers[0].tiles[&(tx, ty)];
+    for (&(tx, ty), pixels) in source.raster().unwrap().tiles() {
+        let actual = &engine.document.layers[0].raster().unwrap().tiles()[&(tx, ty)];
         for (i, p) in pixels.as_chunks::<4>().0.iter().enumerate() {
             let x = tx * 128 + (i % 128) as u32;
             let y = ty * 128 + (i / 128) as u32;
@@ -102,7 +106,7 @@ fn curves_match_independent_linear_mapping_preserve_alpha_selection_and_other_la
     }
     assert!(Arc::ptr_eq(
         &other,
-        &engine.document.layers[1].tiles[&(0, 0)]
+        &engine.document.layers[1].raster().unwrap().tiles()[&(0, 0)]
     ));
     let edited = engine.save().unwrap();
     engine.command(Command::Undo).unwrap();
@@ -116,14 +120,14 @@ fn curves_match_independent_linear_mapping_preserve_alpha_selection_and_other_la
 fn identity_and_empty_selection_do_not_copy_pixels_or_add_history() {
     let mut engine = fixture();
     let value = request(&engine, json!({}));
-    let tile = engine.document.layers[0].tiles[&(0, 0)].clone();
+    let tile = engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)].clone();
     let state = engine.state();
     assert_eq!(preview(&engine, &value).unwrap().len(), 16);
     apply(&mut engine, &value).unwrap();
     assert_eq!(engine.state(), state);
     assert!(Arc::ptr_eq(
         &tile,
-        &engine.document.layers[0].tiles[&(0, 0)]
+        &engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)]
     ));
     command(
         &mut engine,
@@ -148,7 +152,8 @@ fn identity_and_empty_selection_do_not_copy_pixels_or_add_history() {
     assert_eq!(preview(&engine, &value).unwrap().len(), 16);
     apply(&mut engine, &value).unwrap();
     assert_eq!(engine.state(), state);
-    let histogram: Vec<Vec<f32>> = serde_json::from_slice(&engine.curve_histogram()).unwrap();
+    let histogram: Vec<Vec<f32>> =
+        serde_json::from_slice(&engine.curve_histogram().unwrap()).unwrap();
     assert!(histogram.iter().flatten().all(|&value| value == 0.0));
 }
 
@@ -167,8 +172,8 @@ fn curved_selection_edges_mix_coverage_without_changing_alpha() {
     for tile in mask[8..].as_chunks::<{ 8 + TILE_BYTES }>().0 {
         let tx = u32::from_le_bytes(tile[..4].try_into().unwrap());
         let ty = u32::from_le_bytes(tile[4..8].try_into().unwrap());
-        let before = &source.tiles[&(tx, ty)];
-        let after = &engine.document.layers[0].tiles[&(tx, ty)];
+        let before = &source.raster().unwrap().tiles()[&(tx, ty)];
+        let after = &engine.document.layers[0].raster().unwrap().tiles()[&(tx, ty)];
         for i in 0..TILE_BYTES / 4 {
             let coverage = u32::from(tile[8 + i * 4 + 3]);
             let alpha = u32::from(before[i * 4 + 3]);
@@ -230,7 +235,9 @@ fn histogram_uses_active_selected_pixels_and_weights_transparency_without_mutati
         30, 60, 90, 255, 60, 30, 10, 128, 0, 0, 0, 0, 255, 255, 255, 255,
     ]);
     engine.document.layers[0]
-        .tiles
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
         .insert((0, 0), Arc::new(tile));
     command(
         &mut engine,
@@ -239,7 +246,8 @@ fn histogram_uses_active_selected_pixels_and_weights_transparency_without_mutati
     .unwrap();
     let saved = engine.save().unwrap();
     let state = engine.state();
-    let histogram: Vec<Vec<f32>> = serde_json::from_slice(&engine.curve_histogram()).unwrap();
+    let histogram: Vec<Vec<f32>> =
+        serde_json::from_slice(&engine.curve_histogram().unwrap()).unwrap();
     assert_eq!(histogram.len(), 4);
     assert!(histogram.iter().all(|h| h.len() == 256));
     assert_eq!(histogram[1][30], 1.0);

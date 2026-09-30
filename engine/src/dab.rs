@@ -40,6 +40,7 @@ pub(crate) struct Dab {
     grain_axis: [f32; 2],
     leaf_center: f32,
     leaf_radius: f32,
+    material: Option<&'static crate::brush_texture::Material>,
 }
 
 impl Dab {
@@ -78,6 +79,7 @@ impl Dab {
             grain_axis: [0.0; 2],
             leaf_center,
             leaf_radius,
+            material: crate::brush_texture::Material::for_texture(brush.texture),
         }
     }
 
@@ -167,6 +169,9 @@ impl Dab {
         if squared >= reach * reach {
             return 0.0;
         }
+        if self.brush.raster != BrushRaster::Antialiased {
+            return 1.0;
+        }
         ((reach - squared.sqrt()) / self.feather).clamp(0.0, 1.0)
     }
 
@@ -180,6 +185,9 @@ impl Dab {
             return 0.0;
         }
         let core = self.shape_at::<SIMPLE>(px, py);
+        if self.brush.raster != BrushRaster::Antialiased {
+            return f32::from(core > 0.0);
+        }
         let shape = if core >= 1.0 {
             1.0
         } else {
@@ -193,7 +201,7 @@ impl Dab {
             return 0.0;
         }
         let mut coverage = shape;
-        if self.brush.grain > 0.0 || self.brush.paper > 0.0 {
+        if self.material.is_some() || self.brush.grain > 0.0 || self.brush.paper > 0.0 {
             let x = if self.grain_mirror[0] {
                 (self.grain_axis[0] - x as f32 - 1.0) as i64 as u32
             } else {
@@ -204,6 +212,25 @@ impl Dab {
             } else {
                 y
             };
+            if let Some(material) = self.material {
+                let mut rx = (dx * self.cos + dy * self.sin) / self.radius;
+                let aspect = if self.brush.tip == BrushTip::Comb {
+                    1.0
+                } else {
+                    self.inverse_aspect
+                };
+                let mut ry = (-dx * self.sin + dy * self.cos) * aspect / self.radius;
+                if self.grain_mirror[0] {
+                    rx = -rx;
+                }
+                if self.grain_mirror[1] {
+                    ry = -ry;
+                }
+                if self.brush.tip == BrushTip::Flat {
+                    std::mem::swap(&mut rx, &mut ry);
+                }
+                coverage *= material.coverage(rx, ry, x, y);
+            }
             if self.brush.grain > 0.0 {
                 let mut hash = x.wrapping_mul(374_761_393) ^ y.wrapping_mul(668_265_263);
                 hash = (hash ^ (hash >> 13)).wrapping_mul(1_274_126_177);

@@ -21,6 +21,7 @@ import app.podor.domain.*
 import app.podor.presentation.StudioController
 import app.podor.resources.Res
 import app.podor.resources.brand
+import kotlinx.serialization.json.put
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -65,20 +66,112 @@ fun StudioHeader(
                     { menu = false },
                 ) {
                     FlowRow(Modifier.width(192.dp).padding(8.dp), maxItemsInEachRow = 4) {
-                        ToolButton(Glyph.Plus, "新建画布", plain = true) { onDialog(StudioDialog.New); menu = false }
-                        ToolButton(Glyph.Folder, "打开工程 / 图片", plain = true) { onDialog(StudioDialog.Open); menu = false }
-                        ToolButton(Glyph.Save, "保存工程", plain = true) { controller.file(StudioController.FileAction.Save); menu = false }
-                        ToolButton(Glyph.Export, "导出图像", plain = true) { onDialog(StudioDialog.Export); menu = false }
-                        ToolButton(Glyph.Copy, "另存为", plain = true) { controller.file(StudioController.FileAction.SaveAs); menu = false }
-                        ToolButton(Glyph.Trash, "清空当前图层", enabled = controller.document.layers.none {
-                            it.id == controller.document.active && (it.locked || it.alphaLocked)
-                        }, plain = true) { onDialog(StudioDialog.Clear); menu = false }
-                        ToolButton(Glyph.Settings, "设置", plain = true) { onDialog(StudioDialog.Settings); menu = false }
-                        ToolButton(Glyph.Deselect, controller.shortcutLabel(ShortcutAction.Deselect),
-                            enabled = controller.document.selection != null, plain = true) { controller.clearSelection(); menu = false }
+                        ToolButton(Glyph.Plus, "新建画布", plain = true) {
+                            onDialog(StudioDialog.New)
+                            menu = false
+                        }
+                        ToolButton(Glyph.Folder, "打开工程 / 图片", plain = true) {
+                            onDialog(StudioDialog.Open)
+                            menu = false
+                        }
+                        ToolButton(Glyph.Save, "保存工程", plain = true) {
+                            controller.file(StudioController.FileAction.Save)
+                            menu = false
+                        }
+                        ToolButton(Glyph.Export, "导出图像", plain = true) {
+                            onDialog(StudioDialog.Export)
+                            menu = false
+                        }
+                        ToolButton(Glyph.Copy, "另存为", plain = true) {
+                            controller.file(StudioController.FileAction.SaveAs)
+                            menu = false
+                        }
+                        if (controller.asepriteExportAvailable)
+                            ToolButton(
+                                Glyph.Layers,
+                                "导出 Aseprite 工程副本",
+                                plain = true,
+                                enabled =
+                                    !controller.busy &&
+                                        !controller.drawingInput &&
+                                        !controller.animationTransition &&
+                                        !controller.animationPlaying,
+                            ) {
+                                menu = false
+                                val capability = controller.document.asepriteExport
+                                if (
+                                    capability != null &&
+                                        (capability.editableIssues.isNotEmpty() ||
+                                            capability.blockingIssues.isNotEmpty())
+                                )
+                                    onDialog(StudioDialog.AsepriteExport)
+                                else controller.exportAseprite()
+                            }
+                        if (controller.document.maxAnimationFrames > 0)
+                            ToolButton(
+                                Glyph.Animation,
+                                "动画时间轴",
+                                plain = true,
+                                enabled =
+                                    !controller.busy &&
+                                        !controller.drawingInput &&
+                                        !controller.animationTransition,
+                            ) {
+                                menu = false
+                                controller.animationTimelineVisible = true
+                                if (controller.document.animation == null)
+                                    controller.animationCommand("enable_animation") {
+                                        put("duration_ms", StudioDefaults.animationFrameDuration)
+                                    }
+                            }
+                        ToolButton(
+                            Glyph.Trash,
+                            "清空当前图层",
+                            enabled =
+                                controller.document.layers.any {
+                                    it.id == controller.document.active &&
+                                        !it.effectiveLocked &&
+                                        (!it.alphaLocked || controller.document.maskEditing) &&
+                                        (it.kind == LayerKind.Raster ||
+                                            controller.document.maskEditing)
+                                },
+                            plain = true,
+                        ) {
+                            onDialog(StudioDialog.Clear)
+                            menu = false
+                        }
+                        ToolButton(Glyph.Settings, "设置", plain = true) {
+                            onDialog(StudioDialog.Settings)
+                            menu = false
+                        }
+                        ToolButton(
+                            Glyph.Deselect,
+                            controller.shortcutLabel(ShortcutAction.Deselect),
+                            enabled = controller.document.selection != null,
+                            plain = true,
+                        ) {
+                            controller.clearSelection()
+                            menu = false
+                        }
                         if (integrated && compact) {
-                            ToolButton(Glyph.Undo, controller.shortcutLabel(ShortcutAction.Undo), enabled = controller.document.canUndo, plain = true) { controller.command("undo"); menu = false }
-                            ToolButton(Glyph.Redo, controller.shortcutLabel(ShortcutAction.Redo), enabled = controller.document.canRedo, plain = true) { controller.command("redo"); menu = false }
+                            ToolButton(
+                                Glyph.Undo,
+                                controller.shortcutLabel(ShortcutAction.Undo),
+                                enabled = controller.document.canUndo,
+                                plain = true,
+                            ) {
+                                controller.command("undo")
+                                menu = false
+                            }
+                            ToolButton(
+                                Glyph.Redo,
+                                controller.shortcutLabel(ShortcutAction.Redo),
+                                enabled = controller.document.canRedo,
+                                plain = true,
+                            ) {
+                                controller.command("redo")
+                                menu = false
+                            }
                         }
                         if (compact) ReferenceMenu(controller)
                         if (compact && controller.clipboardAvailable) ClipboardMenu(controller)
@@ -180,6 +273,33 @@ fun StudioTools(controller: StudioController, compact: Boolean = false) {
     var more by remember { mutableStateOf(false) }
     QuickToolButton(controller, Tool.Brush, Glyph.Brush, ShortcutAction.Brush)
     QuickToolButton(controller, Tool.Eraser, Glyph.Eraser, ShortcutAction.Eraser)
+    if (controller.document.maxGeneratedLines > 0)
+        ToolButton(
+            Glyph.Line,
+            "漫画线条",
+            selected = controller.tool == Tool.LineGenerator,
+            enabled =
+                !controller.busy &&
+                    controller.document.colorMode == DocumentColorMode.Rgba &&
+                    controller.document.selection == null &&
+                    !controller.document.maskEditing &&
+                    controller.document.drawableLayerCount < controller.document.maxLayers &&
+                    controller.document.layers.size < controller.document.maxLayerNodes,
+        ) {
+            controller.prepareLineGenerator()
+        }
+    if (controller.document.maxDrawingAssistants > 0)
+        ToolButton(Glyph.Assistant, "绘画助手", selected = controller.tool == Tool.Assistant) {
+            controller.tool = Tool.Assistant
+        }
+    if (
+        controller.document.layers.any {
+            it.id == controller.document.active && it.kind == LayerKind.Vector
+        }
+    )
+        ToolButton(Glyph.Vector, "矢量工具", selected = controller.tool == Tool.Vector) {
+            controller.tool = Tool.Vector
+        }
     if (compact)
         Box {
             ToolButton(Glyph.More, "更多工具", controller.tool !in listOf(Tool.Brush, Tool.Eraser)) {
@@ -191,20 +311,27 @@ fun StudioTools(controller: StudioController, compact: Boolean = false) {
             ) {
                 FlowRow(Modifier.width(192.dp).padding(8.dp), maxItemsInEachRow = 4) {
                     listOf(
-                        Tool.Select to Glyph.Selection,
-                        Tool.Fill to Glyph.Fill,
-                        Tool.Picker to Glyph.Picker,
-                        Tool.Hand to Glyph.Hand,
-                        Tool.MoveLayer to Glyph.Move,
-                        Tool.TransformLayer to Glyph.Transform,
-                        Tool.Gradient to Glyph.Gradient,
-                        Tool.Smudge to Glyph.Smudge,
-                    ).forEach { (tool, glyph) ->
-                        ToolButton(glyph, tool.label, selected = controller.tool == tool, plain = true) {
-                            controller.tool = tool
-                            more = false
+                            Tool.Select to Glyph.Selection,
+                            Tool.Fill to Glyph.Fill,
+                            Tool.Picker to Glyph.Picker,
+                            Tool.Hand to Glyph.Hand,
+                            Tool.MoveLayer to Glyph.Move,
+                            Tool.TransformLayer to Glyph.Transform,
+                            Tool.Gradient to Glyph.Gradient,
+                            Tool.Smudge to Glyph.Smudge,
+                            Tool.LassoFill to Glyph.LassoFill,
+                        )
+                        .forEach { (tool, glyph) ->
+                            ToolButton(
+                                glyph,
+                                tool.label,
+                                selected = controller.tool == tool,
+                                plain = true,
+                            ) {
+                                controller.tool = tool
+                                more = false
+                            }
                         }
-                    }
                 }
             }
         }
@@ -259,6 +386,7 @@ fun StudioTools(controller: StudioController, compact: Boolean = false) {
             controller.tool = Tool.Gradient
         }
         QuickToolButton(controller, Tool.Smudge, Glyph.Smudge, ShortcutAction.Smudge)
+        QuickToolButton(controller, Tool.LassoFill, Glyph.LassoFill, ShortcutAction.LassoFill)
     }
 }
 
@@ -325,6 +453,7 @@ fun CanvasFooter(controller: StudioController, modifier: Modifier = Modifier) {
         }
         Spacer(Modifier.weight(1f))
         CanvasBackgroundMenu(controller)
+        CanvasGridControls(controller)
         ViewportControls(controller.viewport, controller.shortcutLabel(ShortcutAction.Fit)) {
             controller.viewport = it
         }

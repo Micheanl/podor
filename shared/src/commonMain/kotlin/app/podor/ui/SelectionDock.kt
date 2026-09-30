@@ -11,7 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import app.podor.domain.SelectionKind
 import app.podor.domain.SelectionMode
+import app.podor.domain.SelectionRefinement
 import app.podor.domain.ShortcutAction
+import app.podor.domain.StudioDefaults
 import app.podor.presentation.StudioController
 import kotlin.math.roundToInt
 
@@ -94,12 +96,65 @@ fun SelectionDock(controller: StudioController, modifier: Modifier = Modifier) {
         ) {
             controller.invertSelection()
         }
+        SelectionRefinementOptions(controller)
         ToolButton(
             Glyph.Close,
             controller.shortcutLabel(app.podor.domain.ShortcutAction.Deselect),
             enabled = controller.document.selection != null,
         ) {
             controller.clearSelection()
+        }
+    }
+}
+
+@Composable
+private fun SelectionRefinementOptions(controller: StudioController) {
+    var expanded by remember { mutableStateOf(false) }
+    var kind by remember { mutableStateOf(SelectionRefinement.Expand) }
+    var radius by remember { mutableFloatStateOf(StudioDefaults.selectionRefinementRadius) }
+    val enabled = controller.document.selection != null && controller.ready && !controller.busy
+    Box {
+        ToolButton(Glyph.Adjustments, "调整选区", selected = expanded, enabled = enabled) {
+            expanded = !expanded
+        }
+        StudioDropdownMenu(expanded, { expanded = false }) {
+            Column(
+                Modifier.width(StudioTheme.colorSelectionWidth)
+                    .padding(StudioTheme.colorSelectionPadding),
+                verticalArrangement = Arrangement.spacedBy(StudioTheme.colorSelectionGap),
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(StudioTheme.selectionDockGap)) {
+                    SelectionRefinement.entries.forEach { entry ->
+                        ToolButton(
+                            when (entry) {
+                                SelectionRefinement.Expand -> Glyph.SelectionAdd
+                                SelectionRefinement.Contract -> Glyph.SelectionSubtract
+                                SelectionRefinement.Smooth -> Glyph.Stabilize
+                                SelectionRefinement.Feather -> Glyph.Blur
+                            },
+                            entry.label,
+                            selected = kind == entry,
+                            enabled = enabled,
+                        ) {
+                            kind = entry
+                        }
+                    }
+                }
+                LabeledSlider(
+                    kind.label,
+                    radius,
+                    0f..StudioDefaults.maxSelectionRefinementRadius,
+                    "${radius.roundToInt()} px",
+                ) {
+                    if (enabled) radius = it.roundToInt().toFloat()
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    ToolButton(Glyph.Check, "应用", enabled = enabled) {
+                        controller.refineSelection(kind, radius.roundToInt())
+                        expanded = false
+                    }
+                }
+            }
         }
     }
 }

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import app.podor.domain.*
 import app.podor.presentation.StudioController
 import app.podor.presentation.UpdateController
+import kotlin.math.roundToInt
 
 @Composable
 fun StudioApp(
@@ -58,13 +59,56 @@ fun StudioApp(
         }
         fun handleShortcut(event: KeyEvent): Boolean {
             if (event.type != KeyEventType.KeyDown || dialog != StudioDialog.None) return false
-            if (controller.references.visible && controller.references.selected != null) {
+            if (event.key == Key.Escape && controller.animationPlaying) {
+                controller.stopAnimation()
+                return true
+            }
+            if (
+                controller.references.visible &&
+                    controller.references.selected != null &&
+                    !controller.animationPlaying &&
+                    !controller.animationTransition
+            ) {
                 if (event.key == Key.Escape || event.key == Key.Enter) {
                     controller.references.select(null)
                     return true
                 }
                 if (event.key == Key.Delete || event.key == Key.Backspace) {
                     controller.references.remove()
+                    return true
+                }
+            }
+            if (controller.tool == Tool.Vector) {
+                if (event.key == Key.Enter) {
+                    controller.commitVector()
+                    return true
+                }
+                if (event.key == Key.Escape) {
+                    controller.cancelVector()
+                    return true
+                }
+                if (event.key == Key.Delete || event.key == Key.Backspace) {
+                    controller.vectorObjectCommand("delete_vector_object")
+                    return true
+                }
+            }
+            if (controller.tool == Tool.Assistant) {
+                if (event.key == Key.Enter) {
+                    controller.commitAssistant()
+                    return true
+                }
+                if (event.key == Key.Escape) {
+                    controller.cancelAssistant()
+                    return true
+                }
+            }
+            if (controller.tool == Tool.LineGenerator) {
+                if (event.key == Key.Enter) {
+                    controller.commitLineGenerator()
+                    return true
+                }
+                if (event.key == Key.Escape) {
+                    controller.cancelLineGenerator()
                     return true
                 }
             }
@@ -127,6 +171,10 @@ fun StudioApp(
                 controller.cancelSelectionGesture()
                 return true
             }
+            if (event.key == Key.Escape && controller.tool == Tool.LassoFill) {
+                controller.cancelSelectionGesture()
+                return true
+            }
             if (event.key == Key.Escape && controller.tool == Tool.MoveLayer) {
                 controller.cancelLayerMove(exit = true)
                 controller.tool = Tool.Brush
@@ -152,6 +200,14 @@ fun StudioApp(
                     controller.selectionKind = SelectionKind.MagicWand
                 }
                 ShortcutAction.Fill -> controller.tool = Tool.Fill
+                ShortcutAction.LassoFill -> controller.tool = Tool.LassoFill
+                ShortcutAction.PixelPencil -> controller.selectPreset(BrushPreset.PixelPencil)
+                ShortcutAction.PixelGrid ->
+                    controller.changeCanvasGrid(
+                        controller.preferences.canvasGrid.copy(
+                            pixels = !controller.preferences.canvasGrid.pixels
+                        )
+                    )
                 ShortcutAction.Fit -> controller.viewport = Viewport()
                 ShortcutAction.ZoomIn ->
                     controller.viewport = controller.viewport.zoomBy(StudioDefaults.zoomStep)
@@ -161,18 +217,37 @@ fun StudioApp(
                     controller.brush =
                         controller.brush.copy(
                             size =
-                                (controller.brush.size / StudioDefaults.brushSizeStep)
+                                (if (controller.brush.preset.raster == BrushRaster.Antialiased)
+                                        controller.brush.size / StudioDefaults.brushSizeStep
+                                    else (controller.brush.size.roundToInt() - 1).toFloat())
                                     .coerceAtLeast(StudioDefaults.minBrushSize)
                         )
                 ShortcutAction.BrushLarger ->
                     controller.brush =
                         controller.brush.copy(
                             size =
-                                (controller.brush.size * StudioDefaults.brushSizeStep).coerceAtMost(
-                                    StudioDefaults.maxBrushSize
-                                )
+                                (if (controller.brush.preset.raster == BrushRaster.Antialiased)
+                                        controller.brush.size * StudioDefaults.brushSizeStep
+                                    else (controller.brush.size.roundToInt() + 1).toFloat())
+                                    .coerceAtMost(StudioDefaults.maxBrushSize)
                         )
                 ShortcutAction.Undo -> controller.command("undo")
+                ShortcutAction.AnimationTimeline -> controller.toggleAnimationTimeline()
+                ShortcutAction.PlayAnimation -> {
+                    if (controller.animationPlaying) controller.stopAnimation()
+                    else controller.startAnimation()
+                }
+                ShortcutAction.PreviousFrame -> controller.selectAdjacentAnimationFrame(-1)
+                ShortcutAction.NextFrame -> controller.selectAdjacentAnimationFrame(1)
+                ShortcutAction.AddFrame -> controller.addAnimationFrame()
+                ShortcutAction.OnionSkin -> {
+                    if (
+                        controller.document.animation != null &&
+                            !controller.animationPlaying &&
+                            !controller.drawingInput
+                    )
+                        controller.onionEnabled = !controller.onionEnabled
+                }
                 ShortcutAction.Redo -> controller.command("redo")
                 ShortcutAction.Deselect -> controller.clearSelection()
                 ShortcutAction.InvertSelection -> controller.invertSelection()
@@ -278,7 +353,15 @@ fun StudioApp(
                                     Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
                                         var colors by remember { mutableStateOf(false) }
                                         ColorSwatch(controller.brush.color, true) { colors = true }
-                                        if (colors) QuickBrushPopup(controller, androidx.compose.ui.geometry.Offset.Zero, besideTool = true, colorsOnly = true) { colors = false }
+                                        if (colors)
+                                            QuickBrushPopup(
+                                                controller,
+                                                androidx.compose.ui.geometry.Offset.Zero,
+                                                besideTool = true,
+                                                colorsOnly = true,
+                                            ) {
+                                                colors = false
+                                            }
                                     }
                                     if (!wide)
                                         ToolButton(Glyph.Layers, "图层与工作台") {
@@ -291,7 +374,6 @@ fun StudioApp(
                                         Modifier.align(Alignment.BottomCenter)
                                             .padding(bottom = 55.dp),
                                     )
-
                             }
                             if (
                                 controller.adjustmentPreview != null &&
@@ -307,6 +389,26 @@ fun StudioApp(
                                 )
                             if (controller.tool == Tool.Select)
                                 SelectionDock(
+                                    controller,
+                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
+                                )
+                            if (controller.tool == Tool.LassoFill)
+                                LassoFillDock(
+                                    controller,
+                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
+                                )
+                            if (controller.tool == Tool.Vector)
+                                VectorDock(
+                                    controller,
+                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
+                                )
+                            if (controller.tool == Tool.Assistant)
+                                AssistantDock(
+                                    controller,
+                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
+                                )
+                            if (controller.tool == Tool.LineGenerator)
+                                LineGeneratorDock(
                                     controller,
                                     Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
                                 )
@@ -364,6 +466,10 @@ fun StudioApp(
                             }
                         }
                     }
+                    if (
+                        controller.document.animation != null && controller.animationTimelineVisible
+                    )
+                        AnimationTimeline(controller, { dialog = StudioDialog.AnimationExport })
                     if (compact) {
                         Row(
                             Modifier.padding(horizontal = 14.dp, vertical = 12.dp)

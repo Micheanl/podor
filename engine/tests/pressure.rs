@@ -9,7 +9,12 @@ fn point(x: f32, pressure: f32) -> Sample {
 }
 
 fn paint(engine: &mut Engine, brush: Brush, points: &[Sample], batch: usize) {
-    engine.command(Command::Begin { brush }).unwrap();
+    engine
+        .command(Command::Begin {
+            brush,
+            assistant: None,
+        })
+        .unwrap();
     for chunk in points.chunks(batch) {
         engine.samples(chunk).unwrap();
     }
@@ -24,7 +29,9 @@ fn dot(brush: Brush, pressure: f32) -> Engine {
 
 fn alpha(engine: &Engine, x: u32, y: u32) -> u8 {
     engine.document.layers[0]
-        .tiles
+        .raster()
+        .unwrap()
+        .tiles()
         .get(&(0, 0))
         .map_or(0, |tile| tile[((y * 128 + x) * 4 + 3) as usize])
 }
@@ -173,11 +180,17 @@ fn invalid_pressure_parameters_do_not_change_the_document_or_start_a_stroke() {
         ] {
             let mut engine = Engine::new(128, 128).unwrap();
             let before = engine.save().unwrap();
-            assert!(engine.command(Command::Begin { brush }).is_err());
+            assert!(engine
+                .command(Command::Begin {
+                    brush,
+                    assistant: None
+                })
+                .is_err());
             assert_eq!(before, engine.save().unwrap());
             engine
                 .command(Command::Begin {
                     brush: Brush::default(),
+                    assistant: None,
                 })
                 .unwrap();
         }
@@ -231,7 +244,12 @@ fn pressure_strokes_remain_continuous_and_preserve_batching_history_and_cancel()
             assert_eq!(before, whole.save().unwrap());
             whole.command(Command::Redo).unwrap();
             assert_eq!(after, whole.save().unwrap());
-            whole.command(Command::Begin { brush }).unwrap();
+            whole
+                .command(Command::Begin {
+                    brush,
+                    assistant: None,
+                })
+                .unwrap();
             whole
                 .samples(&[point(32.5, 0.4), point(96.5, 0.9)])
                 .unwrap();
@@ -247,6 +265,8 @@ fn pressure_opacity_applies_to_eraser_and_alpha_locked_painting() {
         let mut engine = Engine::new(128, 128).unwrap();
         engine
             .command(Command::Fill {
+                contiguous: true,
+                merged: false,
                 x: 0,
                 y: 0,
                 color: [0, 0, 0, 128],
@@ -275,7 +295,7 @@ fn pressure_opacity_applies_to_eraser_and_alpha_locked_painting() {
         assert_eq!(alpha(&engine, 64, 64), if locked { 128 } else { 95 });
         assert_eq!(alpha(&engine, 100, 64), 128);
         if locked {
-            let tile = &engine.document.layers[0].tiles[&(0, 0)];
+            let tile = &engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)];
             assert_eq!(tile[((64 * 128 + 64) * 4) as usize], 32);
         }
     }

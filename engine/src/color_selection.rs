@@ -14,6 +14,15 @@ pub struct ColorSelection {
 }
 
 pub fn select(document: &Document, settings: ColorSelection) -> Result<Selection, String> {
+    select_clipped(document, settings, None, false)
+}
+
+pub(crate) fn select_clipped(
+    document: &Document,
+    settings: ColorSelection,
+    selection: Option<&Selection>,
+    preserve_alpha: bool,
+) -> Result<Selection, String> {
     if !document.bounds().contains(settings.x, settings.y) {
         return Err("取样位置超出画布".into());
     }
@@ -21,7 +30,13 @@ pub fn select(document: &Document, settings: ColorSelection) -> Result<Selection
         .layers
         .iter()
         .find(|layer| layer.id == document.active)
-        .unwrap();
+        .ok_or("图层不存在")?;
+    if !settings.merged || preserve_alpha {
+        active.raster()?;
+    }
+    if document.palette.is_some() && !settings.merged && settings.tolerance == 0 {
+        return crate::indexed::select_indices(document, settings, selection, preserve_alpha);
+    }
     let key = (settings.x / TILE_SIZE, settings.y / TILE_SIZE);
     let offset = ((settings.y % TILE_SIZE * TILE_SIZE + settings.x % TILE_SIZE) * 4) as usize;
     let sample = if settings.merged {
@@ -30,8 +45,7 @@ pub fn select(document: &Document, settings: ColorSelection) -> Result<Selection
             .unwrap()
     } else {
         active
-            .tiles
-            .get(&key)
+            .rgba_tile(document.palette.as_ref(), key)
             .map_or([0; 4], |tile| tile[offset..offset + 4].try_into().unwrap())
     };
     let target = straight(sample);
@@ -59,18 +73,50 @@ pub fn select(document: &Document, settings: ColorSelection) -> Result<Selection
         }
     };
     if settings.merged {
+        let hierarchy = crate::groups::Hierarchy::new(document)?;
         let keys: BTreeSet<_> = document
             .layers
             .iter()
-            .filter(|layer| layer.visible && layer.opacity > 0.0)
-            .flat_map(|layer| layer.tiles.keys().copied())
+            .enumerate()
+            .filter(|(index, layer)| hierarchy.visible[*index] && layer.opacity > 0.0)
+            .filter_map(|(_, layer)| layer.raster_opt())
+            .flat_map(|raster| raster.tiles().keys().copied())
             .collect();
         for key in keys {
             write_tile(key, &composite_tile_background(document, key, true));
         }
     } else {
-        for (&key, tile) in &active.tiles {
-            write_tile(key, tile);
+        for &key in active.raster()?.tiles().keys() {
+            write_tile(
+                key,
+                &active.rgba_tile(document.palette.as_ref(), key).unwrap(),
+            );
+        }
+    }
+    if let Some(selection) = selection {
+        for (index, value) in mask.iter_mut().enumerate() {
+            if selection.coverage((index % width) as u32, (index / width) as u32) == 0 {
+                *value = 0;
+            }
+        }
+    }
+    if preserve_alpha {
+        for ty in 0..document.height.div_ceil(TILE_SIZE) {
+            for tx in 0..document.width.div_ceil(TILE_SIZE) {
+                let old = active.rgba_tile(document.palette.as_ref(), (tx, ty));
+                let left = tx * TILE_SIZE;
+                let columns = TILE_SIZE.min(document.width - left) as usize;
+                for y in ty * TILE_SIZE..((ty + 1) * TILE_SIZE).min(document.height) {
+                    let start = y as usize * width + left as usize;
+                    for (x, value) in mask[start..start + columns].iter_mut().enumerate() {
+                        if old.as_ref().is_none_or(|tile| {
+                            tile[((y % TILE_SIZE * TILE_SIZE) as usize + x) * 4 + 3] == 0
+                        }) {
+                            *value = 0;
+                        }
+                    }
+                }
+            }
         }
     }
     if settings.contiguous {
@@ -82,6 +128,13 @@ pub fn select(document: &Document, settings: ColorSelection) -> Result<Selection
     } else {
         for value in &mut mask {
             *value *= 255;
+        }
+    }
+    if let Some(selection) = selection {
+        for (index, value) in mask.iter_mut().enumerate() {
+            if *value != 0 {
+                *value = selection.coverage((index % width) as u32, (index / width) as u32);
+            }
         }
     }
     Ok(Selection::from_mask(document.bounds(), mask))
@@ -99,7 +152,11 @@ fn straight(pixel: [u8; 4]) -> [u8; 4] {
     result
 }
 
-fn connected(mask: &mut [u8], width: usize, seed: usize) -> Result<(), String> {
+pub(crate) fn connected(mask: &mut [u8], width: usize, seed: usize) -> Result<(), String> {
+    if mask[seed] != 1 {
+        mask.fill(0);
+        return Ok(());
+    }
     let mut queue = VecDeque::new();
     enqueue(mask, width, seed, &mut queue)?;
     while let Some(seed) = queue.pop_front() {

@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
 import app.podor.domain.BrushPreset
+import app.podor.presentation.BrushPreviewCache
 import app.podor.presentation.StudioController
 import app.podor.ui.*
 import java.nio.file.Files
@@ -45,14 +46,14 @@ class BrushRenderingTest {
                 }
             try {
                 awaitState { controller.ready }
+                val brushes = BrushPreset.entries.filter { it.followDirection }
                 withContext(Dispatchers.Main) {
                     controller.command("new") {
                         put("width", 512)
-                        put("height", 384)
+                        put("height", brushes.size * 128)
                     }
                 }
                 awaitState { controller.document.width == 512 && !controller.busy }
-                val brushes = BrushPreset.entries.filter { it.followDirection }
                 for ((index, preset) in brushes.withIndex()) {
                     val revision = withContext(Dispatchers.Main) { controller.document.revision }
                     withContext(Dispatchers.Main) {
@@ -73,6 +74,7 @@ class BrushRenderingTest {
                             controller.previews.revision == controller.document.revision
                     }
                 }
+                for (preset in brushes) BrushPreviewCache.get(preset)
                 withContext(Dispatchers.Main) {
                     val scene =
                         ImageComposeScene(850, 720) {
@@ -99,9 +101,13 @@ class BrushRenderingTest {
                             }
                         }
                     try {
-                        repeat(3) { scene.render(it * 16_666_667L).close() }
+                        var frame = 0L
+                        repeat(40) {
+                            scene.render(frame++ * 16_666_667L).close()
+                            delay(2)
+                        }
                         assertFalse(scene.hasInvalidations())
-                        scene.render(50_000_000).use { image ->
+                        scene.render(frame * 16_666_667L).use { image ->
                             val pixels = image.toComposeImageBitmap().toPixelMap()
                             var painted = 0
                             for (y in 130 until 690) for (x in 40 until 810) {

@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
+import app.podor.domain.BrushRaster
 import app.podor.domain.GradientShape
 import app.podor.presentation.GradientPreview
 import app.podor.presentation.StudioController
@@ -31,9 +32,20 @@ fun GradientOverlay(
     }
     val blendPaint = remember { Paint() }
     val maskBlend = remember { Paint().apply { blendMode = BlendMode.DstIn } }
+    val layerMaskPaints = rememberLayerMaskPaints()
+    val pixelRenderer = rememberPixelPreviewRenderer(preview.layers)
     LayerStackOverlay(preview.layers, modifier) { frame ->
         val document = controller.document
         val viewport = controller.viewport
+        val quality =
+            if (
+                controller.preferences.canvasGrid.pixels ||
+                    controller.brush.preset.raster != BrushRaster.Antialiased
+            )
+                FilterQuality.None
+            else FilterQuality.Low
+        tilePaint.filterQuality = quality
+        maskPaint.filterQuality = quality
         val scale = viewport.scale(view, document)
         if (scale <= 0f) return@LayerStackOverlay
         val origin = viewport.origin(view, document)
@@ -45,82 +57,130 @@ fun GradientOverlay(
             scale(scale * viewport.horizontalSign, scale, Offset.Zero)
         }) {
             clipRect(area.left, area.top, area.right, area.bottom) {
-                frame.tiles.forEach { tile ->
-                    val x = tile.x * tile.size
-                    val y = tile.y * tile.size
-                    if (
-                        x < visible.right &&
-                            y < visible.bottom &&
-                            x + tile.size > visible.left &&
-                            y + tile.size > visible.top
-                    )
-                        drawContext.canvas.drawImage(
-                            tile.image,
-                            Offset(x.toFloat(), y.toFloat()),
-                            tilePaint,
+                withLayerMask(frame.mask, area, visible, layerMaskPaints, quality) {
+                    frame.tiles.forEach { tile ->
+                        val x = tile.x * tile.size
+                        val y = tile.y * tile.size
+                        if (
+                            x < visible.right &&
+                                y < visible.bottom &&
+                                x + tile.size > visible.left &&
+                                y + tile.size > visible.top
                         )
-                }
-                if (frame.layer.id == preview.layerId) {
-                    val line = preview.line
-                    if (line != null && line.valid() && preview.selection?.empty != true) {
-                        val settings = controller.gradient
-                        val colors =
-                            listOf(
-                                Color(settings.startColor).let {
-                                    it.copy(alpha = it.alpha * settings.opacity)
-                                },
-                                Color(settings.endColor).let {
-                                    it.copy(alpha = it.alpha * settings.opacity)
-                                },
+                            drawContext.canvas.drawImage(
+                                tile.image,
+                                Offset(x.toFloat(), y.toFloat()),
+                                tilePaint,
                             )
-                        val brush =
-                            when (settings.shape) {
-                                GradientShape.Linear ->
-                                    Brush.linearGradient(colors, line.start, line.end)
-                                GradientShape.Radial ->
-                                    Brush.radialGradient(
-                                        colors,
-                                        line.start,
-                                        (line.end - line.start).getDistance(),
-                                    )
-                            }
-                        val selection = preview.selection
-                        val bounds =
-                            selection?.let {
-                                Rect(
-                                    it.left.toFloat(),
-                                    it.top.toFloat(),
-                                    it.right.toFloat(),
-                                    it.bottom.toFloat(),
+                    }
+                    if (frame.layer.id == preview.layerId) {
+                        val line = preview.line
+                        if (line != null && line.valid() && preview.selection?.empty != true) {
+                            val settings = controller.gradient
+                            val colors =
+                                listOf(
+                                    Color(settings.startColor).let {
+                                        it.copy(alpha = it.alpha * settings.opacity)
+                                    },
+                                    Color(settings.endColor).let {
+                                        it.copy(alpha = it.alpha * settings.opacity)
+                                    },
                                 )
-                            } ?: area
-                        clipRect(bounds.left, bounds.top, bounds.right, bounds.bottom) {
-                            blendPaint.blendMode =
-                                if (frame.layer.alphaLocked) BlendMode.SrcAtop
-                                else BlendMode.SrcOver
-                            val canvas = drawContext.canvas
-                            canvas.saveLayer(bounds, blendPaint)
-                            drawRect(brush, topLeft = bounds.topLeft, size = bounds.size)
-                            if (preview.mask.isNotEmpty()) {
-                                canvas.saveLayer(bounds, maskBlend)
-                                preview.mask.forEach { tile ->
-                                    val x = tile.x * tile.size
-                                    val y = tile.y * tile.size
-                                    if (
-                                        x < visible.right &&
-                                            y < visible.bottom &&
-                                            x + tile.size > visible.left &&
-                                            y + tile.size > visible.top
-                                    )
-                                        canvas.drawImage(
-                                            tile.image,
-                                            Offset(x.toFloat(), y.toFloat()),
-                                            maskPaint,
+                            val brush =
+                                when (settings.shape) {
+                                    GradientShape.Linear ->
+                                        Brush.linearGradient(colors, line.start, line.end)
+                                    GradientShape.Radial ->
+                                        Brush.radialGradient(
+                                            colors,
+                                            line.start,
+                                            (line.end - line.start).getDistance(),
                                         )
+                                }
+                            val selection = preview.selection
+                            val bounds =
+                                selection?.let {
+                                    Rect(
+                                        it.left.toFloat(),
+                                        it.top.toFloat(),
+                                        it.right.toFloat(),
+                                        it.bottom.toFloat(),
+                                    )
+                                } ?: area
+                            clipRect(
+                                bounds.left,
+                                bounds.top,
+                                bounds.right,
+                                bounds.bottom,
+                            ) gradientClip@{
+                                if (pixelRenderer != null && quality == FilterQuality.None) {
+                                    with(pixelRenderer) {
+                                        if (preview.mask.isEmpty()) {
+                                            drawGradient(
+                                                settings,
+                                                line,
+                                                bounds,
+                                                null,
+                                                Offset.Zero,
+                                                frame.layer.alphaLocked,
+                                            )
+                                        } else
+                                            preview.mask.forEach { tile ->
+                                                val origin =
+                                                    Offset(
+                                                        (tile.x * tile.size).toFloat(),
+                                                        (tile.y * tile.size).toFloat(),
+                                                    )
+                                                val tileBounds =
+                                                    Rect(
+                                                            origin,
+                                                            Size(
+                                                                tile.size.toFloat(),
+                                                                tile.size.toFloat(),
+                                                            ),
+                                                        )
+                                                        .intersect(bounds)
+                                                if (tileBounds.overlaps(visible)) {
+                                                    drawGradient(
+                                                        settings,
+                                                        line,
+                                                        tileBounds,
+                                                        tile.image,
+                                                        origin,
+                                                        frame.layer.alphaLocked,
+                                                    )
+                                                }
+                                            }
+                                    }
+                                    return@gradientClip
+                                }
+                                blendPaint.blendMode =
+                                    if (frame.layer.alphaLocked) BlendMode.SrcAtop
+                                    else BlendMode.SrcOver
+                                val canvas = drawContext.canvas
+                                canvas.saveLayer(bounds, blendPaint)
+                                drawRect(brush, topLeft = bounds.topLeft, size = bounds.size)
+                                if (preview.mask.isNotEmpty()) {
+                                    canvas.saveLayer(bounds, maskBlend)
+                                    preview.mask.forEach { tile ->
+                                        val x = tile.x * tile.size
+                                        val y = tile.y * tile.size
+                                        if (
+                                            x < visible.right &&
+                                                y < visible.bottom &&
+                                                x + tile.size > visible.left &&
+                                                y + tile.size > visible.top
+                                        )
+                                            canvas.drawImage(
+                                                tile.image,
+                                                Offset(x.toFloat(), y.toFloat()),
+                                                maskPaint,
+                                            )
+                                    }
+                                    canvas.restore()
                                 }
                                 canvas.restore()
                             }
-                            canvas.restore()
                         }
                     }
                 }

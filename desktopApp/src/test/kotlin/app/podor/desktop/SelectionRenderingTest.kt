@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.scene.ComposeScenePointer
+import androidx.compose.ui.semantics.*
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
 import app.podor.domain.*
@@ -65,9 +66,32 @@ class SelectionRenderingTest {
                 render().close()
             }
 
-        fun click(x: Float, y: Float) {
-            scene.sendPointerEvent(PointerEventType.Press, Offset(x, y))
-            scene.sendPointerEvent(PointerEventType.Release, Offset(x, y))
+        fun click(chinese: String, english: String) {
+            fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+                yield(node)
+                for (child in node.children) yieldAll(descendants(child))
+            }
+            val labels = listOf(chinese, english)
+            val control =
+                scene.semanticsOwners
+                    .asSequence()
+                    .flatMap { descendants(it.rootSemanticsNode) }
+                    .filter { node ->
+                        node.config.contains(SemanticsActions.OnClick) &&
+                            !node.boundsInWindow.isEmpty &&
+                            (node.config.getOrNull(SemanticsProperties.ContentDescription)?.any {
+                                value ->
+                                labels.any { value.startsWith(it) }
+                            } == true ||
+                                node.config.getOrNull(SemanticsProperties.Text)?.any { value ->
+                                    value.text in labels
+                                } == true)
+                    }
+                    .minByOrNull { it.boundsInWindow.width * it.boundsInWindow.height }
+                    ?: error("Missing rendered control: $english")
+            val point = control.boundsInWindow.center
+            scene.sendPointerEvent(PointerEventType.Press, point)
+            scene.sendPointerEvent(PointerEventType.Release, point)
             scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
             repeat(35) { render().close() }
         }
@@ -118,7 +142,8 @@ class SelectionRenderingTest {
                 session.render().close()
                 session.render().close()
             }
-            if (full) withContext(Dispatchers.Main) { scene.openInspector { session.render().close() } }
+            if (full)
+                withContext(Dispatchers.Main) { scene.openInspector { session.render().close() } }
             session.block()
         } finally {
             withContext(Dispatchers.Main) {
@@ -207,7 +232,7 @@ class SelectionRenderingTest {
             withContext(Dispatchers.Main) { controller.select(Selection(12, 12, 112, 84)) }
             waitFor { controller.document.selection != null && !controller.busy }
             withContext(Dispatchers.Main) {
-                click(572f, 815f)
+                click("新建选区", "Replace selection")
                 render().use { image ->
                     image.encodeToData(EncodedImageFormat.PNG)!!.use {
                         Files.createDirectories(Path.of("build/reports/screenshots"))
@@ -217,9 +242,9 @@ class SelectionRenderingTest {
                         )
                     }
                 }
-                click(600f, 715f)
+                click("从选区减去", "Subtract from selection")
                 assertEquals(SelectionMode.Subtract, controller.selectionMode)
-                click(423f, 815f)
+                click("椭圆选区", "Ellipse selection")
             }
             waitFor { !controller.busy }
             pointer(PointerEventType.Press, Offset(48f, 34f))
@@ -301,7 +326,7 @@ class SelectionRenderingTest {
             withContext(Dispatchers.Main) {
                 assertNull(controller.selectionOutline)
                 assertEquals("选区为空", controller.status)
-                click(673f, 815f)
+                click("取消选区", "Deselect")
             }
             waitFor { controller.document.selection == null }
             withContext(Dispatchers.Main) {
@@ -411,7 +436,7 @@ class SelectionRenderingTest {
                 withContext(Dispatchers.Main) {
                     controller.updatePreferences(controller.preferences.copy(language = language))
                     repeat(4) { render().close() }
-                    click(423f, 815f)
+                    click("椭圆选区", "Ellipse selection")
                     assertEquals(SelectionKind.Ellipse, controller.selectionKind)
                 }
                 waitFor { !controller.busy }
@@ -443,7 +468,7 @@ class SelectionRenderingTest {
                 }
                 waitFor { controller.document.selection == original }
                 withContext(Dispatchers.Main) {
-                    click(471f, 815f)
+                    click("自由套索", "Freehand lasso")
                     assertEquals(SelectionKind.Lasso, controller.selectionKind)
                 }
                 pointer(PointerEventType.Press, Offset(35f, 25f))
@@ -480,7 +505,7 @@ class SelectionRenderingTest {
                     assertEquals(original, controller.document.selection)
                 }
             }
-            withContext(Dispatchers.Main) { click(649f, 815f) }
+            withContext(Dispatchers.Main) { click("取消选区", "Deselect") }
             waitFor { controller.document.selection == null }
             withContext(Dispatchers.Main) {
                 assertFalse(controller.hasUnsavedChanges)

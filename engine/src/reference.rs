@@ -9,6 +9,9 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<u8>, String> {
         _ => return Err("参考图支持 PNG、JPEG 和静态 WebP".into()),
     }
     let mut document = storage::load(bytes)?;
+    if document.palette.is_some() {
+        document = crate::indexed::convert(&document, None)?;
+    }
     let original = (document.width, document.height);
     let longest = document.width.max(document.height);
     if longest > MAX_REFERENCE_EDGE {
@@ -26,7 +29,8 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<u8>, String> {
     {
         output[index * 4..index * 4 + 4].copy_from_slice(&value.to_le_bytes());
     }
-    for (&(tx, ty), pixels) in &document.layers[0].tiles {
+    let layer = document.layers.first().ok_or("参考图没有像素图层")?;
+    for (&(tx, ty), pixels) in layer.raster()?.tiles() {
         let left = tx * TILE_SIZE;
         let top = ty * TILE_SIZE;
         let width = TILE_SIZE.min(document.width - left) as usize * 4;

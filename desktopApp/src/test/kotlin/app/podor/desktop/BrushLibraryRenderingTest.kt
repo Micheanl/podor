@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
 import app.podor.domain.*
+import app.podor.presentation.BrushPreviewCache
 import app.podor.presentation.StudioController
 import app.podor.ui.*
 import java.nio.file.Files
@@ -66,10 +67,13 @@ class BrushLibraryRenderingTest {
                     }
                 }
             var frame = 0L
-            fun settle() {
-                repeat(40) { scene.render(frame++ * 16_666_667L).close() }
+            suspend fun settle() {
+                repeat(40) {
+                    scene.render(frame++ * 16_666_667L).close()
+                    delay(2)
+                }
             }
-            fun click(x: Float, y: Float) {
+            suspend fun click(x: Float, y: Float) {
                 scene.sendPointerEvent(PointerEventType.Press, Offset(x, y))
                 scene.sendPointerEvent(PointerEventType.Release, Offset(x, y))
                 scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
@@ -86,6 +90,8 @@ class BrushLibraryRenderingTest {
                 withTimeout(10_000) {
                     while (!withContext(Dispatchers.Main) { controller.ready }) delay(5)
                 }
+                val brushes = withContext(Dispatchers.Main) { controller.brushes }
+                for (preset in brushes) BrushPreviewCache.get(preset)
                 withContext(Dispatchers.Main) {
                     controller.selectPreset(BrushPreset.Marker)
                     val pixels = controller.frame

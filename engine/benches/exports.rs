@@ -17,6 +17,8 @@ fn main() {
             if dense {
                 engine
                     .command(Command::Fill {
+                        contiguous: true,
+                        merged: false,
                         x: 0,
                         y: 0,
                         color: [40 + index as u8 * 20, 90, 180, 180],
@@ -30,6 +32,7 @@ fn main() {
                             size: 24.0,
                             ..Brush::default()
                         },
+                        assistant: None,
                     })
                     .unwrap();
                 engine

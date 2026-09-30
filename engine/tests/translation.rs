@@ -3,7 +3,12 @@ use std::sync::Arc;
 
 fn pixel(engine: &Engine, x: u32, y: u32) -> [u8; 4] {
     let layer = &engine.document.layers[0];
-    let Some(tile) = layer.tiles.get(&(x / TILE_SIZE, y / TILE_SIZE)) else {
+    let Some(tile) = layer
+        .raster()
+        .unwrap()
+        .tiles()
+        .get(&(x / TILE_SIZE, y / TILE_SIZE))
+    else {
         return [0; 4];
     };
     let index = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -16,7 +21,9 @@ fn patterned() -> Engine {
         for x in 0..259 {
             if (x * 31 + y * 17) % 11 < 3 {
                 let tile = engine.document.layers[0]
-                    .tiles
+                    .raster_mut()
+                    .unwrap()
+                    .tiles_mut()
                     .entry((x / TILE_SIZE, y / TILE_SIZE))
                     .or_insert_with(|| Arc::new(vec![0; TILE_BYTES]));
                 let index = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -50,7 +57,12 @@ fn translation_crosses_tiles_clips_and_round_trips_through_history_and_storage()
         engine.load(&before).unwrap();
         engine.frame();
         let state = engine
-            .command(Command::TranslateLayer { id: 1, dx, dy })
+            .command(Command::TranslateLayer {
+                mask_id: None,
+                id: 1,
+                dx,
+                dy,
+            })
             .unwrap();
         assert!(state["canUndo"].as_bool().unwrap());
         for y in 0..193 {
@@ -89,10 +101,13 @@ fn aligned_moves_reuse_tiles_and_memory_limit_rejection_keeps_original_layer() {
     let mut engine = Engine::new(2048, 2048).unwrap();
     let pixels = Arc::new(vec![255; TILE_BYTES]);
     engine.document.layers[0]
-        .tiles
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
         .insert((1, 1), pixels.clone());
     engine
         .command(Command::TranslateLayer {
+            mask_id: None,
             id: 1,
             dx: 128,
             dy: -128,
@@ -100,7 +115,7 @@ fn aligned_moves_reuse_tiles_and_memory_limit_rejection_keeps_original_layer() {
         .unwrap();
     assert!(Arc::ptr_eq(
         &pixels,
-        &engine.document.layers[0].tiles[&(2, 0)]
+        &engine.document.layers[0].raster().unwrap().tiles()[&(2, 0)]
     ));
     engine.command(Command::Undo).unwrap();
     let mut remaining = MAX_DOCUMENT_BYTES / TILE_BYTES - 1;
@@ -108,10 +123,12 @@ fn aligned_moves_reuse_tiles_and_memory_limit_rejection_keeps_original_layer() {
         let mut layer = Layer::new(id, format!("Layer {id}"));
         for tile in 0..256.min(remaining) {
             layer
-                .tiles
+                .raster_mut()
+                .unwrap()
+                .tiles_mut()
                 .insert((tile as u32 % 16, tile as u32 / 16), pixels.clone());
         }
-        remaining -= layer.tiles.len();
+        remaining -= layer.raster().unwrap().tiles().len();
         engine.document.layers.push(layer);
     }
     engine.document.next_id = 10;
@@ -120,16 +137,17 @@ fn aligned_moves_reuse_tiles_and_memory_limit_rejection_keeps_original_layer() {
     let state = engine.state();
     assert!(engine
         .command(Command::TranslateLayer {
+            mask_id: None,
             id: 1,
             dx: 1,
             dy: 1
         })
         .is_err());
     assert_eq!(engine.state(), state);
-    assert_eq!(engine.document.layers[0].tiles.len(), 1);
+    assert_eq!(engine.document.layers[0].raster().unwrap().tiles().len(), 1);
     assert!(Arc::ptr_eq(
         &pixels,
-        &engine.document.layers[0].tiles[&(1, 1)]
+        &engine.document.layers[0].raster().unwrap().tiles()[&(1, 1)]
     ));
 }
 
@@ -144,6 +162,7 @@ fn translation_is_atomic_for_locked_selected_and_out_of_range_requests() {
         let shift = if locked || alpha_locked { 1 } else { i32::MIN };
         assert!(engine
             .command(Command::TranslateLayer {
+                mask_id: None,
                 id: 1,
                 dx: shift,
                 dy: 0
@@ -166,6 +185,7 @@ fn translation_is_atomic_for_locked_selected_and_out_of_range_requests() {
     let before = engine.save().unwrap();
     assert!(engine
         .command(Command::TranslateLayer {
+            mask_id: None,
             id: 1,
             dx: 1,
             dy: 1
@@ -178,6 +198,7 @@ fn translation_is_atomic_for_locked_selected_and_out_of_range_requests() {
     let state = engine.state();
     engine
         .command(Command::TranslateLayer {
+            mask_id: None,
             id: 1,
             dx: 0,
             dy: 0,
@@ -188,13 +209,18 @@ fn translation_is_atomic_for_locked_selected_and_out_of_range_requests() {
     let mut empty = Engine::new(8192, 2048).unwrap();
     empty
         .command(Command::TranslateLayer {
+            mask_id: None,
             id: 1,
             dx: 16,
             dy: -32,
         })
         .unwrap();
     assert_eq!(empty.state()["revision"], 0);
-    assert!(empty.document.layers[0].tiles.is_empty());
+    assert!(empty.document.layers[0]
+        .raster()
+        .unwrap()
+        .tiles()
+        .is_empty());
 }
 
 #[test]
@@ -203,9 +229,10 @@ fn translation_keeps_other_layers_and_streams_uncomposited_pixels_once() {
     engine.command(Command::DuplicateLayer { id: 1 }).unwrap();
     engine.document.layers[0].blend = BlendMode::Multiply;
     engine.document.layers[0].opacity = 0.5;
-    let unchanged = engine.document.layers[1].tiles.clone();
+    let unchanged = engine.document.layers[1].raster().unwrap().tiles().clone();
     engine
         .command(Command::TranslateLayer {
+            mask_id: None,
             id: 1,
             dx: 17,
             dy: 19,
@@ -214,9 +241,12 @@ fn translation_keeps_other_layers_and_streams_uncomposited_pixels_once() {
     assert_eq!(engine.document.layers[0].blend, BlendMode::Multiply);
     assert_eq!(engine.document.layers[0].opacity, 0.5);
     for (key, tile) in &unchanged {
-        assert!(Arc::ptr_eq(tile, &engine.document.layers[1].tiles[key]));
+        assert!(Arc::ptr_eq(
+            tile,
+            &engine.document.layers[1].raster().unwrap().tiles()[key]
+        ));
     }
-    let frame = engine.layer_frame();
+    let frame = engine.layer_frame().unwrap();
     let word = |offset| u32::from_le_bytes(frame[offset..offset + 4].try_into().unwrap());
     assert_eq!(
         [word(0), word(4), word(8), word(12)],
@@ -225,9 +255,12 @@ fn translation_keeps_other_layers_and_streams_uncomposited_pixels_once() {
     let mut offset = 16;
     for layer in &engine.document.layers {
         assert_eq!(word(offset), layer.id);
-        assert_eq!(word(offset + 4) as usize, layer.tiles.len());
+        assert_eq!(
+            word(offset + 4) as usize,
+            layer.raster().unwrap().tiles().len()
+        );
         offset += 8;
-        for (&(x, y), tile) in &layer.tiles {
+        for (&(x, y), tile) in layer.raster().unwrap().tiles() {
             assert_eq!([word(offset), word(offset + 4)], [x, y]);
             assert_eq!(&frame[offset + 8..offset + 8 + TILE_BYTES], tile.as_slice());
             offset += 8 + TILE_BYTES;
@@ -236,7 +269,7 @@ fn translation_keeps_other_layers_and_streams_uncomposited_pixels_once() {
     assert_eq!(offset, frame.len());
     engine.document.layers[1].visible = false;
     assert_eq!(
-        u32::from_le_bytes(engine.layer_frame()[12..16].try_into().unwrap()),
+        u32::from_le_bytes(engine.layer_frame().unwrap()[12..16].try_into().unwrap()),
         1
     );
 }
@@ -252,7 +285,9 @@ fn selected_pixels_move_without_moving_the_rest_and_undo_restores_all_pixels() {
         tile[i..i + 4].copy_from_slice(&color);
     }
     engine.document.layers[0]
-        .tiles
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
         .insert((0, 0), Arc::new(tile));
     let before = engine.save().unwrap();
     engine
@@ -269,6 +304,7 @@ fn selected_pixels_move_without_moving_the_rest_and_undo_restores_all_pixels() {
     assert_eq!(engine.save().unwrap(), before);
     engine
         .command(Command::TranslateLayer {
+            mask_id: None,
             id: 1,
             dx: 128,
             dy: 0,

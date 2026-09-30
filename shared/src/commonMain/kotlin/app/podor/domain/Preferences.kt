@@ -101,6 +101,15 @@ enum class ShortcutAction(val label: String, val default: Shortcut) {
     InvertSelection("反选", Shortcut("I", command = true, shift = true)),
     MagicWand("魔棒选区", Shortcut("W")),
     PasteReference("粘贴参考图", Shortcut("V", command = true, shift = true)),
+    LassoFill("柳叶笔", Shortcut("L")),
+    PixelPencil("像素铅笔", Shortcut("P")),
+    PixelGrid("像素网格", Shortcut("G", command = true)),
+    AnimationTimeline("动画时间轴", Shortcut("A", command = true, shift = true)),
+    PlayAnimation("播放动画", Shortcut("P", alt = true)),
+    PreviousFrame("上一帧", Shortcut("[", alt = true)),
+    NextFrame("下一帧", Shortcut("]", alt = true)),
+    AddFrame("添加空白帧", Shortcut("N", alt = true)),
+    OnionSkin("洋葱皮", Shortcut("O", alt = true)),
 }
 
 @Serializable
@@ -110,11 +119,14 @@ data class Preferences(
     val appearance: Appearance = Appearance.Dark,
     val startupScreen: StartupScreen = StartupScreen.Workspace,
     val canvasBackground: CanvasBackground = StudioDefaults.canvasBackground,
+    val canvasGrid: CanvasGridSettings = CanvasGridSettings(),
     val shortcuts: Map<ShortcutAction, Shortcut> = emptyMap(),
     val plugins: List<BrushPack> = emptyList(),
     val brushes: List<BrushPreset> = emptyList(),
     val favoriteBrushes: Set<String> = emptySet(),
     val palette: List<Long> = emptyList(),
+    val asePalette: AsePalette? = null,
+    val paletteFileMetadata: PaletteFileMetadata = PaletteFileMetadata(),
 ) {
     fun withAvailableBrushFavorites(): Preferences {
         val available =
@@ -145,24 +157,45 @@ data class Preferences(
                 ShortcutAction.ZoomOut,
                 ShortcutAction.BrushSmaller,
                 ShortcutAction.BrushLarger,
+                ShortcutAction.LassoFill,
+                ShortcutAction.PixelPencil,
+                ShortcutAction.PixelGrid,
+                ShortcutAction.AnimationTimeline,
+                ShortcutAction.PlayAnimation,
+                ShortcutAction.PreviousFrame,
+                ShortcutAction.NextFrame,
+                ShortcutAction.AddFrame,
+                ShortcutAction.OnionSkin,
             )) {
             if (action in result.shortcuts || action.default !in result.shortcuts.values) continue
             val used = ShortcutAction.entries.filter { it != action }.map(result::shortcut).toSet()
             val candidates =
                 sequenceOf(action.default.copy(shift = true), action.default.copy(alt = true)) +
                     ('A'..'Z').asSequence().map {
-                        Shortcut(it.toString(), command = action.default.command, shift = true, alt = true)
+                        Shortcut(
+                            it.toString(),
+                            command = action.default.command,
+                            shift = true,
+                            alt = true,
+                        )
                     }
             result =
-                result.copy(shortcuts = result.shortcuts + (action to candidates.first { it !in used }))
+                result.copy(
+                    shortcuts = result.shortcuts + (action to candidates.first { it !in used })
+                )
         }
         return result
     }
 
     fun valid() =
-        palette.size <= StudioDefaults.maxPaletteColors &&
+        canvasGrid.valid() &&
+            paletteFileMetadata.valid() &&
+            palette.size <= StudioDefaults.maxPaletteColors &&
             palette.distinct().size == palette.size &&
             palette.all { it in 0xFF000000L..0xFFFFFFFFL } &&
+            (asePalette == null ||
+                (asePalette.valid() &&
+                    asePalette.swatches.map { it.color }.distinct() == palette)) &&
             plugins.size <= 16 &&
             plugins.all { it.valid() } &&
             plugins.map { it.id }.distinct().size == plugins.size &&

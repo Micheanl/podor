@@ -16,7 +16,9 @@ fn pixel(engine: &Engine, x: u32, y: u32) -> [u8; 4] {
         .find(|l| l.id == engine.document.active)
         .unwrap();
     layer
-        .tiles
+        .raster()
+        .unwrap()
+        .tiles()
         .get(&(x / TILE_SIZE, y / TILE_SIZE))
         .map_or([0; 4], |t| {
             let i = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -28,7 +30,9 @@ fn put(engine: &mut Engine, x: u32, y: u32, color: [u8; 4]) {
     let tile = engine
         .document
         .active_mut()
-        .tiles
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
         .entry((x / TILE_SIZE, y / TILE_SIZE))
         .or_insert_with(|| Arc::new(vec![0; TILE_BYTES]));
     let i = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -73,6 +77,8 @@ fn tolerance_and_selection_restrict_fill() {
     let before = e.save().unwrap();
     assert!(e
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color: [255; 4],
@@ -103,6 +109,7 @@ fn selected_brush_does_not_change_pixels_outside_rectangle() {
             eraser: false,
             ..Brush::default()
         },
+        assistant: None,
     })
     .unwrap();
     e.samples(&[Sample {

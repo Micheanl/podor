@@ -2,8 +2,28 @@ use crate::{model::*, storage};
 use std::{collections::btree_map::Entry, sync::Arc};
 
 pub fn prepare(doc: &Document, bytes: &[u8], name: &str) -> Result<Layer, String> {
-    if doc.layers.len() >= MAX_LAYERS {
+    if doc.layers.len() >= MAX_LAYER_NODES
+        || doc
+            .layers
+            .iter()
+            .filter(|layer| layer.raster_opt().is_some())
+            .count()
+            >= MAX_LAYERS
+    {
         return Err("已达到图层上限".into());
+    }
+    let active = doc
+        .layers
+        .iter()
+        .find(|layer| layer.id == doc.active)
+        .ok_or("图层不存在")?;
+    let parent_id = if active.is_group() {
+        Some(active.id)
+    } else {
+        active.parent_id
+    };
+    if let Some(id) = parent_id {
+        crate::groups::check_editable(doc, id, false)?;
     }
     if name.trim().is_empty() || name.len() > MAX_LAYER_NAME_BYTES {
         return Err("图层属性无效".into());
@@ -26,27 +46,35 @@ pub fn prepare(doc: &Document, bytes: &[u8], name: &str) -> Result<Layer, String
         }
     }
     let source = storage::load(bytes)?;
+    let source = if source.palette.is_some() {
+        crate::indexed::convert(&source, None)?
+    } else {
+        source
+    };
     let (width, height) = fit(source.width, source.height, doc.width, doc.height);
     let left = (doc.width - width) / 2;
     let top = (doc.height - height) / 2;
     let mut layer = Layer::new(doc.next_id, name.to_owned());
+    layer.parent_id = parent_id;
     let budget = (MAX_DOCUMENT_BYTES / TILE_BYTES).saturating_sub(doc.tile_count());
     if (width, height) == (source.width, source.height)
         && left.is_multiple_of(TILE_SIZE)
         && top.is_multiple_of(TILE_SIZE)
     {
-        let source = source.layers.into_iter().next().unwrap();
-        if source.tiles.len() > budget {
+        let source = source.layers.first().ok_or("图片没有像素图层")?.raster()?;
+        if source.tiles().len() > budget {
             return Err("工程像素超过内存限制".into());
         }
-        if source.tiles.len() > MAX_HISTORY_BYTES / TILE_BYTES {
+        if source.tiles().len() > MAX_HISTORY_BYTES / TILE_BYTES {
             return Err("导入图层超过撤销内存限制".into());
         }
-        layer.tiles = source
-            .tiles
-            .into_iter()
-            .map(|((x, y), tile)| ((x + left / TILE_SIZE, y + top / TILE_SIZE), tile))
-            .collect();
+        layer.raster_mut()?.set_tiles(
+            source
+                .tiles()
+                .iter()
+                .map(|((x, y), tile)| ((x + left / TILE_SIZE, y + top / TILE_SIZE), tile.clone()))
+                .collect(),
+        );
         return Ok(layer);
     }
     let mut row = vec![[0u8; 4]; source.width as usize];
@@ -71,7 +99,7 @@ pub fn prepare(doc: &Document, bytes: &[u8], name: &str) -> Result<Layer, String
         if scaled {
             sums.fill([0.0; 4]);
             for &(sy, wy) in &vertical[y as usize] {
-                read_row(&source, sy as u32, &mut row);
+                read_row(&source, sy as u32, &mut row)?;
                 for (target, samples) in sums.iter_mut().zip(&horizontal) {
                     for &(sx, wx) in samples {
                         for (channel, &value) in target.iter_mut().zip(&row[sx]) {
@@ -86,7 +114,7 @@ pub fn prepare(doc: &Document, bytes: &[u8], name: &str) -> Result<Layer, String
                 }
             }
         } else {
-            read_row(&source, y, &mut output);
+            read_row(&source, y, &mut output)?;
         }
         write_row(&mut layer, left, top + y, &output, budget)?;
     }
@@ -129,10 +157,11 @@ fn weights(source: u32, target: u32) -> Vec<Vec<(usize, f64)>> {
         .collect()
 }
 
-fn read_row(source: &Document, y: u32, row: &mut [[u8; 4]]) {
+fn read_row(source: &Document, y: u32, row: &mut [[u8; 4]]) -> Result<(), String> {
+    let raster = source.layers.first().ok_or("图片没有像素图层")?.raster()?;
     row.fill([0; 4]);
     for tx in 0..source.width.div_ceil(TILE_SIZE) {
-        if let Some(tile) = source.layers[0].tiles.get(&(tx, y / TILE_SIZE)) {
+        if let Some(tile) = raster.tiles().get(&(tx, y / TILE_SIZE)) {
             let start = (y % TILE_SIZE * TILE_SIZE * 4) as usize;
             let left = (tx * TILE_SIZE) as usize;
             let count = (source.width as usize - left).min(TILE_SIZE as usize);
@@ -140,6 +169,7 @@ fn read_row(source: &Document, y: u32, row: &mut [[u8; 4]]) {
                 .copy_from_slice(tile[start..start + count * 4].as_chunks::<4>().0);
         }
     }
+    Ok(())
 }
 
 fn write_row(
@@ -157,8 +187,9 @@ fn write_row(
         if pixels.iter().all(|pixel| pixel[3] == 0) {
             continue;
         }
-        let count = layer.tiles.len();
-        let tile = match layer.tiles.entry((tx, y / TILE_SIZE)) {
+        let raster = layer.raster_mut()?;
+        let count = raster.tiles().len();
+        let tile = match raster.tiles_mut().entry((tx, y / TILE_SIZE)) {
             Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => {
                 if count >= budget {

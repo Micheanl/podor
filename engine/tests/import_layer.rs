@@ -17,7 +17,12 @@ fn png(width: u32, height: u32, pixels: &[u8]) -> Vec<u8> {
 }
 
 fn pixel(layer: &Layer, x: u32, y: u32) -> [u8; 4] {
-    let Some(tile) = layer.tiles.get(&(x / TILE_SIZE, y / TILE_SIZE)) else {
+    let Some(tile) = layer
+        .raster()
+        .unwrap()
+        .tiles()
+        .get(&(x / TILE_SIZE, y / TILE_SIZE))
+    else {
         return [0; 4];
     };
     let offset = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -30,6 +35,8 @@ fn import_centers_above_the_active_layer_and_undo_restores_the_saved_document() 
     let mut engine = Engine::new(260, 259).unwrap();
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color: [20, 40, 60, 255],
@@ -58,7 +65,7 @@ fn import_centers_above_the_active_layer_and_undo_restores_the_saved_document() 
     engine.frame();
     let before = engine.save().unwrap();
     let old_content = engine.state()["contentId"].clone();
-    let old_tile = engine.document.layers[0].tiles[&(0, 0)].clone();
+    let old_tile = engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)].clone();
     engine.import_layer(&bytes, "参考 · 红色").unwrap();
     assert_eq!(
         engine
@@ -74,11 +81,11 @@ fn import_centers_above_the_active_layer_and_undo_restores_the_saved_document() 
     assert_eq!(imported.name, "参考 · 红色");
     assert_eq!(pixel(imported, 129, 129), [100, 50, 25, 128]);
     assert_eq!(pixel(imported, 130, 129), [0; 4]);
-    assert_eq!(imported.tiles.len(), 1);
+    assert_eq!(imported.raster().unwrap().tiles().len(), 1);
     assert!(!imported.locked && !imported.alpha_locked && imported.visible);
     assert!(Arc::ptr_eq(
         &old_tile,
-        &engine.document.layers[0].tiles[&(0, 0)]
+        &engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)]
     ));
     assert!(engine.state()["selection"].is_null());
     let frame = engine.frame();
@@ -179,6 +186,7 @@ fn cancelled_invalid_and_excessive_imports_do_not_change_pixels_or_history() {
     engine
         .command(Command::Begin {
             brush: Brush::default(),
+            assistant: None,
         })
         .unwrap();
     assert_eq!(
@@ -202,6 +210,8 @@ fn document_budget_rejects_import_without_allocating_more_document_tiles() {
     let mut engine = Engine::new(4096, 4096).unwrap();
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color: [30, 60, 90, 255],
@@ -210,7 +220,7 @@ fn document_budget_rejects_import_without_allocating_more_document_tiles() {
         .unwrap();
     engine.command(Command::DuplicateLayer { id: 1 }).unwrap();
     let state = engine.state();
-    let tile = engine.document.layers[0].tiles[&(0, 0)].clone();
+    let tile = engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)].clone();
     assert_eq!(
         engine
             .import_layer(&png(1, 1, &[255; 4]), "full")
@@ -220,7 +230,7 @@ fn document_budget_rejects_import_without_allocating_more_document_tiles() {
     assert_eq!(engine.state(), state);
     assert!(Arc::ptr_eq(
         &tile,
-        &engine.document.layers[0].tiles[&(0, 0)]
+        &engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)]
     ));
 }
 

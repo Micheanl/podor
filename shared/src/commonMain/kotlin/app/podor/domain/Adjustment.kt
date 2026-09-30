@@ -9,6 +9,7 @@ enum class AdjustmentKind(val label: String) {
     @SerialName("blur") Blur("高斯模糊"),
     @SerialName("layer_blend") LayerBlend("图层混合"),
     @SerialName("curves") Curves("曲线"),
+    @SerialName("gradient_map") GradientMap("渐变映射"),
 }
 
 @Serializable
@@ -21,6 +22,7 @@ data class AdjustmentSettings(
     val opacity: Float = StudioDefaults.layerOpacity,
     val blend: LayerBlendMode = LayerBlendMode.Normal,
     val curves: ColorCurves = ColorCurves(),
+    @SerialName("gradient_map") val gradientMap: GradientMapSettings = GradientMapSettings(),
 ) {
     fun valid() =
         listOf(brightness, contrast, saturation).all { it.isFinite() && it in -1f..1f } &&
@@ -28,7 +30,8 @@ data class AdjustmentSettings(
             sigma in StudioDefaults.minBlurSigma..StudioDefaults.maxBlurSigma &&
             opacity.isFinite() &&
             opacity in 0f..1f &&
-            curves.valid()
+            curves.valid() &&
+            gradientMap.valid()
 
     companion object {
         fun defaults(kind: AdjustmentKind) =

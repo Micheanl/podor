@@ -32,7 +32,11 @@ fn artwork(mode: BlendMode, active: u32) -> Engine {
                 let alpha = ((index + id as usize * 43) % 256) as u8;
                 pixel.copy_from_slice(&[alpha / 2, alpha / 3, alpha / 4, alpha]);
             }
-            layer.tiles.insert(key, Arc::new(pixels));
+            layer
+                .raster_mut()
+                .unwrap()
+                .tiles_mut()
+                .insert(key, Arc::new(pixels));
         }
         engine.document.layers.push(layer);
     }
@@ -84,6 +88,7 @@ fn stroke(engine: &mut Engine, eraser: bool) {
                 eraser,
                 ..Brush::default()
             },
+            assistant: None,
         })
         .unwrap();
     for (x, y) in [(115.0, 60.0), (132.0, 68.0), (143.0, 74.0), (250.0, 135.0)] {
@@ -172,6 +177,8 @@ fn cache_turnover_and_returning_to_earlier_tiles_preserve_pixels() {
     let mut engine = Engine::new(8192, 256).unwrap();
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color: [90, 120, 180, 128],
@@ -192,6 +199,7 @@ fn cache_turnover_and_returning_to_earlier_tiles_preserve_pixels() {
                 size: 10.0,
                 ..Brush::default()
             },
+            assistant: None,
         })
         .unwrap();
     for row in [32.0, 160.0] {

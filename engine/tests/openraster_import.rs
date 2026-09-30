@@ -39,8 +39,141 @@ fn stack(layers: &str) -> String {
     format!(r#"<image version="0.0.6" w="129" h="131"><stack>{layers}</stack></image>"#)
 }
 
+#[test]
+fn mask_extensions_are_rejected_without_losing_the_current_project() {
+    let mut engine = Engine::new(3, 3).unwrap();
+    engine
+        .command(Command::Fill {
+            x: 0,
+            y: 0,
+            color: [30, 70, 90, 255],
+            tolerance: 0,
+            contiguous: true,
+            merged: false,
+        })
+        .unwrap();
+    let saved = engine.save().unwrap();
+    let state = engine.state();
+    let file = png(1, 1, &[10, 20, 30, 255], png::ColorType::Rgba);
+    for layer in [
+        r#"<layer src="data/image.png" mask="data/mask.png"/>"#,
+        r#"<layer src="data/image.png" mask-enabled="false"/>"#,
+        r#"<layer src="data/image.png"><mask src="data/mask.png"/></layer>"#,
+        r#"<layer xmlns:app="urn:example" src="data/image.png" app:maskSrc="data/mask.png"/>"#,
+    ] {
+        let bytes = archive(
+            &stack(layer),
+            &[("data/image.png", file.clone())],
+            CompressionMethod::Stored,
+        );
+        let error = engine.load(&bytes).unwrap_err();
+        assert!(error.contains("蒙版"));
+        assert_eq!(engine.state(), state);
+        assert_eq!(engine.save().unwrap(), saved);
+    }
+}
+
+#[test]
+fn masked_layers_require_a_format_that_preserves_independent_masks() {
+    let mut engine = Engine::new(3, 3).unwrap();
+    engine.document.layers[0].set_first_mask(Some(LayerMask::new(
+        MaskBounds {
+            left: -1,
+            top: 0,
+            right: 2,
+            bottom: 3,
+        },
+        255,
+    )));
+    engine.document.assign_mask_ids().unwrap();
+    for enabled in [true, false] {
+        engine.document.layers[0].first_mask_mut().unwrap().enabled = enabled;
+        let saved = engine.save().unwrap();
+        let error = engine
+            .export_image(ExportOptions {
+                format: ExportFormat::Ora,
+                ..Default::default()
+            })
+            .unwrap_err();
+        assert!(error.contains("独立图层蒙版") && error.contains("PSD"));
+        assert_eq!(engine.save().unwrap(), saved);
+        assert!(engine.export_png().is_ok());
+    }
+}
+
+#[test]
+fn clipping_layers_require_a_format_that_keeps_the_chain_even_when_hidden_or_transparent() {
+    let mut engine = Engine::new(3, 3).unwrap();
+    engine.command(Command::AddLayer).unwrap();
+    engine.document.layers[1].clipping = true;
+    for (visible, opacity) in [(true, 1.0), (false, 1.0), (true, 0.0)] {
+        engine.document.layers[1].visible = visible;
+        engine.document.layers[1].opacity = opacity;
+        let saved = engine.save().unwrap();
+        let state = engine.state();
+        let error = engine
+            .export_image(ExportOptions {
+                format: ExportFormat::Ora,
+                ..Default::default()
+            })
+            .unwrap_err();
+        assert!(error.contains("剪贴蒙版") && error.contains("PSD"));
+        assert_eq!(saved, engine.save().unwrap());
+        assert_eq!(state, engine.state());
+        assert!(engine.export_png().is_ok());
+    }
+}
+
+#[test]
+fn unsupported_clip_extensions_and_source_atop_never_silently_open_as_normal_layers() {
+    let mut engine = Engine::new(3, 3).unwrap();
+    engine
+        .command(Command::Fill {
+            x: 0,
+            y: 0,
+            color: [30, 70, 90, 255],
+            tolerance: 0,
+            contiguous: true,
+            merged: false,
+        })
+        .unwrap();
+    let saved = engine.save().unwrap();
+    let state = engine.state();
+    let file = png(1, 1, &[10, 20, 30, 255], png::ColorType::Rgba);
+    for layer in [
+        r#"<layer src="data/image.png" clipping="true"/>"#,
+        r#"<layer src="data/image.png" clip-to-layer="1"/>"#,
+        r#"<layer src="data/image.png" alpha-inherit="true"/>"#,
+        r#"<layer src="data/image.png" inherit-alpha="true"/>"#,
+        r#"<layer xmlns:app="urn:example" src="data/image.png" app:clipToLayer="1"/>"#,
+        r#"<layer src="data/image.png"><clipping base="1"/></layer>"#,
+    ] {
+        let bytes = archive(
+            &stack(layer),
+            &[("data/image.png", file.clone())],
+            CompressionMethod::Stored,
+        );
+        assert!(engine.load(&bytes).unwrap_err().contains("剪贴蒙版"));
+        assert_eq!(engine.state(), state);
+        assert_eq!(engine.save().unwrap(), saved);
+    }
+    let bytes = archive(
+        &stack(r#"<layer src="data/image.png" composite-op="svg:src-atop"/>"#),
+        &[("data/image.png", file)],
+        CompressionMethod::Stored,
+    );
+    assert!(engine.load(&bytes).unwrap_err().contains("混合模式"));
+    assert_eq!(engine.state(), state);
+    assert_eq!(engine.save().unwrap(), saved);
+}
+
 fn pixel(layer: &Layer, x: u32, y: u32) -> [u8; 4] {
-    let Some(tile) = layer.tiles.get(&(x / TILE_SIZE, y / TILE_SIZE)) else {
+    let Some(tile) = layer
+        .raster()
+        .unwrap()
+        .tiles()
+        .get(&(x / TILE_SIZE, y / TILE_SIZE))
+    else {
         return [0; 4];
     };
     let offset = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -62,6 +195,8 @@ fn exported_layers_reopen_with_the_same_composite_and_properties() {
         let mut source = Engine::new(129, 131).unwrap();
         source
             .command(Command::Fill {
+                contiguous: true,
+                merged: false,
                 x: 0,
                 y: 0,
                 color: [80, 120, 200, 192],
@@ -71,6 +206,8 @@ fn exported_layers_reopen_with_the_same_composite_and_properties() {
         source.command(Command::AddLayer).unwrap();
         source
             .command(Command::Fill {
+                contiguous: true,
+                merged: false,
                 x: 0,
                 y: 0,
                 color: [190, 40, 80, 150],
@@ -161,7 +298,7 @@ fn deflated_layers_keep_negative_offsets_clipping_palette_alpha_and_partial_tile
         pixel(&engine.document.layers[2], 128, 130),
         [128, 0, 50, 128]
     );
-    assert_eq!(engine.document.layers[2].tiles.len(), 1);
+    assert_eq!(engine.document.layers[2].raster().unwrap().tiles().len(), 1);
     assert_eq!(engine.document.tile_count(), 4);
     engine.document.validate().unwrap();
 }
@@ -173,6 +310,8 @@ fn invalid_archives_never_replace_the_open_document() {
     let mut engine = Engine::new(12, 13).unwrap();
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color: [20, 50, 80, 255],
@@ -182,7 +321,7 @@ fn invalid_archives_never_replace_the_open_document() {
     let saved = engine.save().unwrap();
     let state = engine.state();
     let layers = [
-        "<stack><layer src=\"data/p.png\"/></stack>".to_owned(),
+        "<stack x=\"1\"><layer src=\"data/p.png\"/></stack>".to_owned(),
         "<filter/>".into(),
         "<layer/>".into(),
         "<layer src=\"../data/p.png\"/>".into(),
@@ -315,7 +454,11 @@ fn gimp_archive_opens_with_editable_layers_and_matching_merged_preview() {
     let saved = engine.save().unwrap();
     engine.command(Command::SelectLayer { id: 2 }).unwrap();
     engine.command(Command::Clear).unwrap();
-    assert!(engine.document.layers[1].tiles.is_empty());
+    assert!(engine.document.layers[1]
+        .raster()
+        .unwrap()
+        .tiles()
+        .is_empty());
     engine.command(Command::Undo).unwrap();
     let mut reopened = Engine::new(1, 1).unwrap();
     reopened.load(&saved).unwrap();

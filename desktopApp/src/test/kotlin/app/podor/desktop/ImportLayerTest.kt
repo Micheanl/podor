@@ -9,6 +9,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
@@ -97,8 +98,29 @@ class ImportLayerTest {
             suspend fun importFromButton() {
                 render()
                 withContext(Dispatchers.Main) {
-                    scene!!.sendPointerEvent(PointerEventType.Press, Offset(834f, 22f))
-                    scene!!.sendPointerEvent(PointerEventType.Release, Offset(834f, 22f))
+                    fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+                        yield(node)
+                        for (child in node.children) yieldAll(descendants(child))
+                    }
+                    val button =
+                        scene!!
+                            .semanticsOwners
+                            .asSequence()
+                            .flatMap { descendants(it.rootSemanticsNode) }
+                            .filter {
+                                it.config.contains(SemanticsActions.OnClick) &&
+                                    !it.boundsInWindow.isEmpty &&
+                                    it.config
+                                        .getOrNull(SemanticsProperties.ContentDescription)
+                                        ?.contains("导入为图层") == true
+                            }
+                            .minByOrNull { it.boundsInWindow.width * it.boundsInWindow.height }
+                            ?: error("Import layer button was not rendered")
+                    assertFalse(button.config.contains(SemanticsProperties.Disabled))
+                    val point = button.boundsInWindow.center
+                    scene!!.sendPointerEvent(PointerEventType.Press, point)
+                    scene!!.sendPointerEvent(PointerEventType.Release, point)
+                    scene!!.sendPointerEvent(PointerEventType.Move, Offset.Zero)
                 }
                 render()
             }

@@ -443,7 +443,7 @@ class StudioRenderingTest {
                             scene.close()
                         }
                     }
-                    for (format in ExportFormat.entries) {
+                    for (format in controller.exportFormats) {
                         val scene =
                             ImageComposeScene(432, 720) {
                                 PodorTheme {

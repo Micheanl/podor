@@ -160,6 +160,7 @@ class ControllerIntegrationTest {
                             """{"type":"fill","x":0,"y":0,"color":[64,128,192,255],"tolerance":0}""",
                             """{"type":"add_layer"}""",
                             """{"type":"fill","x":0,"y":0,"color":[192,64,128,255],"tolerance":0}""",
+                            """{"type":"set_blend","id":2,"mode":"difference"}""",
                         )) engine.call(EngineOperation.COMMAND, command.encodeToByteArray())
                     engine.call(EngineOperation.SAVE)
                 } finally {
@@ -278,7 +279,7 @@ class ControllerIntegrationTest {
                 }
                 val image = withContext(Dispatchers.Main) { controller.previews.images.getValue(1) }
                 assertEquals(0f, image.toPixelMap()[48, 48].red, 0.01f)
-                for (format in ExportFormat.entries) {
+                for (format in controller.exportFormats) {
                     withContext(Dispatchers.Main) {
                         controller.export(
                             ExportOptions(format, transparent = format.supportsTransparency)
@@ -363,13 +364,20 @@ class ControllerIntegrationTest {
             withContext(Dispatchers.Main) {
                 controller.command("tone") {
                     putJsonObject("settings") {
-                        put("brightness", 0)
+                        put("brightness", 0.25)
                         put("contrast", 0)
                         put("saturation", -1)
                     }
                 }
             }
             awaitState { controller.document.revision == 2L }
+            withContext(Dispatchers.Main) {
+                val pixel = controller.frame.tiles.values.first().image.toPixelMap()[15, 15]
+                assertEquals(64 / 255f, pixel.red, 0.005f)
+                assertEquals(pixel.red, pixel.green)
+                assertEquals(pixel.red, pixel.blue)
+                assertEquals(1f, pixel.alpha)
+            }
             withContext(Dispatchers.Main) { controller.command("undo") }
             awaitState { controller.document.revision == 3L }
             assertNull(withContext(Dispatchers.Main) { controller.error })
@@ -446,6 +454,8 @@ class ControllerIntegrationTest {
         NativeLoader.load()
         val files =
             Files().apply {
+                settings =
+                    """{"shortcuts":{"Brush":{"key":"P","alt":true}}}""".encodeToByteArray()
                 brushPack =
                     Json.encodeToString(
                             BrushPack("artist", "Artist", brushes = listOf(BrushPreset.Ink))
@@ -458,6 +468,17 @@ class ControllerIntegrationTest {
             withTimeout(10_000) { while (!withContext(Dispatchers.Main) { predicate() }) delay(10) }
         try {
             awaitState { controller.ready }
+            val expectedShortcuts =
+                mapOf(
+                    ShortcutAction.Brush to Shortcut("P", alt = true),
+                    ShortcutAction.PlayAnimation to Shortcut("P", shift = true, alt = true),
+                )
+            assertEquals(
+                expectedShortcuts,
+                withContext(Dispatchers.Main) { controller.preferences.shortcuts },
+            )
+            assertTrue(withContext(Dispatchers.Main) { controller.preferences.valid() })
+            assertNull(withContext(Dispatchers.Main) { controller.error })
             withContext(Dispatchers.Main) {
                 controller.file(StudioController.FileAction.ImportBrushes)
             }
@@ -466,7 +487,7 @@ class ControllerIntegrationTest {
                 controller.updatePreferences(
                     controller.preferences
                         .copy(language = Language.English)
-                        .assign(ShortcutAction.Brush, Shortcut("P"))
+                        .assign(ShortcutAction.Brush, Shortcut("P", alt = true))
                 )
                 controller.brush = controller.brush.copy(
                     preset = controller.brush.preset.copy(stabilization = 0.7f)
@@ -481,11 +502,16 @@ class ControllerIntegrationTest {
                 withContext(Dispatchers.Main) { controller.preferences.language },
             )
             assertEquals(
-                Shortcut("P"),
+                Shortcut("P", alt = true),
                 withContext(Dispatchers.Main) {
                     controller.preferences.shortcut(ShortcutAction.Brush)
                 },
             )
+            assertEquals(
+                expectedShortcuts,
+                withContext(Dispatchers.Main) { controller.preferences.shortcuts },
+            )
+            assertTrue(withContext(Dispatchers.Main) { controller.preferences.valid() })
             assertEquals(BrushPreset.entries.size + 2, withContext(Dispatchers.Main) { controller.brushes.size })
             assertEquals(0.7f, withContext(Dispatchers.Main) { controller.preferences.brushes.single().stabilization })
             withContext(Dispatchers.Main) {

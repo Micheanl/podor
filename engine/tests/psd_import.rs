@@ -4,7 +4,9 @@ use std::io::Write;
 
 fn pixel(layer: &Layer, x: u32, y: u32) -> [u8; 4] {
     layer
-        .tiles
+        .raster()
+        .unwrap()
+        .tiles()
         .get(&(x / TILE_SIZE, y / TILE_SIZE))
         .map_or([0; 4], |tile| {
             let index = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -116,6 +118,7 @@ fn compressed(plane: &[u8], width: usize, compression: u16) -> Vec<u8> {
 struct TestLayer {
     bounds: [i32; 4],
     mode: [u8; 4],
+    opacity: u8,
     flags: u8,
     clipping: u8,
     extra: Vec<u8>,
@@ -129,6 +132,7 @@ impl TestLayer {
         Self {
             bounds: [-1, -2, 2, 3],
             mode: *b"norm",
+            opacity: 255,
             flags: 0,
             clipping: 0,
             extra: vec![],
@@ -182,7 +186,7 @@ fn fixture(layers: &[TestLayer]) -> Vec<u8> {
         }
         info.extend(b"8BIM");
         info.extend(layer.mode);
-        info.extend([255, layer.clipping, layer.flags, 0]);
+        info.extend([layer.opacity, layer.clipping, layer.flags, 0]);
         let mut extra = vec![];
         block(&layer.mask, &mut extra);
         block(&layer.ranges, &mut extra);
@@ -203,6 +207,153 @@ fn fixture(layers: &[TestLayer]) -> Vec<u8> {
     section.extend([0; 4]);
     block(&section, &mut bytes);
     bytes
+}
+
+fn clipping_layer(
+    color: [u8; 3],
+    alpha: [u8; 3],
+    clipping: bool,
+    mask: Option<[u8; 3]>,
+) -> TestLayer {
+    let mut layer = TestLayer::new(0);
+    layer.bounds = [0, 0, 1, 3];
+    layer.clipping = u8::from(clipping);
+    layer.channels = (0..4)
+        .map(|channel| {
+            let plane = if channel == 3 {
+                alpha
+            } else {
+                [color[channel]; 3]
+            };
+            (
+                if channel == 3 { -1 } else { channel as i16 },
+                compressed(&plane, 3, 0),
+            )
+        })
+        .collect();
+    if let Some(values) = mask {
+        layer.mask = [0i32, 0, 1, 3]
+            .into_iter()
+            .flat_map(i32::to_be_bytes)
+            .collect();
+        layer.mask.extend([255, 0, 0, 0]);
+        layer.channels.push((-2, compressed(&values, 3, 0)));
+    }
+    layer
+}
+
+#[test]
+fn external_clipping_chain_preserves_raw_pixels_masks_base_opacity_and_visibility() {
+    for (opacity, visible) in [(255, true), (128, true), (255, false)] {
+        let mut base = clipping_layer([255, 0, 0], [255, 128, 0], false, Some([255, 128, 255]));
+        base.opacity = opacity;
+        base.flags = if visible { 0 } else { 2 };
+        let green = clipping_layer([0, 255, 0], [255; 3], true, None);
+        let blue = clipping_layer([0, 0, 255], [255; 3], true, Some([255, 0, 255]));
+        let mut engine = Engine::new(1, 1).unwrap();
+        engine.load(&fixture(&[base, green, blue])).unwrap();
+        assert_eq!(
+            engine
+                .document
+                .layers
+                .iter()
+                .map(|layer| layer.clipping)
+                .collect::<Vec<_>>(),
+            [false, true, true]
+        );
+        assert_eq!(pixel(&engine.document.layers[0], 1, 0), [128, 0, 0, 128]);
+        assert_eq!(pixel(&engine.document.layers[1], 2, 0), [0, 255, 0, 255]);
+        assert_eq!(pixel(&engine.document.layers[2], 1, 0), [0, 0, 255, 255]);
+        assert_eq!(
+            engine.document.layers[0].first_mask().unwrap().sample(1, 0),
+            128
+        );
+        assert_eq!(
+            engine.document.layers[2].first_mask().unwrap().sample(1, 0),
+            0
+        );
+        let alpha = if visible { opacity } else { 0 };
+        let partial = if visible {
+            ((u32::from(opacity) * 64 + 127) / 255) as u8
+        } else {
+            0
+        };
+        let expected = [0, 0, alpha, alpha, 0, partial, 0, partial, 0, 0, 0, 0];
+        assert_eq!(&engine.frame_with_background(true)[24..36], &expected);
+        let before = engine.save().unwrap();
+        let state = engine.state();
+        let encoded = engine
+            .export_image(ExportOptions {
+                format: ExportFormat::Psd,
+                ..Default::default()
+            })
+            .unwrap();
+        let mut reopened = Engine::new(1, 1).unwrap();
+        reopened.load(&encoded).unwrap();
+        for (source, imported) in engine.document.layers.iter().zip(&reopened.document.layers) {
+            assert_eq!(source.clipping, imported.clipping);
+            assert_eq!(source.visible, imported.visible);
+            assert_eq!(source.opacity, imported.opacity);
+            for x in 0..3 {
+                assert_eq!(pixel(source, x, 0), pixel(imported, x, 0));
+                assert_eq!(
+                    source.first_mask().map(|mask| mask.sample(x as i32, 0)),
+                    imported.first_mask().map(|mask| mask.sample(x as i32, 0))
+                );
+            }
+        }
+        assert_eq!(&reopened.frame_with_background(true)[24..36], &expected);
+        assert_eq!(before, engine.save().unwrap());
+        assert_eq!(state, engine.state());
+    }
+}
+
+#[test]
+fn unsupported_clipping_flags_and_group_compositing_settings_reject_atomically() {
+    let mut engine = Engine::new(3, 1).unwrap();
+    engine
+        .command(Command::Fill {
+            x: 0,
+            y: 0,
+            color: [30, 70, 90, 255],
+            tolerance: 0,
+            contiguous: true,
+            merged: false,
+        })
+        .unwrap();
+    let before = engine.save().unwrap();
+    let state = engine.state();
+    let base = || clipping_layer([255, 0, 0], [255; 3], false, None);
+    for (key, flag) in [(b"clbl", 0), (b"infx", 0), (b"knko", 1)] {
+        let mut clipped = clipping_layer([0, 0, 255], [255; 3], true, None);
+        clipped.extra = tag(key, &[flag, 0, 0, 0]);
+        assert!(engine
+            .load(&fixture(&[base(), clipped]))
+            .unwrap_err()
+            .contains("尚未支持"));
+        assert_eq!(before, engine.save().unwrap());
+        assert_eq!(state, engine.state());
+    }
+    let mut clipped = clipping_layer([0, 0, 255], [255; 3], true, None);
+    clipped.clipping = 2;
+    assert!(engine
+        .load(&fixture(&[base(), clipped]))
+        .unwrap_err()
+        .contains("剪贴蒙版标记"));
+    assert_eq!(before, engine.save().unwrap());
+    assert_eq!(state, engine.state());
+    let mut clipped = clipping_layer([0, 0, 255], [255; 3], true, None);
+    clipped.extra = [
+        tag(b"clbl", &[1, 0, 0, 0]),
+        tag(b"infx", &[1, 0, 0, 0]),
+        tag(b"knko", &[0, 0, 0, 0]),
+    ]
+    .concat();
+    engine.load(&fixture(&[base(), clipped])).unwrap();
+    assert_eq!(
+        &engine.frame_with_background(true)[24..28],
+        &[0, 0, 255, 255]
+    );
 }
 
 #[test]
@@ -232,7 +383,7 @@ fn all_compressions_handle_negative_offsets_channel_order_and_transparency() {
         }
         assert_eq!(pixel(layer, 3, 0), [0; 4]);
         assert_eq!(pixel(layer, 0, 2), [0; 4]);
-        assert_eq!(layer.tiles.len(), 1);
+        assert_eq!(layer.raster().unwrap().tiles().len(), 1);
     }
 }
 
@@ -251,6 +402,8 @@ fn export_import_roundtrip_retains_all_modes_and_locks() {
         let mut engine = Engine::new(129, 131).unwrap();
         engine
             .command(Command::Fill {
+                contiguous: true,
+                merged: false,
                 x: 0,
                 y: 0,
                 color: [50, 100, 200, 128],
@@ -294,6 +447,8 @@ fn unsupported_layer_features_are_reported_without_changing_the_document() {
     let mut engine = Engine::new(16, 16).unwrap();
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color: [44, 55, 66, 255],
@@ -321,7 +476,7 @@ fn unsupported_layer_features_are_reported_without_changing_the_document() {
         let mut layer = TestLayer::new(1);
         match kind {
             0 => layer.mask = vec![0; 20],
-            1 => layer.clipping = 1,
+            1 => layer.clipping = 2,
             2 => layer.mode = *b"hLit",
             _ => layer.ranges = vec![1; 8],
         }
@@ -367,7 +522,7 @@ fn invalid_channel_ids_dimensions_counts_and_names_are_rejected() {
         assert!(engine.load(&fixture(&[layer])).is_err());
     }
     let mut bytes = fixture(&[TestLayer::new(0)]);
-    bytes[42..44].copy_from_slice(&(-33i16).to_be_bytes());
+    bytes[42..44].copy_from_slice(&(-(MAX_PSD_RECORDS as i16 + 1)).to_be_bytes());
     assert!(engine.load(&bytes).unwrap_err().contains("图层数量"));
 }
 
@@ -418,7 +573,11 @@ fn transparent_layers_stay_sparse_and_empty_single_layer_psd_opens() {
     layer.channels[1].1 = compressed(&[0; 15], 5, 0);
     let mut engine = Engine::new(1, 1).unwrap();
     engine.load(&fixture(&[layer])).unwrap();
-    assert!(engine.document.layers[0].tiles.is_empty());
+    assert!(engine.document.layers[0]
+        .raster()
+        .unwrap()
+        .tiles()
+        .is_empty());
     engine.document.layers[0].name = "图层 1".into();
     let bytes = engine
         .export_image(ExportOptions {
@@ -427,6 +586,10 @@ fn transparent_layers_stay_sparse_and_empty_single_layer_psd_opens() {
         })
         .unwrap();
     engine.load(&bytes).unwrap();
-    assert!(engine.document.layers[0].tiles.is_empty());
+    assert!(engine.document.layers[0]
+        .raster()
+        .unwrap()
+        .tiles()
+        .is_empty());
     assert_eq!(engine.document.layers[0].name, "图层 1");
 }

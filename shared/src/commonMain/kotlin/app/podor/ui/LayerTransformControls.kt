@@ -132,7 +132,10 @@ fun LayerTransformDock(controller: StudioController, modifier: Modifier = Modifi
                     Glyph.Selection,
                     "像素采样",
                     selected = value.filter == ResampleFilter.Nearest,
-                    enabled = enabled,
+                    enabled =
+                        enabled &&
+                            (controller.document.colorMode != DocumentColorMode.Indexed ||
+                                controller.document.maskEditing),
                 ) {
                     controller.previewLayerTransform(
                         value.copy(

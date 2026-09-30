@@ -1,6 +1,21 @@
 package app.podor.domain
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+
+@Serializable
+enum class LayerKind {
+    @SerialName("raster") Raster,
+    @SerialName("group") Group,
+    @SerialName("adjustment") Adjustment,
+    @SerialName("vector") Vector,
+}
+
+@Serializable
+enum class GroupIsolation(val label: String) {
+    @SerialName("isolated") Isolated("独立合成"),
+    @SerialName("pass_through") PassThrough("穿透"),
+}
 
 @Serializable
 data class LayerInfo(
@@ -11,6 +26,34 @@ data class LayerInfo(
     val blend: LayerBlendMode = LayerBlendMode.Normal,
     val alphaLocked: Boolean = false,
     val locked: Boolean = false,
+    val mask: LayerMaskInfo? = null,
+    val clipping: Boolean = false,
+    val clippingBase: Int? = null,
+    val kind: LayerKind = LayerKind.Raster,
+    val parentId: Int? = null,
+    val depth: Int = 0,
+    val childCount: Int = 0,
+    val isolation: GroupIsolation? = null,
+    val closed: Boolean = false,
+    val effectiveVisible: Boolean = visible,
+    val effectiveLocked: Boolean = locked,
+    val adjustment: AdjustmentLayerSettings? = null,
+    val masks: List<LayerMaskInfo> = emptyList(),
+    val vector: VectorLayerInfo? = null,
+    val celId: Int? = null,
+    val hasCel: Boolean = false,
+    val maskScope: LayerMaskScope = LayerMaskScope.Global,
+) {
+    val maskEntries: List<LayerMaskInfo>
+        get() = masks.ifEmpty { listOfNotNull(mask) }
+}
+
+@Serializable
+data class LayerMaskInfo(
+    val enabled: Boolean = true,
+    val linked: Boolean = true,
+    val id: Int = 0,
+    val name: String = "",
 )
 
 @Serializable
@@ -25,7 +68,59 @@ data class DocumentInfo(
     val maxLayers: Int = 0,
     val layers: List<LayerInfo> = emptyList(),
     val selection: Selection? = null,
-)
+    val maskEditing: Boolean = false,
+    val selectionId: Long = 0,
+    val colorMode: DocumentColorMode = DocumentColorMode.Rgba,
+    val indexedPalette: IndexedPalette? = null,
+    val uiOrder: List<Int> = emptyList(),
+    val maxLayerNodes: Int = 0,
+    val maxGroupDepth: Int = 0,
+    val activeMaskId: Int? = null,
+    val maxLayerMasks: Int = 0,
+    val maxVectorObjects: Int = 0,
+    val maxVectorSegments: Int = 0,
+    val assistants: DrawingAssistantSet = DrawingAssistantSet(),
+    val maxDrawingAssistants: Int = 0,
+    val maxAssistantCoordinate: Float = 0f,
+    val maxAssistantStrokeCoordinate: Float = 0f,
+    val maxGeneratedLines: Int = 0,
+    val animation: AnimationInfo? = null,
+    val maxAnimationFrames: Int = 0,
+    val maxAnimationCels: Int = 0,
+    val maxAnimationTags: Int = 0,
+    val maxFrameThumbnails: Int = 0,
+    val animationExport: AnimationExportCapabilities? = null,
+    val asepriteExport: AsepriteExportCapabilities? = null,
+    val asepriteMetadata: AsepriteMetadata? = null,
+) {
+    val rasterLayerCount: Int
+        get() = layers.count { it.kind == LayerKind.Raster }
+
+    val drawableLayerCount: Int
+        get() = layers.count { it.kind == LayerKind.Raster || it.kind == LayerKind.Vector }
+
+    fun siblings(parentId: Int?): List<LayerInfo> = layers.filter { it.parentId == parentId }
+
+    fun ancestorIds(id: Int): List<Int> {
+        val byId = layers.associateBy { it.id }
+        val result = mutableListOf<Int>()
+        var parent = byId[id]?.parentId
+        repeat(layers.size) {
+            val current = parent ?: return result
+            result.add(current)
+            parent = byId[current]?.parentId
+        }
+        return result
+    }
+
+    fun layerRows(): List<LayerInfo> {
+        if (uiOrder.isEmpty()) return layers.asReversed()
+        val byId = layers.associateBy { it.id }
+        return uiOrder.mapNotNull(byId::get).filter { layer ->
+            ancestorIds(layer.id).none { byId[it]?.closed == true }
+        }
+    }
+}
 
 enum class Tool(val label: String) {
     Brush("画笔"),
@@ -38,6 +133,10 @@ enum class Tool(val label: String) {
     TransformLayer("变换图层"),
     Gradient("渐变"),
     Smudge("涂抹"),
+    LassoFill("柳叶笔"),
+    Vector("矢量工具"),
+    Assistant("绘画助手"),
+    LineGenerator("漫画线条"),
 }
 
 @Serializable
@@ -59,6 +158,8 @@ data class BrushPreset(
     val opacityPressure: Float = StudioDefaults.opacityPressure,
     val mix: Float = 0f,
     val paper: Float = 0f,
+    val texture: BrushTexture = BrushTexture.Smooth,
+    val raster: BrushRaster = BrushRaster.Antialiased,
 ) {
     fun valid(): Boolean =
         id.matches(Regex("[a-zA-Z0-9._-]{1,64}")) &&
@@ -93,8 +194,25 @@ data class BrushPreset(
 
     companion object {
         val Ink = BrushPreset("ink", "墨水笔", 0.9f, 1f, 12f)
-        val Marker = BrushPreset("marker", "马克笔", 0.7f, 0.45f, 36f)
+        val Marker = BrushPreset("marker", "马克笔", 0.85f, 0.45f, 36f, BrushTip.Flat, 0.65f, -25f)
         val Soft = BrushPreset("soft", "柔边笔", 0f, 0.12f, 80f)
+        val PixelPencil =
+            BrushPreset(
+                "pixel-pencil",
+                "像素铅笔",
+                1f,
+                1f,
+                1f,
+                stabilization = 0f,
+                sizePressure = 0f,
+                raster = BrushRaster.Pixel,
+            )
+        val PixelPerfect =
+            PixelPencil.copy(
+                id = "pixel-perfect",
+                label = "像素完美铅笔",
+                raster = BrushRaster.PixelPerfect,
+            )
         val entries =
             listOf(
                 Ink,
@@ -105,15 +223,66 @@ data class BrushPreset(
                     1f,
                     8f,
                     stabilization = StudioDefaults.lineStabilization,
+                    sizePressure = 0.15f,
                 ),
                 Marker,
                 Soft,
-                BrushPreset("pencil", "铅笔", 0.8f, 0.7f, 5f, grain = 0.8f, spacing = 0.04f),
-                BrushPreset("charcoal", "炭笔", 0.55f, 0.5f, 44f, aspect = 0.6f, grain = 0.95f),
+                BrushPreset(
+                    "pencil",
+                    "铅笔",
+                    0.85f,
+                    0.7f,
+                    7f,
+                    grain = 0.32f,
+                    spacing = 0.04f,
+                    texture = BrushTexture.Graphite,
+                ),
+                BrushPreset(
+                    "charcoal",
+                    "炭笔",
+                    0.7f,
+                    0.65f,
+                    44f,
+                    aspect = 0.6f,
+                    grain = 0.35f,
+                    texture = BrushTexture.Charcoal,
+                ),
                 BrushPreset("airbrush", "喷枪", 0f, 0.035f, 160f, spacing = 0.03f),
-                BrushPreset("watercolor", "水彩", 0.15f, 0.08f, 90f, grain = 0.45f, spacing = 0.06f),
-                BrushPreset("chisel", "斜头笔", 0.95f, 0.7f, 38f, BrushTip.Flat, 0.25f, -35f),
-                BrushPreset("flat", "平刷", 0.8f, 0.5f, 60f, BrushTip.Flat, 0.45f, grain = 0.3f),
+                BrushPreset(
+                    "watercolor",
+                    "水彩",
+                    0.65f,
+                    0.12f,
+                    90f,
+                    grain = 0.12f,
+                    spacing = 0.06f,
+                    paper = 0.25f,
+                    texture = BrushTexture.Wash,
+                ),
+                BrushPreset(
+                    "chisel",
+                    "斜头笔",
+                    0.95f,
+                    0.7f,
+                    38f,
+                    BrushTip.Flat,
+                    0.25f,
+                    -35f,
+                    texture = BrushTexture.Bristle,
+                ),
+                BrushPreset(
+                    "flat",
+                    "平刷",
+                    0.85f,
+                    0.5f,
+                    60f,
+                    BrushTip.Flat,
+                    0.45f,
+                    90f,
+                    grain = 0.08f,
+                    followDirection = true,
+                    texture = BrushTexture.Bristle,
+                ),
                 BrushPreset(
                     "ribbon",
                     "缎带",
@@ -130,15 +299,16 @@ data class BrushPreset(
                 BrushPreset(
                     "dry-flat",
                     "干刷",
-                    0.75f,
+                    0.9f,
                     0.55f,
                     56f,
                     BrushTip.Flat,
                     0.25f,
                     90f,
-                    grain = 0.9f,
-                    spacing = 0.06f,
+                    grain = 0.2f,
+                    spacing = 0.08f,
                     followDirection = true,
+                    texture = BrushTexture.DryBristle,
                 ),
                 BrushPreset(
                     "rake",
@@ -167,16 +337,17 @@ data class BrushPreset(
                 BrushPreset(
                     "glaze",
                     "薄涂笔",
-                    0.2f,
+                    0.35f,
                     0.12f,
                     100f,
                     spacing = 0.06f,
                     sizePressure = 0.2f,
                     opacityPressure = 1f,
+                    texture = BrushTexture.Pigment,
                 ),
                 BrushPreset(
                     "lance",
-                    "柳叶笔",
+                    "尖锋笔",
                     0.95f,
                     1f,
                     34f,
@@ -185,6 +356,7 @@ data class BrushPreset(
                     spacing = 0.05f,
                     stabilization = StudioDefaults.lineStabilization,
                     followDirection = true,
+                    pressureCurve = 0.25f,
                 ),
                 BrushPreset(
                     "willow",
@@ -198,6 +370,7 @@ data class BrushPreset(
                     stabilization = StudioDefaults.lineStabilization,
                     followDirection = true,
                     opacityPressure = 0.3f,
+                    texture = BrushTexture.Bristle,
                 ),
                 BrushPreset(
                     "mixing",
@@ -208,17 +381,23 @@ data class BrushPreset(
                     spacing = 0.05f,
                     stabilization = 0.2f,
                     mix = 0.8f,
+                    texture = BrushTexture.Bristle,
                 ),
                 BrushPreset(
                     "oily",
                     "油彩笔",
-                    0.4f,
+                    0.65f,
                     0.75f,
                     64f,
-                    grain = 0.35f,
-                    spacing = 0.05f,
+                    BrushTip.Flat,
+                    0.5f,
+                    90f,
+                    grain = 0.08f,
+                    spacing = 0.07f,
                     stabilization = 0.2f,
-                    paper = 0.5f,
+                    followDirection = true,
+                    paper = 0.15f,
+                    texture = BrushTexture.Pigment,
                 ),
                 BrushPreset(
                     "rough-paper",
@@ -226,19 +405,23 @@ data class BrushPreset(
                     0.75f,
                     0.7f,
                     72f,
-                    grain = 0.2f,
-                    paper = 0.85f,
+                    grain = 0.15f,
+                    paper = 0.7f,
+                    texture = BrushTexture.Canvas,
                 ),
                 BrushPreset(
                     "watercolor-paper",
                     "水彩纸",
-                    0.15f,
+                    0.55f,
                     0.1f,
                     110f,
-                    grain = 0.3f,
+                    grain = 0.1f,
                     spacing = 0.05f,
-                    paper = 0.6f,
+                    paper = 0.7f,
+                    texture = BrushTexture.Wash,
                 ),
+                PixelPencil,
+                PixelPerfect,
             )
     }
 }
@@ -251,6 +434,25 @@ enum class BrushTip {
     Comb,
 }
 
+@Serializable
+enum class BrushRaster(val label: String, val engineName: String) {
+    Antialiased("平滑笔触", "antialiased"),
+    Pixel("像素笔触", "pixel"),
+    PixelPerfect("像素完美", "pixel_perfect"),
+}
+
+@Serializable
+enum class BrushTexture(val label: String, val engineName: String) {
+    Smooth("光滑", "smooth"),
+    Graphite("石墨", "graphite"),
+    Charcoal("炭粉", "charcoal"),
+    Bristle("刷毛", "bristle"),
+    DryBristle("干燥刷毛", "dry_bristle"),
+    Pigment("颜料", "pigment"),
+    Canvas("纤维", "canvas"),
+    Wash("水彩湿边", "wash"),
+}
+
 data class BrushSettings(
     val preset: BrushPreset = BrushPreset.Ink,
     val size: Float = BrushPreset.Ink.size,
@@ -261,23 +463,78 @@ data class BrushSettings(
 data class CanvasPreset(val label: String, val width: Int, val height: Int)
 
 object StudioDefaults {
+    val toolDockPosition = ToolDockPosition.Left
+    val inspectorPosition = InspectorPosition.Right
+    val interfaceDensity = InterfaceDensity.Standard
+    const val interfaceScale = 1f
+    const val showStatusBar = true
+    const val reducedMotion = false
+    val workspaceToolOrder =
+        listOf(
+            "Brush",
+            "Eraser",
+            "Select",
+            "Fill",
+            "Picker",
+            "Hand",
+            "MoveLayer",
+            "TransformLayer",
+            "Gradient",
+            "Smudge",
+            "LassoFill",
+            "Vector",
+            "Assistant",
+            "LineGenerator",
+        )
+    const val animationFrameDuration = 100
+    const val animationCacheBytes = 32L * 1024 * 1024
+    const val animationThumbnailBatchSize = 8
+    val animationExportFormat = AnimationExportFormat.Gif
+    val animationExportColorPolicy = GifColorPolicy.Quantize
+    val animationExportTiming = GifTimingPolicy.Round
+    const val animationExportAlphaThreshold = 128
+    const val animationExportColumns = 0
+    const val animationExportPadding = 0
+    const val onionOpacity = 0.25f
+    const val concentrationCount = 64
+    const val speedLineCount = 32
+    const val lineGeneratorSeed = 42L
+    const val lineGeneratorOpacity = 1f
+    const val lineGeneratorRandomness = 0.25f
     const val maxReferenceImages = 8
     const val maxReferenceEdge = 2048
     const val referenceInitialFraction = 0.42f
     const val referenceMinZoom = 0.25f
     const val referenceMaxZoom = 8f
     const val maxCurvePoints = 16
+    const val maxGradientMapStops = 16
+    const val maxIndexedColors = 256
     val canvasBackground = CanvasBackground.White
     const val layerOpacity = 1f
     const val maxCustomBrushes = 64
     const val brushSearchLength = 60
+    const val brushPreviewWidth = 320
+    const val brushPreviewHeight = 96
+    const val brushPreviewCacheSize = 96
+    const val brushPreviewDebounceMillis = 60L
+    const val gridTileSize = 16
+    const val gridMinimumSpacing = 8f
+    const val fillTolerance = 24f
+    const val fillContiguous = true
+    const val fillMerged = false
     val brushCollection = BrushCollection.All
+    val vectorTool = VectorEditorTool.Rectangle
+    const val vectorMiterLimit = 4f
     const val toneAmount = 0f
     const val blurSigma = 4f
     const val minBlurSigma = 0.5f
     const val maxBlurSigma = 32f
     const val extractedPaletteSize = 12
-    const val maxPaletteColors = 24
+    const val maxPaletteColors = 256
+    const val maxPaletteFileBytes = 1024 * 1024
+    const val maxPaletteGroups = 1024
+    const val maxPaletteGroupDepth = 32
+    const val maxPaletteNameUnits = 1024
     const val paletteColumns = 6
     val symmetryMode = SymmetryMode.Off
     const val symmetryAxis = 0.5f
@@ -286,6 +543,8 @@ object StudioDefaults {
     val selectionKind = SelectionKind.Rectangle
     val selectionMode = SelectionMode.Replace
     const val selectionTolerance = 24f
+    const val selectionRefinementRadius = 4f
+    const val maxSelectionRefinementRadius = 64f
     const val selectionContiguous = true
     const val selectionMerged = false
     const val maxSelectionPoints = 4096

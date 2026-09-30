@@ -13,6 +13,8 @@ enum class StudioDialog {
     Clear,
     Settings,
     Export,
+    AnimationExport,
+    AsepriteExport,
 }
 
 @Composable
@@ -28,7 +30,7 @@ fun StudioDialogs(controller: StudioController, dialog: StudioDialog, updates: U
                 confirmLabel = "选择文件",
                 text = {
                     Text(
-                        tr("支持 podor、PSD、ORA、PNG、JPEG 和 WebP。") + "\n" +
+                        tr("支持 .pod 工程、旧 .podor 工程、Aseprite、PSD、ORA、PNG、JPEG 和 WebP。") + "\n" +
                             tr("PSD 支持 8 位 RGB 像素图层，颜色按 sRGB 读取。") + "\n" +
                             tr("PSD、ORA 仅保留画布内的平面图层。")
                     )
@@ -46,6 +48,9 @@ fun StudioDialogs(controller: StudioController, dialog: StudioDialog, updates: U
             )
         StudioDialog.Settings -> SettingsDialog(controller, onDismiss, updates)
         StudioDialog.Export -> ExportDialog(controller, onDismiss)
+        StudioDialog.AnimationExport ->
+            AnimationExportDialog(controller, controller::exportAnimation, onDismiss)
+        StudioDialog.AsepriteExport -> AsepriteExportDialog(controller, onDismiss)
     }
     controller.error?.takeIf { controller.pendingNavigation == null }?.let { error ->
         StudioAlertDialog(

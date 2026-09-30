@@ -26,6 +26,7 @@ import app.podor.presentation.StudioController
 fun NewCanvasDialog(controller: StudioController, onDismiss: () -> Unit) {
     var width by remember { mutableStateOf(controller.document.width.toString()) }
     var height by remember { mutableStateOf(controller.document.height.toString()) }
+    var indexed by remember { mutableStateOf(false) }
     val canvasWidth = width.toIntOrNull()
     val canvasHeight = height.toIntOrNull()
     val valid = validCanvasSize(canvasWidth, canvasHeight)
@@ -37,7 +38,13 @@ fun NewCanvasDialog(controller: StudioController, onDismiss: () -> Unit) {
         enabled = valid && !controller.busy,
         onConfirm = {
             if (valid)
-                controller.navigate(WorkspaceDestination.New(requireNotNull(canvasWidth), requireNotNull(canvasHeight)))
+                controller.navigate(
+                    WorkspaceDestination.New(
+                        requireNotNull(canvasWidth),
+                        requireNotNull(canvasHeight),
+                        if (indexed) IndexedPalette.defaults() else null,
+                    )
+                )
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -66,6 +73,13 @@ fun NewCanvasDialog(controller: StudioController, onDismiss: () -> Unit) {
                             .shadow(12.dp, RoundedCornerShape(3.dp))
                             .background(StudioTheme.paperPreview, RoundedCornerShape(3.dp))
                     )
+                    Box(
+                        Modifier.align(Alignment.TopEnd).padding(StudioTheme.selectionDockPadding)
+                    ) {
+                        ToolButton(Glyph.PixelGrid, "索引色画布", selected = indexed) {
+                            indexed = !indexed
+                        }
+                    }
                 }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),

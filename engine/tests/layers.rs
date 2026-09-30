@@ -4,6 +4,8 @@ use std::sync::Arc;
 fn fill(engine: &mut Engine, color: [u8; 4]) {
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color,
@@ -40,16 +42,16 @@ fn duplicate_shares_pixels_until_edit_and_undo_restores_layer_identity() {
     assert_eq!(layers[1].blend, BlendMode::Multiply);
     assert_eq!(layers[1].opacity, 0.6);
     assert!(Arc::ptr_eq(
-        &layers[0].tiles[&(0, 0)],
-        &layers[1].tiles[&(0, 0)]
+        &layers[0].raster().unwrap().tiles()[&(0, 0)],
+        &layers[1].raster().unwrap().tiles()[&(0, 0)]
     ));
     fill(&mut engine, [0, 255, 0, 255]);
     assert!(!Arc::ptr_eq(
-        &engine.document.layers[0].tiles[&(0, 0)],
-        &engine.document.layers[1].tiles[&(0, 0)]
+        &engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)],
+        &engine.document.layers[1].raster().unwrap().tiles()[&(0, 0)]
     ));
     assert_eq!(
-        &engine.document.layers[0].tiles[&(0, 0)][..4],
+        &engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)][..4],
         &[118, 24, 63, 200]
     );
     engine.command(Command::Undo).unwrap();
@@ -115,7 +117,7 @@ fn merge_preserves_transparent_composite_all_modes_hidden_layers_and_history() {
                 opacity: 1.0,
             })
             .unwrap();
-        let hidden = engine.document.layers[1].tiles[&(0, 0)].clone();
+        let hidden = engine.document.layers[1].raster().unwrap().tiles()[&(0, 0)].clone();
         engine.command(Command::AddLayer).unwrap();
         fill(&mut engine, [180, 70, 130, 128]);
         engine.command(Command::SetBlend { id: 3, mode }).unwrap();
@@ -168,7 +170,7 @@ fn merge_preserves_transparent_composite_all_modes_hidden_layers_and_history() {
         assert_eq!(engine.document.layers[1].opacity, 1.0);
         assert!(Arc::ptr_eq(
             &hidden,
-            &engine.document.layers[0].tiles[&(0, 0)]
+            &engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)]
         ));
         assert_eq!(
             engine
@@ -196,7 +198,11 @@ fn empty_merge_stays_sparse_and_invalid_merge_does_not_change_state() {
     engine.command(Command::AddLayer).unwrap();
     engine.command(Command::MergeVisible).unwrap();
     assert_eq!(engine.document.layers.len(), 1);
-    assert!(engine.document.layers[0].tiles.is_empty());
+    assert!(engine.document.layers[0]
+        .raster()
+        .unwrap()
+        .tiles()
+        .is_empty());
     engine.command(Command::Undo).unwrap();
     assert_eq!(engine.document.layers.len(), 2);
 }
@@ -207,14 +213,23 @@ fn pixel_and_undo_budgets_reject_before_changing_document() {
     let tile = Arc::new(vec![255; TILE_BYTES]);
     for y in 0..16 {
         for x in 0..64 {
-            engine.document.layers[0].tiles.insert((x, y), tile.clone());
+            engine.document.layers[0]
+                .raster_mut()
+                .unwrap()
+                .tiles_mut()
+                .insert((x, y), tile.clone());
         }
     }
     engine.command(Command::DuplicateLayer { id: 1 }).unwrap();
     let state = engine.state();
     assert!(engine.command(Command::DuplicateLayer { id: 1 }).is_err());
     assert_eq!(engine.state(), state);
-    for pixel in engine.document.layers[0].tiles.values_mut() {
+    for pixel in engine.document.layers[0]
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
+        .values_mut()
+    {
         *pixel = Arc::new(vec![128; TILE_BYTES]);
     }
     let state = engine.state();
@@ -222,6 +237,6 @@ fn pixel_and_undo_budgets_reject_before_changing_document() {
     assert_eq!(engine.state(), state);
     assert!(Arc::ptr_eq(
         &tile,
-        &engine.document.layers[1].tiles[&(0, 0)]
+        &engine.document.layers[1].raster().unwrap().tiles()[&(0, 0)]
     ));
 }

@@ -2,7 +2,12 @@ use podor_engine::{model::*, Command, Engine};
 use std::sync::Arc;
 
 fn pixel(layer: &Layer, x: u32, y: u32) -> [u8; 4] {
-    let Some(tile) = layer.tiles.get(&(x / TILE_SIZE, y / TILE_SIZE)) else {
+    let Some(tile) = layer
+        .raster()
+        .unwrap()
+        .tiles()
+        .get(&(x / TILE_SIZE, y / TILE_SIZE))
+    else {
         return [0; 4];
     };
     let offset = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -28,7 +33,9 @@ fn patterned() -> Engine {
     for y in 0..193 {
         for x in 0..259 {
             let tile = engine.document.layers[0]
-                .tiles
+                .raster_mut()
+                .unwrap()
+                .tiles_mut()
                 .entry((x / TILE_SIZE, y / TILE_SIZE))
                 .or_insert_with(|| Arc::new(vec![0; TILE_BYTES]));
             let offset = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -124,17 +131,19 @@ fn expanding_aligned_tiles_reuses_pixels_and_cropped_edges_do_not_return() {
     let mut engine = Engine::new(256, 128).unwrap();
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color: [255, 0, 0, 128],
             tolerance: 0,
         })
         .unwrap();
-    let tile = engine.document.layers[0].tiles[&(0, 0)].clone();
+    let tile = engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)].clone();
     resize(&mut engine, 512, 384, 4).unwrap();
     assert!(Arc::ptr_eq(
         &tile,
-        &engine.document.layers[0].tiles[&(1, 1)]
+        &engine.document.layers[0].raster().unwrap().tiles()[&(1, 1)]
     ));
     assert_eq!(engine.document.tile_count(), 2);
     engine.command(Command::Undo).unwrap();
@@ -197,6 +206,8 @@ fn resizing_rejects_history_overflow_without_losing_the_artwork() {
     let mut engine = Engine::new(4096, 4096).unwrap();
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color: [20, 40, 60, 255],
@@ -206,6 +217,8 @@ fn resizing_rejects_history_overflow_without_losing_the_artwork() {
     engine.command(Command::AddLayer).unwrap();
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color: [70, 80, 90, 255],
@@ -213,7 +226,7 @@ fn resizing_rejects_history_overflow_without_losing_the_artwork() {
         })
         .unwrap();
     let state = engine.state();
-    let tile = engine.document.layers[0].tiles[&(0, 0)].clone();
+    let tile = engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)].clone();
     assert_eq!(
         resize(&mut engine, 1, 1, 4).unwrap_err(),
         "调整画布会超出撤销内存限制"
@@ -221,6 +234,6 @@ fn resizing_rejects_history_overflow_without_losing_the_artwork() {
     assert_eq!(engine.state(), state);
     assert!(Arc::ptr_eq(
         &tile,
-        &engine.document.layers[0].tiles[&(0, 0)]
+        &engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)]
     ));
 }

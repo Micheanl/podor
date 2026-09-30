@@ -18,6 +18,8 @@ const MODES: [BlendMode; 8] = [
 fn fill(engine: &mut Engine, color: [u8; 4]) {
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color,
@@ -140,10 +142,14 @@ fn partial_alpha_and_layer_opacity_follow_source_over_without_halos() {
         }
     }
     engine.document.layers[0]
-        .tiles
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
         .insert((0, 0), Arc::new(bottom.clone()));
     engine.document.layers[1]
-        .tiles
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
         .insert((0, 0), Arc::new(top.clone()));
     engine
         .command(Command::SetLayer {
@@ -217,7 +223,7 @@ fn blend_changes_round_trip_and_undo() {
         })
         .unwrap();
     let saved = engine.save().unwrap();
-    assert!(saved.starts_with(b"PODOR\x02"));
+    assert!(saved.starts_with(b"PODOR\x0c"));
     let mut reopened = Engine::new(1, 1).unwrap();
     reopened.load(&saved).unwrap();
     assert_eq!(reopened.document.layers[1].blend, BlendMode::SoftLight);
@@ -255,7 +261,11 @@ fn composite_thumbnail_blends_before_resizing_correlated_details() {
     for layer in &mut engine.document.layers {
         for x in 0..2 {
             for y in 0..2 {
-                layer.tiles.insert((x, y), tile.clone());
+                layer
+                    .raster_mut()
+                    .unwrap()
+                    .tiles_mut()
+                    .insert((x, y), tile.clone());
             }
         }
     }

@@ -7,6 +7,7 @@ import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
@@ -102,21 +103,44 @@ class PaletteDrawingTest {
                         paletteScene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
                         render()
                     }
+                fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+                    yield(node)
+                    for (child in node.children) yieldAll(descendants(child))
+                }
+                suspend fun click(label: String) =
+                    withContext(Dispatchers.Main) {
+                        render()
+                        val button =
+                            paletteScene.semanticsOwners
+                                .flatMap { descendants(it.rootSemanticsNode).toList() }
+                                .filter {
+                                    it.config.contains(SemanticsActions.OnClick) &&
+                                        !it.boundsInWindow.isEmpty &&
+                                        it.config
+                                            .getOrNull(SemanticsProperties.ContentDescription)
+                                            ?.contains(label) == true
+                                }
+                                .minByOrNull { it.boundsInWindow.width * it.boundsInWindow.height }
+                                ?: error("Button not found: $label")
+                        assertFalse(button.config.contains(SemanticsProperties.Disabled), label)
+                        val point = button.boundsInWindow.center
+                        click(point.x, point.y)
+                    }
                 withContext(Dispatchers.Main) { render() }
-                click(206f, 50f)
+                click("保存当前颜色")
                 awaitState { controller.preferences.palette == listOf(0xFF000000) }
-                click(162f, 50f)
+                click("从画布提取颜色")
                 awaitState {
                     !controller.extractingPalette && controller.preferences.palette.size == 2
                 }
                 withContext(Dispatchers.Main) { render() }
                 click(87f, 98f)
                 assertEquals(0xFF901840, withContext(Dispatchers.Main) { controller.brush.color })
-                click(250f, 50f)
+                click("移除此颜色")
                 awaitState { controller.preferences.palette == listOf(0xFF000000) }
-                click(206f, 50f)
+                click("保存当前颜色")
                 awaitState { controller.preferences.palette == listOf(0xFF000000, 0xFF901840) }
-                click(162f, 50f)
+                click("从画布提取颜色")
                 awaitState { !controller.extractingPalette }
                 withContext(Dispatchers.Main) {
                     render()

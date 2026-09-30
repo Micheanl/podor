@@ -2,10 +2,10 @@ use crate::{
     model::*,
     selection::{mix, Selection},
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-#[derive(Clone, Copy, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Point {
     x: u8,
     y: u8,
@@ -15,7 +15,7 @@ fn identity() -> Vec<Point> {
     vec![Point { x: 0, y: 0 }, Point { x: 255, y: 255 }]
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 struct Curve {
     points: Vec<Point>,
@@ -27,7 +27,7 @@ impl Default for Curve {
     }
 }
 
-#[derive(Clone, Default, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Curves {
     rgb: Curve,
@@ -94,12 +94,7 @@ fn lookup(points: &[Point]) -> Result<[u8; 256], String> {
     Ok(output)
 }
 
-pub fn apply(
-    layer: &mut Layer,
-    region: Rect,
-    selection: Option<&Selection>,
-    curves: &Curves,
-) -> Result<(), String> {
+pub(crate) fn tables(curves: &Curves) -> Result<[[u8; 256]; 3], String> {
     let master = lookup(&curves.rgb.points)?;
     let channels = [
         &curves.red.points,
@@ -113,6 +108,34 @@ pub fn apply(
             *value = channel[usize::from(master[i])];
         }
     }
+    Ok(tables)
+}
+
+pub(crate) fn mapped(pixel: [u8; 4], coverage: u8, tables: &[[u8; 256]; 3]) -> [u8; 4] {
+    let alpha = u32::from(pixel[3]);
+    if alpha == 0 || coverage == 0 {
+        return pixel;
+    }
+    let mut result = pixel;
+    for channel in 0..3 {
+        let value = ((u32::from(pixel[channel]) * 255 + alpha / 2) / alpha).min(255) as usize;
+        let adjusted = ((u32::from(tables[channel][value]) * alpha + 127) / 255) as u8;
+        result[channel] = mix(pixel[channel], adjusted, coverage);
+    }
+    result
+}
+
+pub fn apply(
+    layer: &mut Layer,
+    region: Rect,
+    selection: Option<&Selection>,
+    curves: &Curves,
+) -> Result<(), String> {
+    let raster = layer.raster_mut()?;
+    if raster.is_indexed() {
+        return Err("索引色曲线调整尚未支持，请先转换为 RGBA".into());
+    }
+    let tables = tables(curves)?;
     if tables
         .iter()
         .all(|table| table.iter().enumerate().all(|(i, &v)| i == usize::from(v)))
@@ -120,7 +143,7 @@ pub fn apply(
     {
         return Ok(());
     }
-    for (&(tx, ty), tile) in &mut layer.tiles {
+    for (&(tx, ty), tile) in raster.tiles_mut() {
         let Some(area) = region.intersect(Rect {
             left: tx * TILE_SIZE,
             top: ty * TILE_SIZE,
@@ -143,31 +166,33 @@ pub fn apply(
                     continue;
                 }
                 let offset = (((y % TILE_SIZE) * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
-                let alpha = u32::from(pixels[offset + 3]);
-                if alpha == 0 {
-                    continue;
-                }
-                for channel in 0..3 {
-                    let value = ((u32::from(pixels[offset + channel]) * 255 + alpha / 2) / alpha)
-                        .min(255) as usize;
-                    let adjusted = ((u32::from(tables[channel][value]) * alpha + 127) / 255) as u8;
-                    pixels[offset + channel] = mix(pixels[offset + channel], adjusted, coverage);
-                }
+                let mapped = mapped(
+                    pixels[offset..offset + 4].try_into().unwrap(),
+                    coverage,
+                    &tables,
+                );
+                pixels[offset..offset + 4].copy_from_slice(&mapped);
             }
         }
     }
     Ok(())
 }
 
-pub fn histogram(document: &Document, selection: Option<&Selection>) -> Vec<Vec<f32>> {
+pub fn histogram(
+    document: &Document,
+    selection: Option<&Selection>,
+) -> Result<Vec<Vec<f32>>, String> {
     let mut bins = [[0u64; 256]; 4];
     let region = selection.map_or(document.bounds(), Selection::bounds);
     let layer = document
         .layers
         .iter()
         .find(|layer| layer.id == document.active)
-        .unwrap();
-    for (&(tx, ty), pixels) in &layer.tiles {
+        .ok_or("图层不存在")?;
+    for &(tx, ty) in layer.raster()?.tiles().keys() {
+        let pixels = layer
+            .rgba_tile(document.palette.as_ref(), (tx, ty))
+            .unwrap();
         let Some(area) = region.intersect(Rect {
             left: tx * TILE_SIZE,
             top: ty * TILE_SIZE,
@@ -194,7 +219,8 @@ pub fn histogram(document: &Document, selection: Option<&Selection>) -> Vec<Vec<
             }
         }
     }
-    bins.iter()
+    Ok(bins
+        .iter()
         .map(|channel| {
             let peak = *channel.iter().max().unwrap();
             channel
@@ -208,7 +234,7 @@ pub fn histogram(document: &Document, selection: Option<&Selection>) -> Vec<Vec<
                 })
                 .collect()
         })
-        .collect()
+        .collect())
 }
 
 #[cfg(test)]

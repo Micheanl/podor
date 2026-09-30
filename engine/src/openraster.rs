@@ -6,6 +6,23 @@ mod import;
 pub use import::load;
 
 pub fn export(doc: &Document) -> Result<Vec<u8>, String> {
+    doc.validate()?;
+    if doc
+        .layers
+        .iter()
+        .any(|layer| matches!(layer.content, LayerContent::Vector(_)))
+    {
+        return Err("ORA 尚不能保留可编辑矢量图层，请保存 podor 工程或选择烘焙副本导出".into());
+    }
+    if doc.layers.iter().any(Layer::is_adjustment) {
+        return Err("ORA 尚不能保留可编辑调整图层，请保存 podor 工程或选择烘焙副本导出".into());
+    }
+    if doc.layers.iter().any(|layer| layer.clipping) {
+        return Err("ORA 不能保留剪贴蒙版，请改用 podor 工程或 PSD".into());
+    }
+    if doc.layers.iter().any(|layer| !layer.masks.is_empty()) {
+        return Err("ORA 不能保留独立图层蒙版，请改用 podor 工程或 PSD".into());
+    }
     let options = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
     let mut archive = ZipWriter::new(Cursor::new(Vec::new()));
     archive
@@ -18,47 +35,7 @@ pub fn export(doc: &Document) -> Result<Vec<u8>, String> {
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<image version=\"0.0.6\" w=\"{}\" h=\"{}\"><stack>\n",
         doc.width, doc.height
     );
-    for layer in doc.layers.iter().rev() {
-        let region = layer_bounds(doc, layer);
-        let path = format!("data/layer-{}.png", layer.id);
-        let mode = match layer.blend {
-            BlendMode::Normal => "svg:src-over",
-            BlendMode::Multiply => "svg:multiply",
-            BlendMode::Screen => "svg:screen",
-            BlendMode::Overlay => "svg:overlay",
-            BlendMode::SoftLight => "svg:soft-light",
-            BlendMode::Darken => "svg:darken",
-            BlendMode::Lighten => "svg:lighten",
-            BlendMode::Difference => "svg:difference",
-        };
-        stack.push_str(&format!(
-            "<layer name=\"{}\" src=\"{path}\" x=\"{}\" y=\"{}\" opacity=\"{}\" visibility=\"{}\" composite-op=\"{mode}\"/>\n",
-            xml_name(&layer.name)?, region.left, region.top, layer.opacity,
-            if layer.visible { "visible" } else { "hidden" }
-        ));
-        archive
-            .start_file(path, options)
-            .map_err(|e| e.to_string())?;
-        write_png(
-            &mut archive,
-            region.right - region.left,
-            region.bottom - region.top,
-            |y, row| {
-                let y = region.top + y;
-                for tx in region.left / TILE_SIZE..region.right.div_ceil(TILE_SIZE) {
-                    if let Some(tile) = layer.tiles.get(&(tx, y / TILE_SIZE)) {
-                        let left = (tx * TILE_SIZE).max(region.left);
-                        let right = ((tx + 1) * TILE_SIZE).min(region.right);
-                        let source = ((y % TILE_SIZE * TILE_SIZE + left % TILE_SIZE) * 4) as usize;
-                        let destination = ((left - region.left) * 4) as usize;
-                        let count = ((right - left) * 4) as usize;
-                        row[destination..destination + count]
-                            .copy_from_slice(&tile[source..source + count]);
-                    }
-                }
-            },
-        )?;
-    }
+    write_stack(doc, None, &mut archive, options, &mut stack)?;
     stack.push_str("</stack></image>\n");
     archive
         .start_file("stack.xml", options)
@@ -75,7 +52,7 @@ pub fn export(doc: &Document) -> Result<Vec<u8>, String> {
     archive
         .start_file("mergedimage.png", options)
         .map_err(|e| e.to_string())?;
-    write_png(&mut archive, doc.width, doc.height, |y, row| {
+    write_png(&mut archive, doc.width, doc.height, true, |y, row| {
         if y % TILE_SIZE == 0 {
             band.clear();
             for tx in 0..doc.width.div_ceil(TILE_SIZE) {
@@ -100,7 +77,7 @@ pub fn export(doc: &Document) -> Result<Vec<u8>, String> {
     archive
         .start_file("Thumbnails/thumbnail.png", options)
         .map_err(|e| e.to_string())?;
-    write_png(&mut archive, thumb_width, thumb_height, |y, row| {
+    write_png(&mut archive, thumb_width, thumb_height, true, |y, row| {
         let rows =
             ((y + 1) * doc.height).div_ceil(thumb_height) - (y * doc.height).div_ceil(thumb_height);
         for (x, pixel) in row.as_chunks_mut::<4>().0.iter_mut().enumerate() {
@@ -121,10 +98,98 @@ pub fn export(doc: &Document) -> Result<Vec<u8>, String> {
     Ok(output)
 }
 
+fn write_stack(
+    doc: &Document,
+    parent: Option<u32>,
+    archive: &mut ZipWriter<Cursor<Vec<u8>>>,
+    options: SimpleFileOptions,
+    stack: &mut String,
+) -> Result<(), String> {
+    for layer in doc
+        .layers
+        .iter()
+        .rev()
+        .filter(|layer| layer.parent_id == parent)
+    {
+        let mode = match layer.blend {
+            BlendMode::Normal => "svg:src-over",
+            BlendMode::Multiply => "svg:multiply",
+            BlendMode::Screen => "svg:screen",
+            BlendMode::Overlay => "svg:overlay",
+            BlendMode::SoftLight => "svg:soft-light",
+            BlendMode::Darken => "svg:darken",
+            BlendMode::Lighten => "svg:lighten",
+            BlendMode::Difference => "svg:difference",
+        };
+        let properties = format!(
+            "name=\"{}\" opacity=\"{}\" visibility=\"{}\" composite-op=\"{mode}\" selected=\"{}\"",
+            xml_name(&layer.name)?,
+            layer.opacity,
+            if layer.visible { "visible" } else { "hidden" },
+            layer.id == doc.active,
+        );
+        if let LayerContent::Group { isolation, .. } = layer.content {
+            let isolation = match isolation {
+                GroupIsolation::Isolated => "isolate",
+                GroupIsolation::PassThrough => "auto",
+            };
+            stack.push_str(&format!("<stack {properties} isolation=\"{isolation}\">\n"));
+            write_stack(doc, Some(layer.id), archive, options, stack)?;
+            stack.push_str("</stack>\n");
+            continue;
+        }
+        let raster = layer.raster()?;
+        let region = layer_bounds(doc, layer);
+        let path = format!("data/layer-{}.png", layer.id);
+        stack.push_str(&format!(
+            "<layer {properties} src=\"{path}\" x=\"{}\" y=\"{}\"/>\n",
+            region.left, region.top,
+        ));
+        archive
+            .start_file(path, options)
+            .map_err(|e| e.to_string())?;
+        write_png(
+            &mut *archive,
+            region.right - region.left,
+            region.bottom - region.top,
+            !raster.is_indexed(),
+            |y, row| {
+                let y = region.top + y;
+                for tx in region.left / TILE_SIZE..region.right.div_ceil(TILE_SIZE) {
+                    if let Some(tile) = raster.tiles().get(&(tx, y / TILE_SIZE)) {
+                        let left = (tx * TILE_SIZE).max(region.left);
+                        let right = ((tx + 1) * TILE_SIZE).min(region.right);
+                        let source = (y % TILE_SIZE * TILE_SIZE + left % TILE_SIZE) as usize;
+                        let destination = ((left - region.left) * 4) as usize;
+                        let count = ((right - left) * 4) as usize;
+                        if raster.is_indexed() {
+                            let palette = doc.palette.as_ref().unwrap();
+                            for (pixel, &index) in row[destination..destination + count]
+                                .as_chunks_mut::<4>()
+                                .0
+                                .iter_mut()
+                                .zip(&tile[source..source + count / 4])
+                            {
+                                *pixel = palette.colors[index as usize];
+                            }
+                        } else {
+                            let source = source * 4;
+                            row[destination..destination + count]
+                                .copy_from_slice(&tile[source..source + count]);
+                        }
+                    }
+                }
+            },
+        )?;
+    }
+    Ok(())
+}
+
 fn write_png(
     output: &mut impl Write,
     width: u32,
     height: u32,
+    premultiplied: bool,
     mut fill_row: impl FnMut(u32, &mut [u8]),
 ) -> Result<(), String> {
     let mut encoder = png::Encoder::new(output, width, height);
@@ -136,7 +201,9 @@ fn write_png(
     for y in 0..height {
         row.fill(0);
         fill_row(y, &mut row);
-        unpremultiply(&mut row);
+        if premultiplied {
+            unpremultiply(&mut row);
+        }
         stream.write_all(&row).map_err(|e| e.to_string())?;
     }
     stream.finish().map_err(|e| e.to_string())?;
@@ -145,7 +212,9 @@ fn write_png(
 
 fn layer_bounds(doc: &Document, layer: &Layer) -> Rect {
     layer
-        .tiles
+        .raster()
+        .unwrap()
+        .tiles()
         .keys()
         .map(|&(tx, ty)| Rect {
             left: tx * TILE_SIZE,

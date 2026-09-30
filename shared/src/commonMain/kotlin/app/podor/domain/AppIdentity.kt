@@ -4,6 +4,6 @@ object AppIdentity {
     const val githubUrl = "https://github.com/Micheanl/podor"
     const val giteeUrl = "https://gitee.com/Micheanl/podor"
     const val name = "podor"
-    const val projectExtension = "podor"
+    const val projectExtension = "pod"
     const val dataDirectory = ".podor"
 }

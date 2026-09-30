@@ -25,7 +25,11 @@ impl Smudge {
         })
     }
 
-    fn capture(&mut self, layer: &Layer, canvas: Rect, origin: (i32, i32)) {
+    fn capture(&mut self, layer: &Layer, canvas: Rect, origin: (i32, i32)) -> Result<(), String> {
+        let raster = layer.raster()?;
+        if raster.is_indexed() {
+            return Err("索引色涂抹尚未支持，请先转换为 RGBA".into());
+        }
         self.next.fill(0);
         let left = origin.0.max(0) as u32;
         let top = origin.1.max(0) as u32;
@@ -36,11 +40,11 @@ impl Smudge {
             .max(0)
             .min(canvas.bottom as i32) as u32;
         if left >= right || top >= bottom {
-            return;
+            return Ok(());
         }
         for ty in top / TILE_SIZE..bottom.div_ceil(TILE_SIZE) {
             for tx in left / TILE_SIZE..right.div_ceil(TILE_SIZE) {
-                let Some(tile) = layer.tiles.get(&(tx, ty)) else {
+                let Some(tile) = raster.tiles().get(&(tx, ty)) else {
                     continue;
                 };
                 let start = left.max(tx * TILE_SIZE);
@@ -55,6 +59,7 @@ impl Smudge {
                 }
             }
         }
+        Ok(())
     }
 
     fn sample(
@@ -63,11 +68,12 @@ impl Smudge {
         y: f32,
         canvas: Rect,
         selection: Option<&Selection>,
+        pixel: bool,
     ) -> Option<[f32; 4]> {
-        let ix = x.floor() as i32;
-        let iy = y.floor() as i32;
-        let fx = x - ix as f32;
-        let fy = y - iy as f32;
+        let ix = (x + if pixel { 0.5 } else { 0.0 }).floor() as i32;
+        let iy = (y + if pixel { 0.5 } else { 0.0 }).floor() as i32;
+        let fx = if pixel { 0.0 } else { x - ix as f32 };
+        let fy = if pixel { 0.0 } else { y - iy as f32 };
         let mut color = [0.0; 4];
         let mut weight = 0.0;
         for (dy, wy) in [(0, 1.0 - fy), (1, fy)] {
@@ -83,6 +89,11 @@ impl Smudge {
                     continue;
                 }
                 let coverage = selection.map_or(255, |s| s.coverage(px as u32, py as u32));
+                let coverage = if pixel {
+                    u8::from(coverage >= 128) * 255
+                } else {
+                    coverage
+                };
                 let w = wx * wy * f32::from(coverage) / 255.0;
                 let offset = (sy as usize * self.size + sx as usize) * 4;
                 for (c, value) in color.iter_mut().enumerate() {
@@ -107,13 +118,15 @@ impl Smudge {
         dirty: &mut BTreeSet<TileKey>,
         remaining: &mut usize,
     ) -> Result<bool, String> {
+        let index = crate::groups::check_editable(doc, doc.active, true)?;
         let canvas = doc.bounds();
+        let pixel = brush.raster != BrushRaster::Antialiased;
         let half = self.size as f32 * 0.5;
         let origin = (
             (point.x - half).floor() as i32,
             (point.y - half).floor() as i32,
         );
-        self.capture(doc.active_mut(), canvas, origin);
+        self.capture(&doc.layers[index], canvas, origin)?;
         let mut changed = false;
         if let Some(previous) = self.point {
             let opacity = brush.opacity_at_pressure(point.pressure);
@@ -121,6 +134,8 @@ impl Smudge {
             let bounds = dab.bounds;
             if bounds.left < bounds.right && bounds.top < bounds.bottom && opacity > 0.0 {
                 let layer = doc.active_mut();
+                let alpha_locked = layer.alpha_locked;
+                let raster = layer.raster_mut()?;
                 for ty in bounds.top / TILE_SIZE..bounds.bottom.div_ceil(TILE_SIZE) {
                     for tx in bounds.left / TILE_SIZE..bounds.right.div_ceil(TILE_SIZE) {
                         let mut tile_changed = false;
@@ -131,6 +146,11 @@ impl Smudge {
                                 ..bounds.right.min((tx + 1) * TILE_SIZE)
                             {
                                 let selected = selection.map_or(255, |s| s.coverage(x, y));
+                                let selected = if pixel {
+                                    u8::from(selected >= 128) * 255
+                                } else {
+                                    selected
+                                };
                                 let amount =
                                     dab.coverage::<false>(x, y) * opacity * f32::from(selected)
                                         / 255.0;
@@ -141,7 +161,7 @@ impl Smudge {
                                     + (x as i32 - origin.0) as usize)
                                     * 4;
                                 let old: [u8; 4] = self.next[index..index + 4].try_into().unwrap();
-                                if layer.alpha_locked && old[3] == 0 {
+                                if alpha_locked && old[3] == 0 {
                                     continue;
                                 }
                                 let Some(mut source) = self.sample(
@@ -149,6 +169,7 @@ impl Smudge {
                                     y as f32 + previous.y - point.y - self.origin.1 as f32,
                                     canvas,
                                     selection,
+                                    pixel,
                                 ) else {
                                     continue;
                                 };
@@ -160,7 +181,7 @@ impl Smudge {
                                     }
                                     source[3] = source[3] * (1.0 - mix) + 255.0 * mix;
                                 }
-                                if layer.alpha_locked {
+                                if alpha_locked {
                                     if source[3] <= f32::EPSILON {
                                         continue;
                                     }
@@ -191,15 +212,15 @@ impl Smudge {
                             }
                         }
                         if tile_changed {
-                            if !layer.tiles.contains_key(&(tx, ty)) {
+                            if !raster.tiles().contains_key(&(tx, ty)) {
                                 if *remaining == 0 {
                                     return Err("当前工程已达到像素内存上限".into());
                                 }
                                 *remaining -= 1;
                             }
                             let tile = Arc::make_mut(
-                                layer
-                                    .tiles
+                                raster
+                                    .tiles_mut()
                                     .entry((tx, ty))
                                     .or_insert_with(|| Arc::new(vec![0; TILE_BYTES])),
                             );

@@ -8,6 +8,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.semantics.*
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
 import app.podor.domain.*
@@ -16,6 +17,7 @@ import app.podor.presentation.StudioController
 import app.podor.ui.*
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.math.abs
 import kotlin.test.*
 import kotlinx.coroutines.*
 import org.jetbrains.skia.EncodedImageFormat
@@ -56,9 +58,49 @@ class ColorSelectionTest {
             withContext(Dispatchers.Main) { ImageComposeScene(1360, 900) { StudioApp(controller) } }
         var frame = 0L
         fun render() = scene.render(frame++ * 16_666_667L)
-        fun click(x: Float, y: Float) {
-            scene.sendPointerEvent(PointerEventType.Press, Offset(x, y))
-            scene.sendPointerEvent(PointerEventType.Release, Offset(x, y))
+        fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+            yield(node)
+            for (child in node.children) yieldAll(descendants(child))
+        }
+        fun controls() =
+            scene.semanticsOwners.asSequence().flatMap { descendants(it.rootSemanticsNode) }
+        fun click(chinese: String, english: String, toggle: Boolean = false) {
+            val labels = listOf(chinese, english)
+            val label =
+                controls()
+                    .filter { node ->
+                        !node.boundsInWindow.isEmpty &&
+                            (toggle || node.config.contains(SemanticsActions.OnClick)) &&
+                            (node.config.getOrNull(SemanticsProperties.ContentDescription)?.any {
+                                value ->
+                                labels.any { value.startsWith(it) }
+                            } == true ||
+                                node.config.getOrNull(SemanticsProperties.Text)?.any { value ->
+                                    value.text in labels
+                                } == true)
+                    }
+                    .minByOrNull { it.boundsInWindow.width * it.boundsInWindow.height }
+                    ?: error("Missing rendered control: $english")
+            val control =
+                if (toggle) {
+                    controls()
+                        .filter {
+                            it.config.contains(SemanticsProperties.ToggleableState) &&
+                                it.config.contains(SemanticsActions.OnClick) &&
+                                !it.boundsInWindow.isEmpty
+                        }
+                        .minByOrNull {
+                            abs(it.boundsInWindow.center.y - label.boundsInWindow.center.y)
+                        }
+                        ?.also {
+                            assertTrue(
+                                abs(it.boundsInWindow.center.y - label.boundsInWindow.center.y) < 1f
+                            )
+                        } ?: error("Missing rendered switch: $english")
+                } else label
+            val point = control.boundsInWindow.center
+            scene.sendPointerEvent(PointerEventType.Press, point)
+            scene.sendPointerEvent(PointerEventType.Release, point)
             scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
             repeat(35) { render().close() }
         }
@@ -97,7 +139,7 @@ class ColorSelectionTest {
                     controller.tool = Tool.Select
                     controller.viewport = Viewport(rotation = 17f, mirrored = true)
                     repeat(4) { render().close() }
-                    click(519f, 815f)
+                    click("魔棒选区", "Magic wand")
                     assertEquals(SelectionKind.MagicWand, controller.selectionKind)
                     controller.tool = Tool.Brush
                     scene.sendKeyEvent(KeyEvent(Key.W, KeyEventType.KeyDown))
@@ -123,13 +165,13 @@ class ColorSelectionTest {
                 assertFalse(controller.hasUnsavedChanges)
                 assertFalse(controller.document.canUndo)
                 repeat(4) { render().close() }
-                click(543f, 815f)
+                click("魔棒设置", "Magic wand options")
                 screenshot("magic-wand-options")
-                click(758f, 691f)
+                click("仅连续区域", "Contiguous only", toggle = true)
                 assertFalse(controller.selectionContiguous)
-                click(758f, 747f)
+                click("取样所有可见图层", "Sample visible layers", toggle = true)
                 assertTrue(controller.selectionMerged)
-                click(758f, 747f)
+                click("取样所有可见图层", "Sample visible layers", toggle = true)
                 assertFalse(controller.selectionMerged)
                 scene.sendKeyEvent(KeyEvent(Key.Escape, KeyEventType.KeyDown))
                 scene.sendKeyEvent(KeyEvent(Key.Escape, KeyEventType.KeyUp))

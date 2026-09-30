@@ -17,6 +17,14 @@ enum class ExportFormat(
     @SerialName("tiff") Tiff("TIFF", "tiff", true),
     @SerialName("bmp") Bmp("BMP", "bmp", true),
     @SerialName("psd") Psd("PSD", "psd", true, true),
+    @SerialName("indexed_png") IndexedPng("Indexed PNG", "png", true),
+    @SerialName("svg") Svg("SVG", "svg", true),
+}
+
+@Serializable
+enum class IndexedExportPolicy {
+    @SerialName("exact") Exact,
+    @SerialName("quantize") Quantize,
 }
 
 @Serializable
@@ -24,4 +32,24 @@ data class ExportOptions(
     val format: ExportFormat = ExportFormat.Png,
     val transparent: Boolean = false,
     val quality: Int = StudioDefaults.exportQuality,
+    @SerialName("indexed_policy")
+    val indexedPolicy: IndexedExportPolicy = IndexedExportPolicy.Exact,
+    @SerialName("bake_layers") val bakeLayers: Boolean = false,
+    @SerialName("frame_id") val frameId: Int? = null,
 )
+
+fun DocumentInfo.requiresBakedExport(format: ExportFormat): Boolean =
+    when (format) {
+        ExportFormat.Psd ->
+            layers.any {
+                it.kind == LayerKind.Adjustment || it.kind == LayerKind.Vector || it.masks.size > 1
+            }
+        ExportFormat.Ora ->
+            layers.any {
+                it.kind == LayerKind.Adjustment ||
+                    it.kind == LayerKind.Vector ||
+                    it.maskEntries.isNotEmpty() ||
+                    it.clipping
+            }
+        else -> false
+    }

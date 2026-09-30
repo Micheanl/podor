@@ -20,7 +20,9 @@ fn point(x: f32, y: f32) -> Sample {
 }
 fn pixel(e: &Engine, x: u32, y: u32) -> [u8; 4] {
     e.document.layers[0]
-        .tiles
+        .raster()
+        .unwrap()
+        .tiles()
         .get(&(x / TILE_SIZE, y / TILE_SIZE))
         .map_or([0; 4], |tile| {
             let i = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -31,7 +33,9 @@ fn set_pixel(e: &mut Engine, x: u32, y: u32, value: [u8; 4]) {
     let tile = Arc::make_mut(
         e.document
             .active_mut()
-            .tiles
+            .raster_mut()
+            .unwrap()
+            .tiles_mut()
             .entry((x / TILE_SIZE, y / TILE_SIZE))
             .or_insert_with(|| Arc::new(vec![0; TILE_BYTES])),
     );
@@ -57,7 +61,11 @@ fn colors() -> Engine {
     e
 }
 fn stroke(e: &mut Engine, brush: Brush, samples: &[Sample], batch: usize) {
-    e.command(Command::Begin { brush }).unwrap();
+    e.command(Command::Begin {
+        brush,
+        assistant: None,
+    })
+    .unwrap();
     for chunk in samples.chunks(batch) {
         e.samples(chunk).unwrap();
     }
@@ -232,7 +240,11 @@ fn selection_limits_sampling_and_changes_and_stroke_cancel_discards_the_buffer()
     })
     .unwrap();
     let before = e.save().unwrap();
-    e.command(Command::Begin { brush: brush() }).unwrap();
+    e.command(Command::Begin {
+        brush: brush(),
+        assistant: None,
+    })
+    .unwrap();
     e.samples(&[point(110.0, 80.0), point(150.0, 80.0)])
         .unwrap();
     assert_ne!(before, e.save().unwrap());
@@ -272,7 +284,7 @@ fn empty_zero_strength_and_stationary_strokes_do_not_allocate_tiles_or_history()
     ] {
         let mut e = Engine::new(300, 80).unwrap();
         stroke(&mut e, value, &samples, 1);
-        assert!(e.document.layers[0].tiles.is_empty());
+        assert!(e.document.layers[0].raster().unwrap().tiles().is_empty());
         assert!(!e.state()["canUndo"].as_bool().unwrap());
         assert_eq!(e.state()["revision"], 0);
     }
@@ -295,19 +307,34 @@ fn only_the_active_layer_is_sampled_and_locked_layers_reject_smudging() {
         &[point(100.0, 60.0), point(180.0, 60.0)],
         1,
     );
-    assert!(e.document.layers[1].tiles.is_empty());
+    assert!(e.document.layers[1].raster().unwrap().tiles().is_empty());
     e.document.active_mut().locked = true;
-    assert!(e.command(Command::Begin { brush: brush() }).is_err());
+    assert!(e
+        .command(Command::Begin {
+            brush: brush(),
+            assistant: None
+        })
+        .is_err());
     e.document.active_mut().locked = false;
     e.document.active_mut().visible = false;
-    assert!(e.command(Command::Begin { brush: brush() }).is_err());
+    assert!(e
+        .command(Command::Begin {
+            brush: brush(),
+            assistant: None
+        })
+        .is_err());
 }
 
 #[test]
 fn exceeding_the_document_budget_can_cancel_without_losing_the_original_pixels() {
     let mut e = Engine::new(4096, 4096).unwrap();
     let solid = Arc::new([160, 40, 80, 255].repeat((TILE_SIZE * TILE_SIZE) as usize));
-    e.document.active_mut().tiles.insert((0, 0), solid.clone());
+    e.document
+        .active_mut()
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
+        .insert((0, 0), solid.clone());
     for id in [2, 3] {
         let mut layer = Layer::new(id, format!("{id}"));
         for y in 0..32 {
@@ -315,14 +342,22 @@ fn exceeding_the_document_budget_can_cancel_without_losing_the_original_pixels()
                 if id == 3 && x == 31 && y == 31 {
                     continue;
                 }
-                layer.tiles.insert((x, y), solid.clone());
+                layer
+                    .raster_mut()
+                    .unwrap()
+                    .tiles_mut()
+                    .insert((x, y), solid.clone());
             }
         }
         e.document.layers.push(layer);
     }
     e.document.next_id = 4;
     let before = e.save().unwrap();
-    e.command(Command::Begin { brush: brush() }).unwrap();
+    e.command(Command::Begin {
+        brush: brush(),
+        assistant: None,
+    })
+    .unwrap();
     assert!(e
         .samples(&[point(112.0, 60.0), point(160.0, 60.0)])
         .is_err());

@@ -39,7 +39,11 @@ fn measure(edge: u32, layers: u32, size: f32) {
                         alpha,
                     ]);
                 }
-                layer.tiles.insert((x, y), Arc::new(tile));
+                layer
+                    .raster_mut()
+                    .unwrap()
+                    .tiles_mut()
+                    .insert((x, y), Arc::new(tile));
             }
         }
         engine.document.layers.push(layer);
@@ -60,6 +64,7 @@ fn measure(edge: u32, layers: u32, size: f32) {
                     hardness: 0.5,
                     ..Brush::default()
                 },
+                assistant: None,
             })
             .unwrap();
         for batch in 0..60 {

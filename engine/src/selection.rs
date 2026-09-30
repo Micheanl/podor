@@ -28,7 +28,7 @@ pub struct SelectionPoint {
     pub y: f32,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct SelectionSpec {
     #[serde(flatten)]
     pub bounds: Rect,
@@ -38,19 +38,32 @@ pub struct SelectionSpec {
     pub points: Vec<SelectionPoint>,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub struct Selection {
     #[serde(flatten)]
     spec: SelectionSpec,
     #[serde(skip)]
-    mask: Vec<u8>,
+    mask: std::sync::Arc<Vec<u8>>,
     id: u64,
     combined: bool,
     raster: bool,
     empty: bool,
+    #[serde(skip)]
+    contour_threshold: u8,
 }
 
 impl Selection {
+    pub(crate) fn lasso_mask(points: Vec<SelectionPoint>, bounds: Rect) -> Self {
+        Self::from_mask(
+            bounds,
+            rasterize(&SelectionSpec {
+                bounds,
+                kind: SelectionKind::Lasso,
+                points,
+            }),
+        )
+    }
+
     pub fn rectangle(bounds: Rect, canvas: Rect) -> Result<Self, String> {
         Self::new(
             SelectionSpec {
@@ -112,11 +125,12 @@ impl Selection {
                 > MAX_SELECTION_OUTLINE_LENGTH as f64;
         Ok(Self {
             spec,
-            mask,
+            mask: std::sync::Arc::new(mask),
             id: 0,
             combined: false,
             raster,
             empty: false,
+            contour_threshold: 1,
         })
     }
 
@@ -222,12 +236,19 @@ impl Selection {
                 kind: SelectionKind::Rectangle,
                 points: Vec::new(),
             },
-            mask,
+            mask: std::sync::Arc::new(mask),
             id: 0,
             combined: true,
             raster: false,
             empty,
+            contour_threshold: 1,
         }
+    }
+
+    pub(crate) fn from_refined_mask(area: Rect, mask: Vec<u8>) -> Self {
+        let mut selection = Self::from_mask(area, mask);
+        selection.contour_threshold = 128;
+        selection
     }
 
     pub fn is_empty(&self) -> bool {
@@ -259,11 +280,13 @@ impl Selection {
                 for position in start..=end {
                     let edge = position < end
                         && if horizontal {
-                            (self.coverage(position, axis) > 0)
-                                != (axis > 0 && self.coverage(position, axis - 1) > 0)
+                            (self.coverage(position, axis) >= self.contour_threshold)
+                                != (axis > 0
+                                    && self.coverage(position, axis - 1) >= self.contour_threshold)
                         } else {
-                            (self.coverage(axis, position) > 0)
-                                != (axis > 0 && self.coverage(axis - 1, position) > 0)
+                            (self.coverage(axis, position) >= self.contour_threshold)
+                                != (axis > 0
+                                    && self.coverage(axis - 1, position) >= self.contour_threshold)
                         };
                     if edge {
                         run.get_or_insert(position);
@@ -303,11 +326,17 @@ impl Selection {
                 for y in bounds.top.max(ty * size)..bounds.bottom.min((ty + 1) * size) {
                     let left = bounds.left.max(tx * size);
                     let right = bounds.right.min((tx + 1) * size);
-                    let row = &self.row(y).unwrap()
-                        [(left - bounds.left) as usize..(right - bounds.left) as usize];
                     let offset = ((y % size) * size + left % size) as usize;
-                    tile[offset..offset + row.len()].copy_from_slice(row);
-                    nonzero |= row.iter().any(|&value| value != 0);
+                    let output = &mut tile[offset..offset + (right - left) as usize];
+                    if let Some(row) = self.row(y) {
+                        let row =
+                            &row[(left - bounds.left) as usize..(right - bounds.left) as usize];
+                        output.copy_from_slice(row);
+                        nonzero |= row.iter().any(|&value| value != 0);
+                    } else {
+                        output.fill(255);
+                        nonzero = true;
+                    }
                 }
                 if nonzero {
                     bytes.extend(tx.to_le_bytes());

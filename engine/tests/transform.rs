@@ -5,7 +5,9 @@ fn set_pixel(engine: &mut Engine, x: u32, y: u32, color: [u8; 4]) {
     let tile = engine
         .document
         .active_mut()
-        .tiles
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
         .entry((x / TILE_SIZE, y / TILE_SIZE))
         .or_insert_with(|| Arc::new(vec![0; TILE_BYTES]));
     let i = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -19,7 +21,9 @@ fn pixel(engine: &Engine, x: u32, y: u32) -> [u8; 4] {
         .iter()
         .find(|layer| layer.id == engine.document.active)
         .unwrap()
-        .tiles
+        .raster()
+        .unwrap()
+        .tiles()
         .get(&(x / TILE_SIZE, y / TILE_SIZE))
         .map_or([0; 4], |tile| {
             let i = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -43,6 +47,7 @@ fn options(width: u32, height: u32) -> LayerTransform {
 fn apply(engine: &mut Engine, transform: LayerTransform) -> Result<(), String> {
     engine
         .command(Command::TransformLayer {
+            mask_id: None,
             id: engine.document.active,
             revision: engine.state()["revision"].as_u64().unwrap(),
             transform,
@@ -65,13 +70,13 @@ fn bounds_use_opaque_pixels_and_identity_keeps_tile_sharing_and_history() {
             bottom: 265
         }
     );
-    let tile = engine.document.layers[0].tiles[&(0, 1)].clone();
+    let tile = engine.document.layers[0].raster().unwrap().tiles()[&(0, 1)].clone();
     let state = engine.state();
     apply(&mut engine, options(130, 136)).unwrap();
     assert_eq!(engine.state(), state);
     assert!(Arc::ptr_eq(
         &tile,
-        &engine.document.layers[0].tiles[&(0, 1)]
+        &engine.document.layers[0].raster().unwrap().tiles()[&(0, 1)]
     ));
 }
 
@@ -279,6 +284,7 @@ fn locked_stale_selected_and_invalid_transforms_are_atomic() {
     let before = engine.save().unwrap();
     assert!(engine
         .command(Command::TransformLayer {
+            mask_id: None,
             id: 1,
             revision: 3,
             transform: options(2, 2)
@@ -315,7 +321,9 @@ fn history_budget_counts_shared_source_tiles_and_failure_keeps_original_storage(
             engine
                 .document
                 .active_mut()
-                .tiles
+                .raster_mut()
+                .unwrap()
+                .tiles_mut()
                 .insert((tx, ty), Arc::new(pixels));
         }
     }
@@ -328,16 +336,23 @@ fn history_budget_counts_shared_source_tiles_and_failure_keeps_original_storage(
     };
     assert!(apply(&mut engine, transform).is_err());
     assert_eq!(state, engine.state());
-    for (key, pixels) in &before.layers[0].tiles {
-        assert!(Arc::ptr_eq(pixels, &engine.document.layers[0].tiles[key]));
+    for (key, pixels) in before.layers[0].raster().unwrap().tiles() {
+        assert!(Arc::ptr_eq(
+            pixels,
+            &engine.document.layers[0].raster().unwrap().tiles()[key]
+        ));
     }
     let mut shared = Layer::new(2, "shared".into());
-    shared.tiles = before.layers[0]
-        .tiles
-        .iter()
-        .take(64)
-        .map(|(&key, tile)| (key, tile.clone()))
-        .collect();
+    shared.raster_mut().unwrap().set_tiles(
+        before.layers[0]
+            .raster()
+            .unwrap()
+            .tiles()
+            .iter()
+            .take(64)
+            .map(|(&key, tile)| (key, tile.clone()))
+            .collect(),
+    );
     engine.document.layers.push(shared);
     engine.document.next_id = 3;
     engine.document.validate().unwrap();
@@ -345,7 +360,10 @@ fn history_budget_counts_shared_source_tiles_and_failure_keeps_original_storage(
     engine.document.validate().unwrap();
     assert!(engine.state()["canUndo"].as_bool().unwrap());
     engine.command(Command::Undo).unwrap();
-    for (key, pixels) in &before.layers[0].tiles {
-        assert!(Arc::ptr_eq(pixels, &engine.document.layers[0].tiles[key]));
+    for (key, pixels) in before.layers[0].raster().unwrap().tiles() {
+        assert!(Arc::ptr_eq(
+            pixels,
+            &engine.document.layers[0].raster().unwrap().tiles()[key]
+        ));
     }
 }

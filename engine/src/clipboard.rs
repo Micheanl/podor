@@ -12,17 +12,16 @@ pub enum CopyMode {
     Cut,
 }
 
-fn active(doc: &Document) -> &Layer {
+fn active(doc: &Document) -> Result<&Layer, String> {
     doc.layers
         .iter()
         .find(|layer| layer.id == doc.active)
-        .unwrap()
+        .ok_or_else(|| "图层不存在".into())
 }
 
-fn can_cut(layer: &Layer) -> Result<(), String> {
-    if layer.locked {
-        return Err("图层已锁定，请先解锁".into());
-    }
+fn can_cut(doc: &Document) -> Result<(), String> {
+    let index = crate::groups::check_editable(doc, doc.active, true)?;
+    let layer = &doc.layers[index];
     if layer.alpha_locked {
         return Err("请先解除透明度锁定".into());
     }
@@ -34,9 +33,12 @@ pub fn copy(
     selection: Option<&Selection>,
     mode: CopyMode,
 ) -> Result<Vec<u8>, String> {
-    let layer = active(doc);
+    let layer = active(doc)?;
+    if !matches!(mode, CopyMode::Visible) && !layer.is_vector() {
+        layer.raster()?;
+    }
     if matches!(mode, CopyMode::Cut) {
-        can_cut(layer)?;
+        can_cut(doc)?;
     }
     let bounds = selection.map_or(doc.bounds(), Selection::bounds);
     let width = bounds.right - bounds.left;
@@ -46,6 +48,8 @@ pub fn copy(
         output.extend(value.to_le_bytes());
     }
     let mut nonempty = false;
+    let mut compositor = raster::FrameCompositor::new(doc, true);
+    let mut vector_cache = crate::vector::RenderCache::default();
     {
         let mut encoder = png::Encoder::new(&mut output, width, height);
         encoder.set_color(png::ColorType::Rgba);
@@ -58,16 +62,13 @@ pub fn copy(
             let tiles: Vec<_> = (bounds.left / TILE_SIZE..bounds.right.div_ceil(TILE_SIZE))
                 .map(|tx| {
                     let tile = if matches!(mode, CopyMode::Visible) {
-                        Some(Cow::Owned(raster::composite_tile_background(
-                            doc,
-                            (tx, ty),
-                            true,
-                        )))
+                        Some(Cow::Owned(compositor.tile(doc, (tx, ty))))
+                    } else if let Ok(vector) = layer.vector() {
+                        vector_cache
+                            .tile(vector, (tx, ty))
+                            .map(|tile| Cow::Owned(tile.as_ref().clone()))
                     } else {
-                        layer
-                            .tiles
-                            .get(&(tx, ty))
-                            .map(|tile| Cow::Borrowed(tile.as_slice()))
+                        layer.rgba_tile(doc.palette.as_ref(), (tx, ty))
                     };
                     (tx, tile)
                 })
@@ -113,11 +114,14 @@ pub fn cut(
     doc: &Document,
     selection: Option<&Selection>,
 ) -> Result<(Layer, BTreeSet<TileKey>), String> {
-    let source = active(doc);
-    can_cut(source)?;
+    can_cut(doc)?;
+    let source = active(doc)?;
+    if source.raster()?.is_indexed() {
+        return Err("索引色剪切尚未支持，请先转换为 RGBA".into());
+    }
     let mut layer = source.clone();
     let mut dirty = BTreeSet::new();
-    for (&key, pixels) in &source.tiles {
+    for (&key, pixels) in source.raster()?.tiles() {
         let bounds = Rect {
             left: key.0 * TILE_SIZE,
             top: key.1 * TILE_SIZE,
@@ -135,7 +139,7 @@ pub fn cut(
                 .and_then(|selection| selection.row(area.top))
                 .is_none()
         {
-            layer.tiles.remove(&key);
+            layer.raster_mut()?.tiles_mut().remove(&key);
             dirty.insert(key);
             continue;
         }
@@ -160,9 +164,12 @@ pub fn cut(
         if let Some(pixels) = changed {
             dirty.insert(key);
             if pixels.as_chunks::<4>().0.iter().all(|pixel| pixel[3] == 0) {
-                layer.tiles.remove(&key);
+                layer.raster_mut()?.tiles_mut().remove(&key);
             } else {
-                layer.tiles.insert(key, Arc::new(pixels));
+                layer
+                    .raster_mut()?
+                    .tiles_mut()
+                    .insert(key, Arc::new(pixels));
             }
         }
     }
@@ -170,12 +177,14 @@ pub fn cut(
         .layers
         .iter()
         .filter(|other| other.id != source.id)
-        .flat_map(|layer| layer.tiles.values())
-        .chain(layer.tiles.values())
+        .filter_map(Layer::raster_opt)
+        .flat_map(|raster| raster.tiles().values())
+        .chain(layer.raster()?.tiles().values())
         .map(Arc::as_ptr)
         .collect();
     let retained: HashSet<_> = source
-        .tiles
+        .raster()?
+        .tiles()
         .values()
         .map(Arc::as_ptr)
         .filter(|pointer| !live.contains(pointer))
@@ -187,8 +196,24 @@ pub fn cut(
 }
 
 pub fn paste(doc: &Document, packet: &[u8]) -> Result<Layer, String> {
-    if doc.layers.len() >= MAX_LAYERS {
+    if doc.layers.len() >= MAX_LAYER_NODES
+        || doc
+            .layers
+            .iter()
+            .filter(|layer| layer.raster_opt().is_some())
+            .count()
+            >= MAX_LAYERS
+    {
         return Err("已达到图层上限".into());
+    }
+    let active = active(doc)?;
+    let parent_id = if active.is_group() {
+        Some(active.id)
+    } else {
+        active.parent_id
+    };
+    if let Some(id) = parent_id {
+        crate::groups::check_editable(doc, id, false)?;
     }
     if packet.len() > MAX_CLIPBOARD_BYTES + 16 {
         return Err("剪贴板图片过大".into());
@@ -208,6 +233,11 @@ pub fn paste(doc: &Document, packet: &[u8]) -> Result<Layer, String> {
     }
     drop(reader);
     let source = storage::load(png)?;
+    let source = if source.palette.is_some() {
+        crate::indexed::convert(&source, None)?
+    } else {
+        source
+    };
     let (left, top) = if origin == [0; 4] {
         (
             (doc.width as i32 - source.width as i32) / 2,
@@ -237,15 +267,16 @@ pub fn paste(doc: &Document, packet: &[u8]) -> Result<Layer, String> {
         .saturating_sub(doc.tile_count())
         .min(MAX_HISTORY_BYTES / TILE_BYTES);
     let mut layer = Layer::new(doc.next_id, "粘贴的图像".into());
-    layer.tiles = translation::remap(
+    layer.parent_id = parent_id;
+    layer.raster_mut()?.set_tiles(translation::remap(
         &source.layers[0],
         source.bounds(),
         doc.bounds(),
         left,
         top,
         budget,
-    )?;
-    if layer.tiles.is_empty() {
+    )?);
+    if layer.raster()?.tiles().is_empty() {
         return Err("剪贴板图片没有可见内容".into());
     }
     Ok(layer)

@@ -7,6 +7,7 @@ import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.semantics.*
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
 import app.podor.domain.*
@@ -62,11 +63,31 @@ class LayerProtectionTest {
                 withContext(Dispatchers.Main) {
                     repeat(30) { scene!!.render(frame++ * 16_666_667L).close() }
                 }
-            suspend fun click(x: Float, y: Float) {
+            suspend fun click(label: String, enabled: Boolean = true) {
                 render()
                 withContext(Dispatchers.Main) {
-                    scene!!.sendPointerEvent(PointerEventType.Press, Offset(x, y))
-                    scene!!.sendPointerEvent(PointerEventType.Release, Offset(x, y))
+                    fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+                        yield(node)
+                        for (child in node.children) yieldAll(descendants(child))
+                    }
+                    val button =
+                        scene!!
+                            .semanticsOwners
+                            .asSequence()
+                            .flatMap { descendants(it.rootSemanticsNode) }
+                            .filter {
+                                it.config.contains(SemanticsActions.OnClick) &&
+                                    !it.boundsInWindow.isEmpty &&
+                                    it.config
+                                        .getOrNull(SemanticsProperties.ContentDescription)
+                                        ?.contains(label) == true
+                            }
+                            .minByOrNull { it.boundsInWindow.width * it.boundsInWindow.height }
+                            ?: error("Layer control was not rendered: $label")
+                    assertEquals(!enabled, button.config.contains(SemanticsProperties.Disabled))
+                    val point = button.boundsInWindow.center
+                    scene!!.sendPointerEvent(PointerEventType.Press, point)
+                    scene!!.sendPointerEvent(PointerEventType.Release, point)
                     scene!!.sendPointerEvent(PointerEventType.Move, Offset.Zero)
                 }
                 render()
@@ -89,7 +110,7 @@ class LayerProtectionTest {
                 }
                 render()
                 val before = withContext(Dispatchers.Main) { controller.frame }
-                click(146f, 22f)
+                click("锁定透明度")
                 awaitState { controller.document.layers.first().alphaLocked }
                 val painting =
                     withContext(Dispatchers.Main) {
@@ -112,7 +133,7 @@ class LayerProtectionTest {
                     assertEquals(1f, preview[48, 48].blue, 0.01f)
                     assertEquals(0f, preview[0, 0].alpha)
                 }
-                click(190f, 22f)
+                click("锁定图层")
                 awaitState { controller.document.layers.first().locked }
                 render()
                 withContext(Dispatchers.Main) {
@@ -127,7 +148,7 @@ class LayerProtectionTest {
                     assertFalse(previewScene.hasInvalidations())
                 }
                 val locked = withContext(Dispatchers.Main) { controller.document }
-                click(272f, 612f)
+                click("删除图层", enabled = false)
                 withContext(Dispatchers.Main) {
                     assertEquals(2, controller.document.layers.size)
                     controller.fill(Offset(32f, 32f))
@@ -152,9 +173,9 @@ class LayerProtectionTest {
                 } finally {
                     restored.close()
                 }
-                click(190f, 22f)
+                click("解锁图层")
                 awaitState { !controller.document.layers.first().locked }
-                click(146f, 22f)
+                click("解除透明度锁定")
                 awaitState { !controller.document.layers.first().alphaLocked }
                 withContext(Dispatchers.Main) { controller.command("undo") }
                 awaitState { controller.document.layers.first().alphaLocked }

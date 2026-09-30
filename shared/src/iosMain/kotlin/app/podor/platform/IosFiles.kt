@@ -3,6 +3,7 @@
 package app.podor.platform
 
 import app.podor.data.ProjectFiles
+import app.podor.domain.AppIdentity
 import kotlinx.cinterop.*
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -63,7 +64,7 @@ class IosFiles(private val host: () -> UIViewController) : ProjectFiles {
         }
 
     override suspend fun save(bytes: ByteArray, png: Boolean): Boolean =
-        share(bytes, "作品.${if(png) "png" else "podor"}")
+        share(bytes, "作品.${if(png) "png" else AppIdentity.projectExtension}")
 
     private suspend fun share(bytes: ByteArray, name: String): Boolean {
         val path = "$directory/$name"

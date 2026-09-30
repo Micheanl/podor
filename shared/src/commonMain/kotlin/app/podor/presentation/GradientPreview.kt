@@ -10,6 +10,8 @@ class GradientPreview(
     val selection: Selection?,
     val layers: List<LayerFrame>,
     val mask: List<TileImage>,
+    val selectionId: Long = 0,
+    val canonical: LayerActionPreview? = null,
 ) {
     var line by mutableStateOf<GradientLine?>(null)
         internal set

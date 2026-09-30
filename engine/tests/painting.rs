@@ -17,6 +17,7 @@ fn dot(engine: &mut Engine, x: f32, y: f32, eraser: bool) {
     engine
         .command(Command::Begin {
             brush: brush(eraser),
+            assistant: None,
         })
         .unwrap();
     engine
@@ -64,6 +65,7 @@ fn pressure_changes_footprint_and_interpolation_has_no_gaps() {
     let mut e = Engine::new(256, 256).unwrap();
     e.command(Command::Begin {
         brush: brush(false),
+        assistant: None,
     })
     .unwrap();
     e.samples(&[
@@ -93,6 +95,7 @@ fn cancel_and_new_branch_preserve_history_semantics() {
     dot(&mut e, 40.0, 40.0, false);
     e.command(Command::Begin {
         brush: brush(false),
+        assistant: None,
     })
     .unwrap();
     e.samples(&[Sample {
@@ -135,6 +138,7 @@ fn invalid_input_cannot_corrupt_document() {
     assert!(e.command(Command::RemoveLayer { id: 1 }).is_err());
     e.command(Command::Begin {
         brush: brush(false),
+        assistant: None,
     })
     .unwrap();
     assert!(e
@@ -188,6 +192,7 @@ fn batching_does_not_change_stroke_pixels() {
         engine
             .command(Command::Begin {
                 brush: brush(false),
+                assistant: None,
             })
             .unwrap();
     }

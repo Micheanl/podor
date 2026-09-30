@@ -1,15 +1,41 @@
 package app.podor.data
 
+import app.podor.domain.AnimationExportFormat
 import app.podor.domain.ExportFormat
 import app.podor.domain.OpenedProject
+import app.podor.domain.PaletteFileFormat
 import app.podor.domain.ProjectReference
 import app.podor.domain.RecentProject
 
 interface ProjectFiles {
-    val clipboard: ImageClipboard? get() = null
+    val clipboard: ImageClipboard?
+        get() = null
+
+    val supportsPaletteFiles: Boolean
+        get() = false
+
+    val paletteFormats: List<PaletteFileFormat>
+        get() = if (supportsPaletteFiles) listOf(PaletteFileFormat.Ase) else emptyList()
+
+    suspend fun openPalette(): ByteArray? = null
+
+    suspend fun savePalette(bytes: ByteArray): Boolean = false
+
+    suspend fun savePalette(bytes: ByteArray, format: PaletteFileFormat): Boolean =
+        if (format == PaletteFileFormat.Ase) savePalette(bytes) else false
 
     val exportFormats: List<ExportFormat>
         get() = listOf(ExportFormat.Png)
+
+    val animationExportFormats: List<AnimationExportFormat>
+        get() = emptyList()
+
+    suspend fun exportAnimation(bytes: ByteArray, format: AnimationExportFormat): Boolean = false
+
+    val supportsAsepriteProjects: Boolean
+        get() = false
+
+    suspend fun exportAseprite(bytes: ByteArray): Boolean = false
 
     suspend fun export(bytes: ByteArray, format: ExportFormat): Boolean {
         require(format == ExportFormat.Png)

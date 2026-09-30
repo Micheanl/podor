@@ -3,6 +3,8 @@ use podor_engine::{model::PREVIEW_EDGE, Command, Engine, ExportFormat, ExportOpt
 fn fill(engine: &mut Engine, color: [u8; 4]) {
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color,
@@ -150,6 +152,8 @@ fn tiff_and_bmp_preserve_straight_alpha_orientation_and_partial_edge_tiles() {
         .unwrap();
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 130,
             y: 128,
             color: [20, 80, 240, 255],

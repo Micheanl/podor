@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.platform.LocalDensity
 import app.podor.domain.LayerInfo
+import app.podor.domain.LayerKind
 import app.podor.presentation.StudioController
 import app.podor.ui.input.platformPenInput
 import app.podor.ui.input.platformTouchInput
@@ -37,6 +38,9 @@ internal fun LayerList(
     layers: List<LayerInfo>,
     enabled: Boolean,
     modifier: Modifier,
+    selecting: Boolean = false,
+    selectedIds: Set<Int> = emptySet(),
+    onSelect: (Int) -> Unit = {},
 ) {
     val list = rememberLazyListState()
     val ids = remember(layers) { layers.map { it.id } }
@@ -109,8 +113,8 @@ internal fun LayerList(
     }
     Box(modifier.clipToBounds()) {
         LazyColumn(
-            Modifier.fillMaxSize().pointerInput(ids, enabled, revision) {
-                if (!enabled || ids.size < 2) return@pointerInput
+            Modifier.fillMaxSize().pointerInput(ids, enabled, revision, selecting) {
+                if (!enabled || selecting || ids.size < 2) return@pointerInput
                 awaitEachGesture {
                     val down = awaitFirstDown(pass = PointerEventPass.Initial)
                     if (down.type == PointerType.Mouse && !currentEvent.buttons.isPrimaryPressed)
@@ -121,10 +125,18 @@ internal fun LayerList(
                                 down.position.y < it.offset + rowPadding + previewEnd - previewStart
                         }
                     val controlsStart = size.width - StudioTheme.controlSize.toPx()
-                    if (item == null || down.position.x !in previewStart..controlsStart)
-                        return@awaitEachGesture
+                    if (item == null) return@awaitEachGesture
                     val id = item.key as Int
-                    if (down.position.x > previewEnd) {
+                    val layer = layers.first { it.id == id }
+                    val inset =
+                        (StudioTheme.layerIndent * layer.depth)
+                            .coerceAtMost(StudioTheme.layerMaxIndent)
+                            .toPx() +
+                            if (layer.kind == LayerKind.Group) StudioTheme.controlSize.toPx()
+                            else 0f
+                    if (down.position.x !in (previewStart + inset)..controlsStart)
+                        return@awaitEachGesture
+                    if (down.position.x > previewEnd + inset) {
                         val cancelled =
                             withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
                                 while (true) {
@@ -167,18 +179,76 @@ internal fun LayerList(
                                         change.position.y in 0f..size.height.toFloat()
                                 ) {
                                     if (drag == null) {
-                                        controller.command("select_layer") { put("id", id) }
+                                        controller.selectLayer(id)
                                     } else {
                                         drag?.position = change.position
                                         insertion?.first?.let { slot ->
-                                            val source = ids.indexOf(id)
-                                            val target = slot - if (source < slot) 1 else 0
-                                            if (target != source)
-                                                controller.command("reorder_layer") {
-                                                    put("id", id)
-                                                    put("index", ids.lastIndex - target)
-                                                    put("revision", revision)
+                                            if (controller.document.maxLayerNodes > 0) {
+                                                val hovered =
+                                                    list.layoutInfo.visibleItemsInfo
+                                                        .firstOrNull {
+                                                            change.position.y >= it.offset &&
+                                                                change.position.y <
+                                                                    it.offset + it.size
+                                                        }
+                                                        ?.key
+                                                        ?.let { key ->
+                                                            layers.firstOrNull { it.id == key }
+                                                        }
+                                                if (hovered?.id == id) return@let
+                                                val target = layers.getOrNull(slot)
+                                                val parent =
+                                                    if (
+                                                        hovered?.kind == LayerKind.Group &&
+                                                            hovered.id != id &&
+                                                            id !in
+                                                                controller.document.ancestorIds(
+                                                                    hovered.id
+                                                                )
+                                                    )
+                                                        hovered.id
+                                                    else target?.parentId
+                                                if (
+                                                    parent != id &&
+                                                        (parent == null ||
+                                                            id !in
+                                                                controller.document.ancestorIds(
+                                                                    parent
+                                                                ))
+                                                ) {
+                                                    val siblings =
+                                                        controller.document
+                                                            .siblings(parent)
+                                                            .filter { it.id != id }
+                                                    val index =
+                                                        if (hovered != null && parent == hovered.id)
+                                                            siblings.size
+                                                        else
+                                                            target
+                                                                ?.takeIf { it.parentId == parent }
+                                                                ?.let {
+                                                                    siblings.indexOfFirst { sibling
+                                                                        ->
+                                                                        sibling.id == it.id
+                                                                    } + 1
+                                                                } ?: 0
+                                                    controller.moveLayerNode(
+                                                        id,
+                                                        parent,
+                                                        index,
+                                                        revision,
+                                                    )
                                                 }
+                                            } else {
+                                                val source = ids.indexOf(id)
+                                                val target = slot - if (source < slot) 1 else 0
+                                                if (target != source)
+                                                    controller.command("reorder_layer") {
+                                                        put("id", id)
+                                                        put("index", ids.lastIndex - target)
+                                                        put("revision", revision)
+                                                    }
+                                            }
                                         }
                                     }
                                 }
@@ -204,7 +274,8 @@ internal fun LayerList(
                 LayerRow(
                     controller,
                     layer,
-                    layer.id == controller.document.active,
+                    if (selecting) layer.id in selectedIds
+                    else layer.id == controller.document.active,
                     enabled,
                     Modifier.animateItem(
                             fadeInSpec = tween(StudioMotion.feedbackMillis),
@@ -216,6 +287,10 @@ internal fun LayerList(
                             alpha =
                                 if (drag?.id == layer.id) StudioTheme.layerDragSourceAlpha else 1f
                         },
+                    selecting = selecting,
+                    onSelect = {
+                        if (selecting) onSelect(layer.id) else controller.selectLayer(layer.id)
+                    },
                 )
             }
         }

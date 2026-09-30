@@ -24,6 +24,13 @@ import kotlin.math.roundToInt
 
 @Composable
 fun ColorControls(controller: StudioController) {
+    if (
+        controller.document.colorMode == DocumentColorMode.Indexed &&
+            !controller.document.maskEditing
+    ) {
+        IndexedPaletteControls(controller)
+        return
+    }
     val color =
         if (controller.tool == Tool.Gradient) {
             if (controller.gradientEditingStart) controller.gradient.from
@@ -54,6 +61,10 @@ fun ColorControls(controller: StudioController) {
         ToolButton(Glyph.Picker, "取色", controller.tool == Tool.Picker) {
             controller.tool = Tool.Picker
         }
+        if (!controller.document.maskEditing)
+            ToolButton(Glyph.PixelGrid, "转换为索引色", enabled = controller.ready && !controller.busy) {
+                controller.convertColorMode(DocumentColorMode.Indexed)
+            }
     }
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         ColorWheel(hsv, ::update, Modifier.widthIn(max = StudioTheme.colorWheelSize).fillMaxWidth())
@@ -89,6 +100,10 @@ fun ColorControls(controller: StudioController) {
         )
         Box(Modifier.size(22.dp).clip(CircleShape).background(Color(color)))
     }
+    if (!controller.document.maskEditing)
+        controller.document.asepriteMetadata?.companionPalette?.let {
+            ProjectPalette(it, color, ::changeColor)
+        }
     PersonalPalette(controller, color, ::changeColor)
     SectionLabel("工作室色卡", "${StudioDefaults.palette.size}")
     StudioDefaults.palette.chunked(6).forEach { row ->
@@ -103,6 +118,7 @@ fun ColorControls(controller: StudioController) {
     Column(Modifier.clip(StudioTheme.cardShape).background(StudioTheme.background).padding(14.dp)) {
         HsvSliders(hsv, ::update)
     }
+    if (!controller.document.maskEditing) ColorHarmonyControls(color, ::changeColor)
 }
 
 @Composable

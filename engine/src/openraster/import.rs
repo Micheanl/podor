@@ -35,6 +35,52 @@ pub fn load(bytes: &[u8]) -> Result<Document, String> {
     if !root.has_tag_name("image") {
         return Err("ORA 图层信息无效".into());
     }
+    if root
+        .descendants()
+        .filter(|node| node.is_element())
+        .any(|node| {
+            let unsupported = |name: &str| {
+                let name = name.to_ascii_lowercase();
+                name.contains("filter") || name.contains("adjustment")
+            };
+            unsupported(node.tag_name().name())
+                || node
+                    .attributes()
+                    .any(|attribute| unsupported(attribute.name()))
+        })
+    {
+        return Err("ORA 调整图层和滤镜扩展尚未支持，请在原软件中导出烘焙副本".into());
+    }
+    if root
+        .descendants()
+        .filter(|node| node.is_element())
+        .any(|node| {
+            let unsupported = |name: &str| {
+                let name = name.to_ascii_lowercase();
+                name.contains("clip")
+                    || name.contains("alpha-inherit")
+                    || name.contains("inherit-alpha")
+            };
+            unsupported(node.tag_name().name())
+                || node
+                    .attributes()
+                    .any(|attribute| unsupported(attribute.name()))
+        })
+    {
+        return Err("ORA 剪贴蒙版扩展尚未支持，请在原软件中另存为 PSD".into());
+    }
+    if root
+        .descendants()
+        .filter(|node| node.is_element())
+        .any(|node| {
+            node.tag_name().name().to_ascii_lowercase().contains("mask")
+                || node
+                    .attributes()
+                    .any(|attribute| attribute.name().to_ascii_lowercase().contains("mask"))
+        })
+    {
+        return Err("ORA 蒙版扩展尚未支持，请在原软件中另存为 PSD 或应用蒙版".into());
+    }
     let width = attribute::<u32>(root, "w", None)?;
     let height = attribute::<u32>(root, "h", None)?;
     let mut doc = Document::new(width, height)?;
@@ -43,29 +89,71 @@ pub fn load(bytes: &[u8]) -> Result<Document, String> {
         return Err("ORA 图层信息无效".into());
     }
     let nodes: Vec<_> = stacks[0]
-        .children()
+        .descendants()
+        .skip(1)
         .filter(|node| node.is_element())
         .collect();
-    if nodes.len() > MAX_LAYERS {
+    if nodes.len() > MAX_LAYER_NODES
+        || nodes
+            .iter()
+            .filter(|node| node.has_tag_name("layer"))
+            .count()
+            > MAX_LAYERS
+    {
         return Err("ORA 图层数量超过上限".into());
     }
-    if nodes.iter().any(|node| node.has_tag_name("stack")) {
-        return Err("暂不支持含图层组的 ORA，请先在原软件中取消分组".into());
-    }
-    if nodes
-        .iter()
-        .any(|node| !node.has_tag_name("layer") || node.children().any(|child| child.is_element()))
-    {
+    if nodes.iter().any(|node| {
+        !(node.has_tag_name("layer") || node.has_tag_name("stack"))
+            || (node.has_tag_name("layer") && node.children().any(|child| child.is_element()))
+    }) {
         return Err("ORA 含有暂不支持的图层类型".into());
     }
-    if nodes.is_empty() {
-        return Ok(doc);
+    if !nodes.is_empty() {
+        doc.layers.clear();
     }
-    doc.layers.clear();
     let mut remaining_tiles = MAX_DOCUMENT_BYTES / TILE_BYTES;
     let mut selected = None;
-    for (index, node) in nodes.into_iter().rev().enumerate() {
-        let id = index as u32 + 1;
+    load_stack(
+        stacks[0],
+        None,
+        0,
+        &mut doc,
+        &mut archive,
+        &mut remaining_tiles,
+        &mut selected,
+    )?;
+    doc.next_id = doc.layers.len() as u32 + 1;
+    doc.active = selected.unwrap_or(doc.next_id - 1);
+    doc.validate()?;
+    Ok(doc)
+}
+
+fn load_stack(
+    stack: roxmltree::Node<'_, '_>,
+    parent: Option<u32>,
+    depth: usize,
+    doc: &mut Document,
+    archive: &mut ZipArchive<Cursor<&[u8]>>,
+    remaining_tiles: &mut usize,
+    selected: &mut Option<u32>,
+) -> Result<(), String> {
+    if depth > MAX_GROUP_DEPTH {
+        return Err("ORA 图层组嵌套超过上限".into());
+    }
+    if stack.attribute("x").is_some() || stack.attribute("y").is_some() {
+        return Err("ORA 图层组位置属性尚未支持".into());
+    }
+    if parent.is_none()
+        && (stack.attribute("opacity").is_some()
+            || stack.attribute("visibility").is_some()
+            || stack.attribute("composite-op").is_some()
+            || stack.attribute("isolation").is_some())
+    {
+        return Err("ORA 根图层组包含不支持的属性".into());
+    }
+    let nodes: Vec<_> = stack.children().filter(|node| node.is_element()).collect();
+    for node in nodes.into_iter().rev() {
+        let id = doc.layers.len() as u32 + 1;
         let mut layer = Layer::new(
             id,
             node.attribute("name")
@@ -76,6 +164,7 @@ pub fn load(bytes: &[u8]) -> Result<Document, String> {
         if layer.name.len() > MAX_LAYER_NAME_BYTES {
             return Err("ORA 图层名称过长".into());
         }
+        layer.parent_id = parent;
         layer.opacity = attribute(node, "opacity", Some(1.0f32))?;
         if !layer.opacity.is_finite() || !(0.0..=1.0).contains(&layer.opacity) {
             return Err("ORA 图层不透明度无效".into());
@@ -96,6 +185,36 @@ pub fn load(bytes: &[u8]) -> Result<Document, String> {
             "svg:difference" => BlendMode::Difference,
             _ => return Err("ORA 使用了暂不支持的混合模式".into()),
         };
+        if node.attribute("selected") == Some("true") {
+            *selected = Some(id);
+        }
+        if node.has_tag_name("stack") {
+            let isolation = match node.attribute("isolation").unwrap_or("isolate") {
+                "isolate" => GroupIsolation::Isolated,
+                "auto" => GroupIsolation::PassThrough,
+                _ => return Err("ORA 图层组隔离属性无效".into()),
+            };
+            if isolation == GroupIsolation::PassThrough
+                && (layer.opacity != 1.0 || layer.blend != BlendMode::Normal)
+            {
+                return Err("ORA 穿透图层组暂不支持不透明度和自身混合模式".into());
+            }
+            layer.content = LayerContent::Group {
+                isolation,
+                closed: false,
+            };
+            doc.layers.push(layer);
+            load_stack(
+                node,
+                Some(id),
+                depth + 1,
+                doc,
+                archive,
+                remaining_tiles,
+                selected,
+            )?;
+            continue;
+        }
         let x = attribute(node, "x", Some(0i32))?;
         let y = attribute(node, "y", Some(0i32))?;
         let path = node.attribute("src").ok_or("ORA 缺少图层图像")?;
@@ -120,21 +239,15 @@ pub fn load(bytes: &[u8]) -> Result<Document, String> {
             doc.bounds(),
             x,
             y,
-            &mut remaining_tiles,
+            remaining_tiles,
         )?;
         std::io::copy(&mut bounded, &mut std::io::sink()).map_err(|_| "ORA 图层图像已损坏")?;
         if bounded.limit() == 0 {
             return Err("ORA 图层图像过大".into());
         }
-        if node.attribute("selected") == Some("true") {
-            selected = Some(id);
-        }
         doc.layers.push(layer);
     }
-    doc.next_id = doc.layers.len() as u32 + 1;
-    doc.active = selected.unwrap_or(doc.next_id - 1);
-    doc.validate()?;
-    Ok(doc)
+    Ok(())
 }
 
 fn validate_directory(bytes: &[u8]) -> Result<usize, String> {
@@ -292,7 +405,7 @@ fn write_row(
         {
             continue;
         }
-        let tile = match layer.tiles.entry((tx, y / TILE_SIZE)) {
+        let tile = match layer.raster_mut()?.tiles_mut().entry((tx, y / TILE_SIZE)) {
             Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => {
                 if *remaining_tiles == 0 {

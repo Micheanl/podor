@@ -10,7 +10,9 @@ fn command(engine: &mut Engine, value: serde_json::Value) {
 
 fn pixel(engine: &Engine, layer: usize, x: u32, y: u32) -> [u8; 4] {
     engine.document.layers[layer]
-        .tiles
+        .raster()
+        .unwrap()
+        .tiles()
         .get(&(x / TILE_SIZE, y / TILE_SIZE))
         .map_or([0; 4], |tile| {
             let i = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -21,6 +23,8 @@ fn pixel(engine: &Engine, layer: usize, x: u32, y: u32) -> [u8; 4] {
 fn fill(engine: &mut Engine, color: [u8; 4]) {
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color,
@@ -148,7 +152,14 @@ fn antialiased_cut_preserves_unselected_pixels_and_can_be_undone_once() {
 fn external_paste_is_centered_at_original_size_and_clipped_without_resampling() {
     let mut source = Engine::new(9, 7).unwrap();
     fill(&mut source, [100, 180, 220, 255]);
-    let tile = source.document.active_mut().tiles.get_mut(&(0, 0)).unwrap();
+    let tile = source
+        .document
+        .active_mut()
+        .raster_mut()
+        .unwrap()
+        .tiles_mut()
+        .get_mut(&(0, 0))
+        .unwrap();
     for x in 0..9usize {
         let index = (3 * TILE_SIZE as usize + x) * 4;
         Arc::make_mut(tile)[index..index + 4].copy_from_slice(&[x as u8, 0, 0, 255]);
@@ -228,7 +239,9 @@ fn paste_budget_and_cut_history_budget_fail_atomically() {
             engine
                 .document
                 .active_mut()
-                .tiles
+                .raster_mut()
+                .unwrap()
+                .tiles_mut()
                 .insert((x, y), Arc::new(pixels));
         }
     }
@@ -238,19 +251,27 @@ fn paste_budget_and_cut_history_budget_fail_atomically() {
         .command(Command::CutSelection { revision: 0 })
         .is_err());
     assert_eq!(engine.document.tile_count(), before.tile_count());
-    for (key, tile) in &before.layers[0].tiles {
-        assert!(Arc::ptr_eq(tile, &engine.document.layers[0].tiles[key]));
+    for (key, tile) in before.layers[0].raster().unwrap().tiles() {
+        assert!(Arc::ptr_eq(
+            tile,
+            &engine.document.layers[0].raster().unwrap().tiles()[key]
+        ));
     }
     let mut source = Engine::new(256, 256).unwrap();
     fill(&mut source, [255; 4]);
     let packet = source.copy_selection(CopyMode::Layer).unwrap();
     let layer = engine.document.layers[0].clone();
     let mut extra = Layer::new(2, "预算".into());
-    extra.tiles = layer
-        .tiles
-        .into_iter()
-        .take(MAX_DOCUMENT_BYTES / TILE_BYTES - engine.document.tile_count())
-        .collect();
+    extra.raster_mut().unwrap().set_tiles(
+        layer
+            .raster()
+            .unwrap()
+            .tiles()
+            .iter()
+            .map(|(&key, tile)| (key, tile.clone()))
+            .take(MAX_DOCUMENT_BYTES / TILE_BYTES - engine.document.tile_count())
+            .collect(),
+    );
     engine.document.layers.push(extra);
     engine.document.next_id = 3;
     engine.document.validate().unwrap();

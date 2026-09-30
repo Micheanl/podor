@@ -25,7 +25,10 @@ fun AdjustmentControls(controller: StudioController) {
         Column(verticalArrangement = Arrangement.spacedBy(StudioTheme.adjustmentGap)) {
             SectionLabel(settings.kind.label)
             Text(
-                tr(if (controller.document.selection != null) "仅作用于当前图层的选区" else "作用于当前图层"),
+                tr(
+                    if (preview.nodeEditing) "调整图层"
+                    else if (controller.document.selection != null) "仅作用于当前图层的选区" else "作用于当前图层"
+                ),
                 fontSize = StudioTheme.adjustmentHintSize,
                 color = StudioTheme.muted,
             )
@@ -41,6 +44,8 @@ fun AdjustmentControls(controller: StudioController) {
                 }
             } else if (settings.kind == AdjustmentKind.Curves) {
                 CurvesControls(controller)
+            } else if (settings.kind == AdjustmentKind.GradientMap) {
+                GradientMapControls(controller)
             } else {
                 LabeledSlider(
                     "半径",
@@ -81,7 +86,13 @@ fun AdjustmentControls(controller: StudioController) {
     var imageSize by remember { mutableStateOf(false) }
     val active = controller.document.layers.firstOrNull { it.id == controller.document.active }
     val enabled =
-        controller.ready && !controller.busy && active?.locked != true && active?.visible == true
+        controller.ready &&
+            !controller.busy &&
+            active?.effectiveLocked != true &&
+            active?.effectiveVisible == true &&
+            active.kind == LayerKind.Raster &&
+            controller.document.colorMode != DocumentColorMode.Indexed &&
+            !controller.document.maskEditing
     ActionButton(
         "画布大小",
         { canvasSize = true },
@@ -101,6 +112,19 @@ fun AdjustmentControls(controller: StudioController) {
     )
     if (imageSize) ImageSizeDialog(controller) { imageSize = false }
     HorizontalDivider(color = StudioTheme.border)
+    if (active?.kind == LayerKind.Adjustment)
+        ActionButton(
+            "编辑调整图层",
+            { controller.editAdjustmentLayer() },
+            modifier = Modifier.fillMaxWidth(),
+            glyph = Glyph.Curves,
+            primary = false,
+            enabled =
+                controller.ready &&
+                    !controller.busy &&
+                    !active.effectiveLocked &&
+                    !controller.document.maskEditing,
+        )
     ActionButton(
         "明暗与色彩",
         { controller.prepareAdjustment(AdjustmentKind.Tone) },
@@ -125,6 +149,14 @@ fun AdjustmentControls(controller: StudioController) {
         primary = false,
         enabled = enabled,
     )
+    ActionButton(
+        "渐变映射",
+        { controller.prepareAdjustment(AdjustmentKind.GradientMap) },
+        modifier = Modifier.fillMaxWidth(),
+        glyph = Glyph.Gradient,
+        primary = false,
+        enabled = enabled,
+    )
     HorizontalDivider(color = StudioTheme.border)
     Column {
         SectionLabel("填充设置")
@@ -134,11 +166,27 @@ fun AdjustmentControls(controller: StudioController) {
             0f..255f,
             controller.fillTolerance.roundToInt().toString(),
         ) {
-            controller.fillTolerance = it
+            controller.fillTolerance = it.roundToInt().toFloat()
+        }
+        Row {
+            ToolButton(Glyph.Fill, "仅连续区域", selected = controller.fillContiguous, plain = true) {
+                controller.fillContiguous = !controller.fillContiguous
+            }
+            ToolButton(
+                Glyph.Layers,
+                "取样所有可见图层",
+                selected = controller.fillMerged && !controller.document.maskEditing,
+                enabled = !controller.document.maskEditing,
+                plain = true,
+            ) {
+                controller.fillMerged = !controller.fillMerged
+            }
         }
     }
     if (controller.document.selection != null)
-        StudioTextButton({ controller.clearSelection() }) { ButtonLabel(tr("取消选区"), fontSize = 12.sp) }
+        StudioTextButton({ controller.clearSelection() }) {
+            ButtonLabel(tr("取消选区"), fontSize = 12.sp)
+        }
 }
 
 private fun Float.percent() = (this * 100).roundToInt().toString()

@@ -20,7 +20,12 @@ fn scale(
 }
 
 fn pixel(layer: &Layer, x: u32, y: u32) -> [u8; 4] {
-    let Some(tile) = layer.tiles.get(&(x / TILE_SIZE, y / TILE_SIZE)) else {
+    let Some(tile) = layer
+        .raster()
+        .unwrap()
+        .tiles()
+        .get(&(x / TILE_SIZE, y / TILE_SIZE))
+    else {
         return [0; 4];
     };
     let offset = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -34,7 +39,9 @@ fn from_image(image: &RgbaImage) -> Engine {
             continue;
         }
         let tile = engine.document.layers[0]
-            .tiles
+            .raster_mut()
+            .unwrap()
+            .tiles_mut()
             .entry((x / TILE_SIZE, y / TILE_SIZE))
             .or_insert_with(|| Arc::new(vec![0; TILE_BYTES]));
         let offset = ((y % TILE_SIZE * TILE_SIZE + x % TILE_SIZE) * 4) as usize;
@@ -104,7 +111,11 @@ fn pixel_art_scaling_preserves_layers_properties_history_and_saved_pixels() {
             assert_eq!(pixel(&engine.document.layers[1], x, y), expected);
         }
     }
-    assert!(engine.document.layers[2].tiles.is_empty());
+    assert!(engine.document.layers[2]
+        .raster()
+        .unwrap()
+        .tiles()
+        .is_empty());
     assert_eq!(engine.state()["layers"], layers);
     assert_eq!(engine.document.active, 2);
     let after = engine.save().unwrap();
@@ -251,6 +262,8 @@ fn exceeding_document_or_undo_memory_does_not_mutate_the_source() {
         }
         engine
             .command(Command::Fill {
+                contiguous: true,
+                merged: false,
                 x: 0,
                 y: 0,
                 color: [0, 0, 0, 255],
@@ -258,7 +271,7 @@ fn exceeding_document_or_undo_memory_does_not_mutate_the_source() {
             })
             .unwrap();
     }
-    let original = engine.document.layers[0].tiles[&(0, 0)].clone();
+    let original = engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)].clone();
     let state = engine.state();
     assert_eq!(
         scale(&mut engine, 2, 2, ResampleFilter::Lanczos3).unwrap_err(),
@@ -267,6 +280,6 @@ fn exceeding_document_or_undo_memory_does_not_mutate_the_source() {
     assert_eq!(engine.state(), state);
     assert!(Arc::ptr_eq(
         &original,
-        &engine.document.layers[0].tiles[&(0, 0)]
+        &engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)]
     ));
 }

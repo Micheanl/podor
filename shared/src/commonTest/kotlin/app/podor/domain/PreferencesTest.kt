@@ -5,6 +5,109 @@ import kotlinx.serialization.json.Json
 
 class PreferencesTest {
     @Test
+    fun legacyPreferencesReceiveSixDistinctAnimationShortcuts() {
+        val restored =
+            Json.decodeFromString<Preferences>("""{"language":"English"}""").withNewShortcuts()
+        val expected =
+            mapOf(
+                ShortcutAction.AnimationTimeline to Shortcut("A", command = true, shift = true),
+                ShortcutAction.PlayAnimation to Shortcut("P", alt = true),
+                ShortcutAction.PreviousFrame to Shortcut("[", alt = true),
+                ShortcutAction.NextFrame to Shortcut("]", alt = true),
+                ShortcutAction.AddFrame to Shortcut("N", alt = true),
+                ShortcutAction.OnionSkin to Shortcut("O", alt = true),
+            )
+        expected.forEach { (action, binding) -> assertEquals(binding, restored.shortcut(action)) }
+        assertTrue(restored.valid())
+        assertEquals(Language.English, restored.language)
+        assertEquals(restored, restored.withNewShortcuts())
+    }
+
+    @Test
+    fun legacyAltPBrushBindingMovesOnlyTheNewPlaybackShortcut() {
+        val restored =
+            Json.decodeFromString<Preferences>("""{"shortcuts":{"Brush":{"key":"P","alt":true}}}""")
+                .withNewShortcuts()
+        assertEquals(
+            mapOf(
+                ShortcutAction.Brush to Shortcut("P", alt = true),
+                ShortcutAction.PlayAnimation to Shortcut("P", shift = true, alt = true),
+            ),
+            restored.shortcuts,
+        )
+        assertTrue(restored.valid())
+        assertEquals(
+            restored,
+            restored.assign(ShortcutAction.Brush, Shortcut("P", alt = true)),
+        )
+        assertEquals(
+            restored,
+            Json.decodeFromString<Preferences>(Json.encodeToString(restored)).withNewShortcuts(),
+        )
+        assertFailsWith<IllegalArgumentException> {
+            Preferences().assign(ShortcutAction.Brush, Shortcut("P", alt = true))
+        }
+    }
+
+    @Test
+    fun animationShortcutMigrationPreservesOlderBindingsEvenWhenFallbacksAreOccupied() {
+        val old =
+            Preferences(
+                language = Language.English,
+                shortcuts =
+                    mapOf(
+                        ShortcutAction.Brush to Shortcut("A", command = true, shift = true),
+                        ShortcutAction.Eraser to Shortcut("P", alt = true),
+                        ShortcutAction.Picker to Shortcut("[", alt = true),
+                        ShortcutAction.Hand to Shortcut("]", alt = true),
+                        ShortcutAction.Fit to Shortcut("N", alt = true),
+                        ShortcutAction.Select to Shortcut("O", alt = true),
+                        ShortcutAction.Fill to
+                            Shortcut("A", command = true, shift = true, alt = true),
+                        ShortcutAction.Gradient to Shortcut("P", shift = true, alt = true),
+                    ),
+            )
+        val restored =
+            Json.decodeFromString<Preferences>(Json.encodeToString(old)).withNewShortcuts()
+        old.shortcuts.forEach { (action, binding) ->
+            assertEquals(binding, restored.shortcut(action))
+        }
+        for (action in
+            listOf(
+                ShortcutAction.AnimationTimeline,
+                ShortcutAction.PlayAnimation,
+                ShortcutAction.PreviousFrame,
+                ShortcutAction.NextFrame,
+                ShortcutAction.AddFrame,
+                ShortcutAction.OnionSkin,
+            )) {
+            assertNotEquals(action.default, restored.shortcut(action))
+        }
+        assertTrue(restored.valid())
+        assertEquals(Language.English, restored.language)
+        assertEquals(restored, restored.withNewShortcuts())
+    }
+
+    @Test
+    fun savedCustomAnimationBindingsSurviveMigrationAndRejectReassignmentConflicts() {
+        val customized =
+            Preferences()
+                .assign(ShortcutAction.AnimationTimeline, Shortcut("A", alt = true))
+                .assign(ShortcutAction.PlayAnimation, Shortcut("P", command = true, shift = true))
+                .assign(ShortcutAction.PreviousFrame, Shortcut("[", command = true, alt = true))
+                .assign(ShortcutAction.NextFrame, Shortcut("]", command = true, alt = true))
+                .assign(ShortcutAction.AddFrame, Shortcut("N", command = true, alt = true))
+                .assign(ShortcutAction.OnionSkin, Shortcut("O", command = true, alt = true))
+        val restored =
+            Json.decodeFromString<Preferences>(Json.encodeToString(customized)).withNewShortcuts()
+        assertEquals(customized, restored)
+        assertTrue(restored.valid())
+        assertFailsWith<IllegalArgumentException> {
+            restored.assign(ShortcutAction.Brush, restored.shortcut(ShortcutAction.PlayAnimation))
+        }
+    }
+
+    @Test
     fun deletingACustomBrushKeepsPreferencesValidAndClearsItsFavorite() {
         val brush = BrushPreset(id = "custom-1", label = "Mine", hardness = 1f, opacity = 1f, size = 12f)
         val preferences =
@@ -141,9 +244,9 @@ class PreferencesTest {
 
     @Test
     fun bundledBrushesHaveDistinctAndValidParameters() {
-        assertEquals(22, BrushPreset.entries.size)
+        assertEquals(24, BrushPreset.entries.size)
         assertTrue(BrushPreset.entries.all { it.valid() })
-        assertEquals(22, BrushPreset.entries.map { it.id }.distinct().size)
+        assertEquals(24, BrushPreset.entries.map { it.id }.distinct().size)
         assertTrue(BrushPreset.entries.any { it.tip == BrushTip.Flat })
         assertTrue(BrushPreset.entries.any { it.tip == BrushTip.Leaf })
         assertTrue(BrushPreset.entries.any { it.tip == BrushTip.Comb })
@@ -151,7 +254,7 @@ class PreferencesTest {
         assertTrue(BrushPreset.entries.any { it.paper > 0f })
         assertTrue(BrushPreset.entries.any { it.mix > 0f })
         assertTrue(BrushPreset.entries.any { it.stabilization > 0f })
-        assertEquals(5, BrushPreset.entries.count { it.followDirection })
+        assertEquals(7, BrushPreset.entries.count { it.followDirection })
         assertTrue(BrushPreset.entries.any { it.opacityPressure == 1f && it.sizePressure < 1f })
     }
 

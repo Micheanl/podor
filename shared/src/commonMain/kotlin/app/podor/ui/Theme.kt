@@ -72,10 +72,34 @@ object StudioTheme {
         get() = if (light) Color(0xFF3E66B4) else Color(0xFF91B3EA)
 
     val brushLibraryGap = 8.dp
+    const val lassoPreviewAlpha = 0.18f
+    const val lassoOutlineAlpha = 0.9f
+    val lassoOutlineWidth = 1.25.dp
+    val lassoOptionsWidth = 220.dp
+    val lassoOptionsPadding = 16.dp
+    val brushEditorPreviewHeight = 56.dp
+    val pixelGridColor
+        get() =
+            if (light) Color(0xFF525765).copy(alpha = 0.32f)
+            else Color(0xFF525765).copy(alpha = 0.4f)
+
+    val tileGridColor
+        get() =
+            if (light) Color(0xFF343947).copy(alpha = 0.65f)
+            else Color(0xFF343947).copy(alpha = 0.7f)
+
+    val gridLineWidth = 0.75.dp
+    val tileGridLineWidth = 1.25.dp
+    val gridControlsWidth = 264.dp
+    val gridInputSpacing = 8.dp
+    val gridInputPadding = 8.dp
+    val gridControlsPadding = 16.dp
     val brushLibraryCaptionSize = 11.sp
     val brushLibraryFavoriteSize = 30.dp
     val brushLibraryFavoriteIconSize = 16.dp
     val colorSelectionWidth = 280.dp
+    val gradientMapPreviewHeight = 32.dp
+    val indexedPaletteGridHeight = 160.dp
     val colorSelectionPadding = 16.dp
     val colorSelectionGap = 8.dp
     val colorSelectionLabelSize = 12.sp
@@ -103,6 +127,15 @@ object StudioTheme {
     val gradientHandleRadius = 6.dp
     val gradientDockWidth = 590.dp
     val transformHitRadius = 13.dp
+    val vectorHandleRadius = 4.dp
+    val assistantHandleRadius = 5.dp
+    val assistantGuideWidth = 1.dp
+    const val assistantGuideAlpha = 0.22f
+    val lineGeneratorWidth = 340.dp
+    val lineGeneratorPadding = 12.dp
+    val lineGeneratorControlsHeight = 320.dp
+    val vectorGuideWidth = 1.dp
+    val vectorObjectListHeight = 88.dp
     val transformHandleRadius = 4.dp
     val transformRotationGap = 30.dp
     val transformOutlineWidth = 1.dp
@@ -162,6 +195,23 @@ object StudioTheme {
     val blendBackdrop = Color(0xFF7A88BA)
     val blendSource = Color(0xFFE6AABB)
     val railWidth = 68.dp
+    val animationFrameWidth = 76.dp
+    val animationCompactWidth = 560.dp
+    val animationLinkSize = 14.dp
+    val animationPlayIndicatorHeight = 2.dp
+    val animationTrackNameWidth = 100.dp
+    val animationRulerHeight = 20.dp
+    val animationTrackHeight = 24.dp
+    val animationTrackViewportHeight = 170.dp
+    val animationKeyRadius = 3.dp
+    val animationFrameHeight = 58.dp
+    val animationGap = 8.dp
+    val animationSettingsWidth = 256.dp
+    val animationSettingsPadding = 12.dp
+    val animationDurationInputWidth = 48.dp
+    val animationTimelinePadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+    val onionPrevious = Color(0xFF5393C9)
+    val onionNext = Color(0xFFD7984B)
     val inspectorWidth = 300.dp
     val viewControlsWidth = 260.dp
     val inspectorShape = RoundedCornerShape(20.dp)
@@ -198,8 +248,18 @@ object StudioTheme {
     val layerBlendSampleHeight = 24.dp
     val layerBlendLabelGap = 4.dp
     val layerPreviewSize = 42.dp
+    val layerMaskPreviewSize = 30.dp
+    val layerMaskPreviewGap = 6.dp
+    val layerTargetBorder = 1.dp
+    val layerMaskMenuWidth = 224.dp
+    val maskStackCardWidth = 112.dp
+    val maskStackPreviewHeight = 48.dp
+    val maskStackGap = 6.dp
+    const val layerMaskDisabledAlpha = 0.45f
     val layerRowPadding = 8.dp
     val layerPreviewInset = 10.dp
+    val layerIndent = 12.dp
+    val layerMaxIndent = 60.dp
     val layerDragEdge = 48.dp
     val layerDragSpeed = 480.dp
     val layerDropLineWidth = 2.dp

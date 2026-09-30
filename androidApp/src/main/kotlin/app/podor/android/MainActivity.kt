@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import app.podor.data.ProjectFiles
+import app.podor.domain.AppIdentity
 import app.podor.presentation.StudioController
 import app.podor.ui.PodorApp
 import java.io.ByteArrayOutputStream
@@ -102,7 +103,7 @@ class MainActivity : ComponentActivity() {
                     try {
                         if (brushes) brushPicker.launch("brushes.podor-brushes.json")
                         else if (png) pngPicker.launch("作品.png")
-                        else projectPicker.launch("作品.podor")
+                        else projectPicker.launch("作品.${AppIdentity.projectExtension}")
                         result.await()
                     } finally {
                         saveResult = null

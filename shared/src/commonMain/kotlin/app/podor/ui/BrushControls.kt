@@ -6,6 +6,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -16,25 +17,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.podor.domain.*
+import app.podor.presentation.BrushPreviewCache
 import app.podor.presentation.StudioController
 import kotlin.math.roundToInt
-import kotlin.math.sin
-import kotlin.math.sqrt
-import kotlin.random.Random
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,6 +65,7 @@ fun BrushControls(controller: StudioController) {
             }
         }
     val smudge = controller.tool == Tool.Smudge
+    val lasso = controller.tool == Tool.LassoFill
     val strength = if (smudge) controller.smudgeStrength else controller.brush.opacity
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -91,35 +89,47 @@ fun BrushControls(controller: StudioController) {
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            tr(controller.brush.preset.label),
+                            tr(if (lasso) Tool.LassoFill.label else controller.brush.preset.label),
                             fontSize = 13.sp,
                             modifier = Modifier.weight(1f),
                         )
-                        SymmetryControls(controller)
-                        ToolButton(Glyph.Adjustments, "编辑笔刷") { editing = true }
+                        if (!lasso) {
+                            SymmetryControls(controller)
+                            ToolButton(Glyph.Adjustments, "编辑笔刷") { editing = true }
+                        }
                     }
-                    BrushStrokePreview(
-                        controller.brush.preset.copy(
-                            size = controller.brush.size,
-                            opacity = 1f,
-                        ),
-                        Modifier.fillMaxWidth().height(40.dp).graphicsLayer {
-                            alpha = strength
-                        },
-                        if (smudge) StudioTheme.accent else Color(controller.brush.color),
-                    )
+                    if (lasso) LassoFillModes(controller)
+                    else
+                        BrushStrokePreview(
+                            controller.brush.preset.copy(
+                                size = controller.brush.size,
+                                opacity = strength,
+                            ),
+                            Modifier.fillMaxWidth().height(40.dp),
+                            if (smudge) StudioTheme.accent else Color(controller.brush.color),
+                        )
                 }
                 Column {
-                    LabeledSlider(
-                        "大小",
-                        controller.brush.size,
-                        1f..256f,
-                        "${controller.brush.size.roundToInt()} px",
-                        tint = Color(controller.brush.color),
-                        glyph = Glyph.BrushSize,
-                    ) {
-                        controller.brush = controller.brush.copy(size = it)
-                    }
+                    if (!lasso)
+                        LabeledSlider(
+                            "大小",
+                            controller.brush.size,
+                            1f..256f,
+                            "${controller.brush.size.roundToInt()} px",
+                            tint = Color(controller.brush.color),
+                            glyph = Glyph.BrushSize,
+                        ) {
+                            controller.brush =
+                                controller.brush.copy(
+                                    size =
+                                        if (
+                                            controller.brush.preset.raster ==
+                                                BrushRaster.Antialiased
+                                        )
+                                            it
+                                        else it.roundToInt().toFloat()
+                                )
+                        }
                     LabeledSlider(
                         if (smudge) "涂抹强度" else "不透明度",
                         strength,
@@ -131,19 +141,20 @@ fun BrushControls(controller: StudioController) {
                         if (smudge) controller.smudgeStrength = it
                         else controller.brush = controller.brush.copy(opacity = it)
                     }
-                    LabeledSlider(
-                        "稳笔",
-                        controller.brush.preset.stabilization,
-                        0f..1f,
-                        "${(controller.brush.preset.stabilization * 100).roundToInt()}%",
-                        tint = Color(controller.brush.color),
-                        glyph = Glyph.Stabilize,
-                    ) {
-                        controller.brush =
-                            controller.brush.copy(
-                                preset = controller.brush.preset.copy(stabilization = it)
-                            )
-                    }
+                    if (!lasso && controller.brush.preset.raster == BrushRaster.Antialiased)
+                        LabeledSlider(
+                            "稳笔",
+                            controller.brush.preset.stabilization,
+                            0f..1f,
+                            "${(controller.brush.preset.stabilization * 100).roundToInt()}%",
+                            tint = Color(controller.brush.color),
+                            glyph = Glyph.Stabilize,
+                        ) {
+                            controller.brush =
+                                controller.brush.copy(
+                                    preset = controller.brush.preset.copy(stabilization = it)
+                                )
+                        }
                 }
                 HorizontalDivider(color = StudioTheme.border.copy(alpha = 0.5f))
             }
@@ -243,7 +254,7 @@ fun BrushControls(controller: StudioController) {
                 BrushStrokePreview(
                     preset,
                     Modifier.fillMaxWidth().height(42.dp),
-                    if (selected) StudioTheme.accent else StudioTheme.muted,
+                    StudioTheme.text.copy(alpha = if (selected) 1f else 0.82f),
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -295,154 +306,32 @@ fun BrushStrokePreview(
     modifier: Modifier = Modifier,
     tint: Color = StudioTheme.accent,
 ) {
-    Box(
-        modifier.drawWithCache {
-            val inset = 8.dp.toPx()
-            val width = (size.width - inset * 2).coerceAtLeast(1f)
-            val thickness = (preset.size * 0.16f).coerceIn(1.5f, 12f).dp.toPx()
-            fun point(t: Float) =
-                Offset(inset + width * t, size.height * (0.5f - sin(t * 6.283f) * 0.2f))
-            val path =
-                Path().apply {
-                    val start = point(0f)
-                    moveTo(start.x, start.y)
-                    for (i in 1..48) {
-                        val p = point(i / 48f)
-                        lineTo(p.x, p.y)
-                    }
-                }
-            val stroke =
-                Stroke(
-                    thickness,
-                    cap =
-                        when (preset.tip) {
-                            BrushTip.Flat, BrushTip.Comb -> StrokeCap.Butt
-                            else -> StrokeCap.Round
-                        },
-                    pathEffect =
-                        if (preset.spacing >= 0.5f)
-                            PathEffect.dashPathEffect(
-                                if (preset.tip == BrushTip.Flat)
-                                    floatArrayOf(
-                                        thickness * preset.aspect,
-                                        thickness * preset.spacing,
-                                    )
-                                else floatArrayOf(0.1f, thickness * 2.5f)
-                            )
-                        else null,
-                )
-            val leaf = preset.tip == BrushTip.Leaf
-            val ribbon =
-                if (leaf) {
-                    val steps = 48
-                    val pts = (0..steps).map { point(it / steps.toFloat()) }
-                    val half = thickness * (0.35f + 0.65f * preset.aspect) * 0.5f
-                    fun halfWidth(t: Float) =
-                        (half * sin(t * 3.14159f).coerceAtLeast(0.08f)).coerceAtLeast(0.5f)
-                    val top = mutableListOf<Offset>()
-                    val bottom = mutableListOf<Offset>()
-                    for (i in pts.indices) {
-                        val a = pts[(i - 1).coerceAtLeast(0)]
-                        val b = pts[(i + 1).coerceAtMost(steps)]
-                        val dx = b.x - a.x
-                        val dy = b.y - a.y
-                        val len = sqrt(dx * dx + dy * dy).coerceAtLeast(0.001f)
-                        val w = halfWidth(i / steps.toFloat())
-                        top.add(Offset(pts[i].x - dy / len * w, pts[i].y + dx / len * w))
-                        bottom.add(Offset(pts[i].x + dy / len * w, pts[i].y - dx / len * w))
-                    }
-                    Path().apply {
-                        moveTo(top.first().x, top.first().y)
-                        top.drop(1).forEach { lineTo(it.x, it.y) }
-                        bottom.reversed().forEach { lineTo(it.x, it.y) }
-                        close()
-                    }
-                } else {
-                    null
-                }
-            val combLines =
-                if (preset.tip == BrushTip.Comb) {
-                    listOf(-1.6f, -0.55f, 0.55f, 1.6f).map { shift ->
-                        Path().apply {
-                            for (i in 0..48) {
-                                val base = point(i / 48f)
-                                val p = Offset(base.x, base.y + shift * thickness)
-                                if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
-                            }
-                        }
-                    }
-                } else {
-                    emptyList()
-                }
-            val random = Random(17)
-            val grain =
-                List((preset.grain * 100).toInt()) {
-                    val p = point(random.nextFloat())
-                    Offset(p.x, p.y + (random.nextFloat() - 0.5f) * thickness)
-                }
-            val paperDots =
-                List((preset.paper * 110).toInt()) {
-                    val p = point(random.nextFloat())
-                    Offset(
-                        p.x + (random.nextFloat() - 0.5f) * thickness * 1.8f,
-                        p.y + (random.nextFloat() - 0.5f) * thickness * 1.8f,
-                    )
-                }
-            val swipe =
-                if (preset.mix > 0f) {
-                    val a = point(0.4f)
-                    val c = point(0.52f)
-                    val b = point(0.64f)
-                    Path().apply {
-                        moveTo(a.x, a.y - thickness * 1.6f)
-                        quadraticTo(c.x, c.y, b.x, b.y + thickness * 1.6f)
-                    }
-                } else {
-                    null
-                }
-            val alpha = 0.4f + preset.opacity * 0.5f
-            onDrawBehind {
-                if (!leaf && preset.hardness < 0.5f) {
-                    drawPath(
-                        path,
-                        tint.copy(alpha = 0.07f),
-                        style = Stroke(thickness * 1.7f, cap = StrokeCap.Round),
-                    )
-                    drawPath(
-                        path,
-                        tint.copy(alpha = 0.13f),
-                        style = Stroke(thickness * 1.3f, cap = StrokeCap.Round),
-                    )
-                }
-                when {
-                    ribbon != null -> drawPath(ribbon, tint.copy(alpha = alpha))
-                    combLines.isNotEmpty() ->
-                        combLines.forEach { line ->
-                            drawPath(line, tint.copy(alpha = alpha), style = stroke)
-                        }
-                    else -> drawPath(path, tint.copy(alpha = alpha), style = stroke)
-                }
-                grain.forEach {
-                    drawCircle(StudioTheme.panel.copy(alpha = 0.65f), 0.65.dp.toPx(), it)
-                }
-                paperDots.forEach {
-                    drawCircle(StudioTheme.panel.copy(alpha = 0.8f), 0.8.dp.toPx(), it)
-                }
-                swipe?.let {
-                    drawPath(
-                        it,
-                        tint.copy(alpha = 0.4f),
-                        style = Stroke(thickness * 0.85f, cap = StrokeCap.Round),
-                    )
-                }
-            }
+    val image by
+        produceState<ImageBitmap?>(null, preset) {
+            delay(StudioDefaults.brushPreviewDebounceMillis)
+            value = BrushPreviewCache.get(preset)
         }
-    )
+    Box(modifier, contentAlignment = Alignment.Center) {
+        image?.let {
+            Image(
+                it,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit,
+                colorFilter = ColorFilter.tint(tint),
+                filterQuality =
+                    if (preset.raster == BrushRaster.Antialiased) FilterQuality.Low
+                    else FilterQuality.None,
+            )
+        }
+    }
 }
 
 @Composable
 private fun BrushEditor(controller: StudioController, onDismiss: () -> Unit) {
     var pressure by remember { mutableStateOf(false) }
+    var materials by remember { mutableStateOf(false) }
+    var rasterModes by remember { mutableStateOf(false) }
     var saveCopy by remember { mutableStateOf(false) }
     var confirmingDelete by remember { mutableStateOf(false) }
     val custom = controller.preferences.brushes.any { it.id == controller.brush.preset.id }
@@ -469,6 +358,11 @@ private fun BrushEditor(controller: StudioController, onDismiss: () -> Unit) {
                 Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                BrushStrokePreview(
+                    preset.copy(size = controller.brush.size, opacity = controller.brush.opacity),
+                    Modifier.fillMaxWidth().height(StudioTheme.brushEditorPreviewHeight),
+                    Color(controller.brush.color),
+                )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(StudioTheme.brushLibraryGap),
@@ -512,88 +406,153 @@ private fun BrushEditor(controller: StudioController, onDismiss: () -> Unit) {
                         onChange = ::update,
                     )
                 } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        BrushTip.entries.forEach { tip ->
-                            FilterChip(
-                                preset.tip == tip,
-                                { update(preset.copy(tip = tip)) },
-                                label = {
-                                    Text(
-                                        tr(
-                                            when (tip) {
-                                                BrushTip.Round -> "圆形"
-                                                BrushTip.Flat -> "扁平"
-                                                BrushTip.Leaf -> "柳叶"
-                                                BrushTip.Comb -> "排齿"
-                                            }
-                                        )
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(tr("笔触"), Modifier.weight(1f), fontSize = 13.sp)
+                        Box {
+                            TextButton(onClick = { rasterModes = !rasterModes }) {
+                                Text(tr(preset.raster.label))
+                                Spacer(Modifier.width(8.dp))
+                                StudioIcon(Glyph.Chevron, modifier = Modifier.size(14.dp))
+                            }
+                            StudioDropdownMenu(rasterModes, { rasterModes = false }) {
+                                BrushRaster.entries.forEach { raster ->
+                                    DropdownMenuItem(
+                                        text = { Text(tr(raster.label)) },
+                                        trailingIcon = {
+                                            if (raster == preset.raster) StudioIcon(Glyph.Check)
+                                        },
+                                        onClick = {
+                                            update(preset.copy(raster = raster))
+                                            if (raster != BrushRaster.Antialiased)
+                                                controller.tool = Tool.Brush
+                                            rasterModes = false
+                                        },
                                     )
-                                },
-                            )
+                                }
+                            }
                         }
                     }
-                    LabeledSlider(
-                        "硬度",
-                        preset.hardness,
-                        0f..1f,
-                        "${(preset.hardness*100).roundToInt()}%",
-                    ) {
-                        update(preset.copy(hardness = it))
-                    }
-                    LabeledSlider(
-                        "笔尖比例",
-                        preset.aspect,
-                        0.1f..1f,
-                        "${(preset.aspect*100).roundToInt()}%",
-                    ) {
-                        update(preset.copy(aspect = it))
-                    }
-                    LabeledSlider(
-                        "角度",
-                        preset.angle,
-                        -180f..180f,
-                        "${preset.angle.roundToInt()}°",
-                    ) {
-                        update(preset.copy(angle = it))
-                    }
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(tr("跟随笔画方向"), Modifier.weight(1f), fontSize = 13.sp)
-                        Switch(
-                            preset.followDirection,
-                            { update(preset.copy(followDirection = it)) },
+                    if (preset.raster == BrushRaster.Antialiased) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(tr("材质"), Modifier.weight(1f), fontSize = 13.sp)
+                            Box {
+                                TextButton(onClick = { materials = !materials }) {
+                                    Text(tr(preset.texture.label))
+                                    Spacer(Modifier.width(8.dp))
+                                    StudioIcon(Glyph.Chevron, modifier = Modifier.size(14.dp))
+                                }
+                                StudioDropdownMenu(materials, { materials = false }) {
+                                    BrushTexture.entries.forEach { texture ->
+                                        DropdownMenuItem(
+                                            text = { Text(tr(texture.label)) },
+                                            trailingIcon = {
+                                                if (texture == preset.texture)
+                                                    StudioIcon(Glyph.Check)
+                                            },
+                                            onClick = {
+                                                update(preset.copy(texture = texture))
+                                                materials = false
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            BrushTip.entries.forEach { tip ->
+                                FilterChip(
+                                    preset.tip == tip,
+                                    { update(preset.copy(tip = tip)) },
+                                    label = {
+                                        Text(
+                                            tr(
+                                                when (tip) {
+                                                    BrushTip.Round -> "圆形"
+                                                    BrushTip.Flat -> "扁平"
+                                                    BrushTip.Leaf -> "柳叶"
+                                                    BrushTip.Comb -> "排齿"
+                                                }
+                                            )
+                                        )
+                                    },
+                                )
+                            }
+                        }
+                        LabeledSlider(
+                            "硬度",
+                            preset.hardness,
+                            0f..1f,
+                            "${(preset.hardness*100).roundToInt()}%",
+                        ) {
+                            update(preset.copy(hardness = it))
+                        }
+                        LabeledSlider(
+                            "笔尖比例",
+                            preset.aspect,
+                            0.1f..1f,
+                            "${(preset.aspect*100).roundToInt()}%",
+                        ) {
+                            update(preset.copy(aspect = it))
+                        }
+                        LabeledSlider(
+                            "角度",
+                            preset.angle,
+                            -180f..180f,
+                            "${preset.angle.roundToInt()}°",
+                        ) {
+                            update(preset.copy(angle = it))
+                        }
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(tr("跟随笔画方向"), Modifier.weight(1f), fontSize = 13.sp)
+                            Switch(
+                                preset.followDirection,
+                                { update(preset.copy(followDirection = it)) },
+                            )
+                        }
+                        LabeledSlider(
+                            "颗粒",
+                            preset.grain,
+                            0f..1f,
+                            "${(preset.grain*100).roundToInt()}%",
+                        ) {
+                            update(preset.copy(grain = it))
+                        }
+                        LabeledSlider(
+                            "纸纹",
+                            preset.paper,
+                            0f..1f,
+                            "${(preset.paper*100).roundToInt()}%",
+                        ) {
+                            update(preset.copy(paper = it))
+                        }
+                        LabeledSlider(
+                            "调色混合",
+                            preset.mix,
+                            0f..1f,
+                            "${(preset.mix*100).roundToInt()}%",
+                        ) {
+                            update(preset.copy(mix = it))
+                        }
+                        LabeledSlider(
+                            "间距",
+                            preset.spacing,
+                            0.02f..1f,
+                            "${(preset.spacing*100).roundToInt()}%",
+                        ) {
+                            update(preset.copy(spacing = it))
+                        }
+                    } else if (preset.raster == BrushRaster.PixelPerfect) {
+                        Text(
+                            tr("1 px 笔径使用像素完美线条"),
+                            color = StudioTheme.muted,
+                            fontSize = StudioTheme.brushLibraryCaptionSize,
                         )
-                    }
-                    LabeledSlider(
-                        "颗粒",
-                        preset.grain,
-                        0f..1f,
-                        "${(preset.grain*100).roundToInt()}%",
-                    ) {
-                        update(preset.copy(grain = it))
-                    }
-                    LabeledSlider(
-                        "纸纹",
-                        preset.paper,
-                        0f..1f,
-                        "${(preset.paper*100).roundToInt()}%",
-                    ) {
-                        update(preset.copy(paper = it))
-                    }
-                    LabeledSlider(
-                        "调色混合",
-                        preset.mix,
-                        0f..1f,
-                        "${(preset.mix*100).roundToInt()}%",
-                    ) {
-                        update(preset.copy(mix = it))
-                    }
-                    LabeledSlider(
-                        "间距",
-                        preset.spacing,
-                        0.02f..1f,
-                        "${(preset.spacing*100).roundToInt()}%",
-                    ) {
-                        update(preset.copy(spacing = it))
                     }
                 }
             }

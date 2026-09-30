@@ -2,7 +2,12 @@ use podor_engine::{model::*, Command, Engine};
 
 fn stamp(brush: Brush) -> Engine {
     let mut engine = Engine::new(128, 128).unwrap();
-    engine.command(Command::Begin { brush }).unwrap();
+    engine
+        .command(Command::Begin {
+            brush,
+            assistant: None,
+        })
+        .unwrap();
     engine
         .samples(&[Sample {
             x: 64.0,
@@ -15,7 +20,7 @@ fn stamp(brush: Brush) -> Engine {
 }
 
 fn alpha(engine: &Engine, x: u32, y: u32) -> u8 {
-    engine.document.layers[0].tiles[&(0, 0)][((y * 128 + x) * 4 + 3) as usize]
+    engine.document.layers[0].raster().unwrap().tiles()[&(0, 0)][((y * 128 + x) * 4 + 3) as usize]
 }
 
 #[test]
@@ -78,7 +83,12 @@ fn invalid_brush_extension_cannot_start_a_stroke() {
         },
     ] {
         let mut engine = Engine::new(128, 128).unwrap();
-        assert!(engine.command(Command::Begin { brush }).is_err());
+        assert!(engine
+            .command(Command::Begin {
+                brush,
+                assistant: None
+            })
+            .is_err());
         assert_eq!(engine.document.tile_count(), 0);
     }
 }
@@ -121,6 +131,58 @@ fn leaf_tip_runs_along_the_stroke_and_tapers_to_points() {
 }
 
 #[test]
+fn leaf_flick_length_follows_the_final_pressure_and_pressure_response() {
+    let brush = Brush {
+        size: 40.0,
+        hardness: 1.0,
+        tip: BrushTip::Leaf,
+        aspect: 0.42,
+        spacing: 0.06,
+        follow_direction: true,
+        ..Brush::default()
+    };
+    for pressure in [0.05, 0.12, 0.25] {
+        let samples = [
+            Sample {
+                x: 20.0,
+                y: 64.0,
+                pressure,
+            },
+            Sample {
+                x: 80.0,
+                y: 64.0,
+                pressure,
+            },
+        ];
+        let engine = stroke(brush, &samples, 1);
+        let edge = 80 + (brush.size * pressure * 0.95).ceil() as u32 + 2;
+        assert!(alpha(&engine, 80, 64) > 0);
+        assert_eq!(alpha(&engine, edge, 64), 0, "pressure {pressure}");
+        assert_eq!(alpha(&engine, 106, 64), 0);
+    }
+    let fixed = stroke(
+        Brush {
+            size_pressure: 0.0,
+            ..brush
+        },
+        &[
+            Sample {
+                x: 20.0,
+                y: 64.0,
+                pressure: 0.05,
+            },
+            Sample {
+                x: 80.0,
+                y: 64.0,
+                pressure: 0.05,
+            },
+        ],
+        2,
+    );
+    assert!(alpha(&fixed, 106, 64) > 0);
+}
+
+#[test]
 fn hesitant_heads_stay_round_until_the_direction_settles() {
     let brush = Brush {
         size: 40.0,
@@ -132,7 +194,12 @@ fn hesitant_heads_stay_round_until_the_direction_settles() {
         ..Brush::default()
     };
     let mut engine = Engine::new(128, 128).unwrap();
-    engine.command(Command::Begin { brush }).unwrap();
+    engine
+        .command(Command::Begin {
+            brush,
+            assistant: None,
+        })
+        .unwrap();
     engine
         .samples(&[point(64.0, 20.0), point(65.4, 20.8), point(70.0, 40.0)])
         .unwrap();
@@ -221,7 +288,12 @@ fn paper_texture_is_repeatable_and_ties_dabs_to_the_canvas() {
     let mut tiled = Engine::new(128, 128).unwrap();
     let mut repeated = Engine::new(128, 128).unwrap();
     for engine in [&mut tiled, &mut repeated] {
-        engine.command(Command::Begin { brush: small }).unwrap();
+        engine
+            .command(Command::Begin {
+                brush: small,
+                assistant: None,
+            })
+            .unwrap();
     }
     tiled.samples(&[point(16.0, 64.0)]).unwrap();
     repeated.samples(&[point(112.0, 64.0)]).unwrap();
@@ -241,7 +313,12 @@ fn paper_texture_is_repeatable_and_ties_dabs_to_the_canvas() {
 
 fn stroke(brush: Brush, points: &[Sample], batch: usize) -> Engine {
     let mut engine = Engine::new(128, 128).unwrap();
-    engine.command(Command::Begin { brush }).unwrap();
+    engine
+        .command(Command::Begin {
+            brush,
+            assistant: None,
+        })
+        .unwrap();
     for points in points.chunks(batch) {
         engine.samples(points).unwrap();
     }
@@ -338,7 +415,12 @@ fn directional_nib_keeps_dots_batching_history_and_cancel_consistent() {
     assert_eq!(whole.document.tile_count(), 0);
     whole.command(Command::Redo).unwrap();
     assert_eq!(saved, whole.save().unwrap());
-    whole.command(Command::Begin { brush }).unwrap();
+    whole
+        .command(Command::Begin {
+            brush,
+            assistant: None,
+        })
+        .unwrap();
     whole
         .samples(&[point(110.0, 20.0), point(110.0, 100.0)])
         .unwrap();

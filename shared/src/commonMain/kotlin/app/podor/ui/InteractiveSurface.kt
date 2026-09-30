@@ -152,6 +152,7 @@ fun ChoiceSurface(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -170,6 +171,7 @@ fun ChoiceSurface(
                 interaction,
                 indication = null,
                 role = Role.RadioButton,
+                enabled = enabled,
                 onClick = onClick,
             )
             .controlFeedback(interaction, shape)

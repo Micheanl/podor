@@ -12,12 +12,29 @@ pub fn paint_preserving_alpha(pixel: &mut [u8], color: [u8; 3], opacity: u32) {
 }
 
 pub fn composite(dst: &mut [u8], src: &[u8], opacity: u32, mode: BlendMode, opaque: bool) {
+    composite_impl::<false>(dst, src, opacity, mode, opaque);
+}
+
+pub fn composite_preserving_alpha(dst: &mut [u8], src: &[u8], opacity: u32, mode: BlendMode) {
+    composite_impl::<true>(dst, src, opacity, mode, false);
+}
+
+fn composite_impl<const KEEP_ALPHA: bool>(
+    dst: &mut [u8],
+    src: &[u8],
+    opacity: u32,
+    mode: BlendMode,
+    opaque: bool,
+) {
     match mode {
+        BlendMode::Normal if KEEP_ALPHA => normal_preserving_alpha(dst, src, opacity),
         BlendMode::Normal if opaque => normal::<true>(dst, src, opacity),
         BlendMode::Normal => normal::<false>(dst, src, opacity),
-        BlendMode::Multiply => blend(dst, src, opacity, |b, s| (b * s + 127) / 255),
-        BlendMode::Screen => blend(dst, src, opacity, |b, s| b + s - (b * s + 127) / 255),
-        BlendMode::Overlay => blend(dst, src, opacity, |b, s| {
+        BlendMode::Multiply => blend::<KEEP_ALPHA>(dst, src, opacity, |b, s| (b * s + 127) / 255),
+        BlendMode::Screen => {
+            blend::<KEEP_ALPHA>(dst, src, opacity, |b, s| b + s - (b * s + 127) / 255)
+        }
+        BlendMode::Overlay => blend::<KEEP_ALPHA>(dst, src, opacity, |b, s| {
             if b < 128 {
                 (2 * b * s + 127) / 255
             } else {
@@ -47,13 +64,13 @@ pub fn composite(dst: &mut [u8], src: &[u8], opacity: u32, mode: BlendMode, opaq
                 }
                 table
             });
-            blend(dst, src, opacity, |b, s| {
+            blend::<KEEP_ALPHA>(dst, src, opacity, |b, s| {
                 u32::from(table[b as usize][s as usize])
             });
         }
-        BlendMode::Darken => blend(dst, src, opacity, u32::min),
-        BlendMode::Lighten => blend(dst, src, opacity, u32::max),
-        BlendMode::Difference => blend(dst, src, opacity, u32::abs_diff),
+        BlendMode::Darken => blend::<KEEP_ALPHA>(dst, src, opacity, u32::min),
+        BlendMode::Lighten => blend::<KEEP_ALPHA>(dst, src, opacity, u32::max),
+        BlendMode::Difference => blend::<KEEP_ALPHA>(dst, src, opacity, u32::abs_diff),
     }
 }
 
@@ -78,7 +95,31 @@ fn normal<const OPAQUE: bool>(target: &mut [u8], source: &[u8], opacity: u32) {
     }
 }
 
-fn blend(target: &mut [u8], source: &[u8], opacity: u32, channel: impl Fn(u32, u32) -> u32) {
+fn normal_preserving_alpha(target: &mut [u8], source: &[u8], opacity: u32) {
+    for (dst, src) in target
+        .as_chunks_mut::<4>()
+        .0
+        .iter_mut()
+        .zip(source.as_chunks::<4>().0)
+    {
+        let alpha = (u32::from(src[3]) * opacity + 127) / 255;
+        let base_alpha = u32::from(dst[3]);
+        for c in 0..3 {
+            dst[c] = ((u32::from(src[c]) * opacity * base_alpha
+                + u32::from(dst[c]) * (255 - alpha) * 255
+                + 32_512)
+                / 65_025)
+                .min(base_alpha) as u8;
+        }
+    }
+}
+
+fn blend<const KEEP_ALPHA: bool>(
+    target: &mut [u8],
+    source: &[u8],
+    opacity: u32,
+    channel: impl Fn(u32, u32) -> u32,
+) {
     for (dst, src) in target
         .as_chunks_mut::<4>()
         .0
@@ -91,6 +132,9 @@ fn blend(target: &mut [u8], source: &[u8], opacity: u32, channel: impl Fn(u32, u
             continue;
         }
         let back_alpha = u32::from(dst[3]);
+        if KEEP_ALPHA && back_alpha == 0 {
+            continue;
+        }
         if source_alpha == 255 && back_alpha == 255 {
             if alpha == 255 {
                 for c in 0..3 {
@@ -105,7 +149,11 @@ fn blend(target: &mut [u8], source: &[u8], opacity: u32, channel: impl Fn(u32, u
             }
             continue;
         }
-        let result_alpha = alpha + (back_alpha * (255 - alpha) + 127) / 255;
+        let result_alpha = if KEEP_ALPHA {
+            back_alpha
+        } else {
+            alpha + (back_alpha * (255 - alpha) + 127) / 255
+        };
         for c in 0..3 {
             let back = u32::from(dst[c]);
             let front = u32::from(src[c]).min(source_alpha);
@@ -118,8 +166,11 @@ fn blend(target: &mut [u8], source: &[u8], opacity: u32, channel: impl Fn(u32, u
                     )
                 })
                 .unwrap_or(0);
-            dst[c] = ((front * opacity * (255 - back_alpha)
-                + back * (255 - alpha) * 255
+            dst[c] = ((if KEEP_ALPHA {
+                0
+            } else {
+                front * opacity * (255 - back_alpha)
+            } + back * (255 - alpha) * 255
                 + alpha * back_alpha * overlap
                 + 32512)
                 / 65025)

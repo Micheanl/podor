@@ -7,6 +7,7 @@ import org.jetbrains.skia.Paint
 import org.jetbrains.skia.Rect
 import org.jetbrains.skia.RuntimeEffect
 import org.jetbrains.skia.RuntimeShaderBuilder
+import org.jetbrains.skia.impl.use
 
 internal actual fun createLaunchSwirlRenderer(): LaunchSwirlRenderer? = SkiaLaunchSwirlRenderer()
 

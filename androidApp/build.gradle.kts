@@ -6,6 +6,8 @@ plugins {
 android {
     namespace = "app.podor.android"
     compileSdk = libs.versions.compileSdk.get().toInt()
+    buildToolsVersion = "37.0.0"
+    ndkVersion = "30.0.16248370"
     defaultConfig {
         applicationId = "app.podor"
         minSdk = libs.versions.minSdk.get().toInt()

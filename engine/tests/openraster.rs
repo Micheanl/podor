@@ -1,5 +1,6 @@
 use podor_engine::{model::*, Command, Engine, ExportFormat, ExportOptions};
 use std::io::{Cursor, Read};
+use std::{collections::BTreeMap, sync::Arc};
 use zip::{CompressionMethod, ZipArchive};
 
 fn export(engine: &Engine) -> ZipArchive<Cursor<Vec<u8>>> {
@@ -32,9 +33,87 @@ fn png(bytes: &[u8]) -> (u32, u32, Vec<u8>) {
     (info.width, info.height, pixels)
 }
 
+#[test]
+fn indexed_layer_pngs_keep_straight_palette_colors_and_rgba_import_keeps_the_visual() {
+    let colors = vec![
+        [0, 0, 0, 0],
+        [7, 150, 233, 1],
+        [40, 200, 80, 128],
+        [250, 30, 40, 255],
+    ];
+    let mut engine = Engine::new(129, 2).unwrap();
+    engine.document.palette = Some(IndexedPalette {
+        colors: colors.clone(),
+        transparent: 0,
+        order: vec![0, 1, 2, 3],
+    });
+    let mut first = vec![0; INDEX_TILE_BYTES];
+    first[0] = 1;
+    first[1] = 3;
+    let mut last = vec![0; INDEX_TILE_BYTES];
+    last[0] = 2;
+    engine.document.layers[0].content =
+        podor_engine::model::LayerContent::Raster(RasterPlane::Indexed(BTreeMap::from([
+            ((0, 0), Arc::new(first)),
+            ((1, 0), Arc::new(last)),
+        ])));
+    let mut upper = Layer::new(2, "Indexed upper".into());
+    let mut pixels = vec![0; INDEX_TILE_BYTES];
+    pixels[TILE_SIZE as usize] = 3;
+    upper.content = podor_engine::model::LayerContent::Raster(RasterPlane::Indexed(
+        BTreeMap::from([((0, 0), Arc::new(pixels))]),
+    ));
+    upper.visible = false;
+    engine.document.layers.push(upper);
+    engine.document.next_id = 3;
+    engine.document.validate().unwrap();
+    let before = engine.save().unwrap();
+    let state = engine.state();
+    let encoded = engine
+        .export_image(ExportOptions {
+            format: ExportFormat::Ora,
+            ..Default::default()
+        })
+        .unwrap();
+    let mut archive = ZipArchive::new(Cursor::new(encoded.clone())).unwrap();
+    let (width, height, lower) = png(&read(&mut archive, "data/layer-1.png"));
+    assert_eq!((width, height), (129, 2));
+    assert_eq!(&lower[..4], &colors[1]);
+    assert_eq!(&lower[4..8], &colors[3]);
+    assert_eq!(&lower[128 * 4..129 * 4], &colors[2]);
+    let (_, _, upper) = png(&read(&mut archive, "data/layer-2.png"));
+    assert_eq!(&upper[128 * 4..129 * 4], &colors[3]);
+    let transparent = ExportOptions {
+        transparent: true,
+        ..Default::default()
+    };
+    assert_eq!(
+        png(&read(&mut archive, "mergedimage.png")),
+        png(&engine.export_image(transparent).unwrap())
+    );
+    let mut reopened = Engine::new(1, 1).unwrap();
+    reopened.load(&encoded).unwrap();
+    assert!(reopened.document.palette.is_none());
+    assert_eq!(reopened.document.layers.len(), 2);
+    for x in [0, 1, 128] {
+        let expected = engine.document.layers[0]
+            .rgba_tile(engine.document.palette.as_ref(), (x / TILE_SIZE, 0))
+            .unwrap();
+        let actual = reopened.document.layers[0]
+            .rgba_tile(None, (x / TILE_SIZE, 0))
+            .unwrap();
+        let offset = (x % TILE_SIZE * 4) as usize;
+        assert_eq!(&expected[offset..offset + 4], &actual[offset..offset + 4]);
+    }
+    assert_eq!(before, engine.save().unwrap());
+    assert_eq!(state, engine.state());
+}
+
 fn fill(engine: &mut Engine, color: [u8; 4]) {
     engine
         .command(Command::Fill {
+            contiguous: true,
+            merged: false,
             x: 0,
             y: 0,
             color,
@@ -137,6 +216,7 @@ fn cropped_layer_keeps_offsets_partial_tiles_and_transparent_gaps() {
                 hardness: 1.0,
                 ..Brush::default()
             },
+            assistant: None,
         })
         .unwrap();
     engine
@@ -154,6 +234,7 @@ fn cropped_layer_keeps_offsets_partial_tiles_and_transparent_gaps() {
                 hardness: 1.0,
                 ..Brush::default()
             },
+            assistant: None,
         })
         .unwrap();
     engine
