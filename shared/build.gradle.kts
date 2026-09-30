@@ -41,6 +41,9 @@ kotlin {
         namespace = "app.podor.shared"
         compileSdk = libs.versions.compileSdk.get().toInt()
         minSdk = libs.versions.minSdk.get().toInt()
+        androidResources {
+            enable = true
+        }
     }
     if (System.getProperty("os.name").contains("Mac")) {
         listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
