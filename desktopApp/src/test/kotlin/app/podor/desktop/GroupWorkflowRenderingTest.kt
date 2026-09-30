@@ -3,11 +3,12 @@ package app.podor.desktop
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.semantics.*
@@ -31,7 +32,6 @@ import kotlinx.serialization.json.*
 
 @OptIn(ExperimentalComposeUiApi::class)
 class GroupWorkflowRenderingTest {
-    private val canvasSize = Size(640f, 760f)
 
     private data class Exported(val bytes: ByteArray, val format: ExportFormat)
 
@@ -136,6 +136,19 @@ class GroupWorkflowRenderingTest {
         private val remoteKey = (2L shl 32) or 1L
 
         fun render() = scene.render(frame++ * 16_666_667L)
+
+        val canvasSize
+            get() = canvasBounds().size
+
+        fun canvasBounds(): Rect =
+            nodes()
+                .filter {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace" &&
+                        it.boundsInWindow.width > 100f &&
+                        it.boundsInWindow.height > 100f
+                }
+                .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+                .boundsInWindow
 
         suspend fun waitFor(allowError: Boolean = false, predicate: () -> Boolean) =
             withTimeout(15_000) {
@@ -309,8 +322,8 @@ class GroupWorkflowRenderingTest {
                             points[i],
                             canvasSize,
                             controller.document,
-                        )
-                    source[(point.y.toInt() + 64) * image.width + point.x.toInt()]
+                        ) + canvasBounds().topLeft
+                    source[point.y.toInt() * image.width + point.x.toInt()]
                 }
             }
 
@@ -322,7 +335,8 @@ class GroupWorkflowRenderingTest {
             }
             val revision = controller.document.revision
             fun view(point: Offset) =
-                controller.viewport.toView(point, canvasSize, controller.document) + Offset(0f, 64f)
+                controller.viewport.toView(point, canvasSize, controller.document) +
+                    canvasBounds().topLeft
             pointer(PointerEventType.Press, view(from))
             pointer(PointerEventType.Move, view(to))
             pointer(PointerEventType.Release, view(to))
@@ -449,7 +463,16 @@ class GroupWorkflowRenderingTest {
                                 onDialog = { dialog = it },
                             )
                             Row(Modifier.weight(1f)) {
-                                CanvasWorkspace(controller, Modifier.weight(1f).fillMaxHeight())
+                                Box(Modifier.weight(1f).fillMaxHeight()) {
+                                    CanvasWorkspace(controller, Modifier.fillMaxSize())
+                                    if (controller.adjustmentPreview != null)
+                                        AdjustmentDock(
+                                            controller,
+                                            Modifier.align(Alignment.BottomCenter)
+                                                .padding(StudioTheme.workspacePadding),
+                                            floating = true,
+                                        )
+                                }
                                 Surface(
                                     Modifier.width(360.dp).fillMaxHeight(),
                                     color = StudioTheme.panel,
@@ -617,7 +640,7 @@ class GroupWorkflowRenderingTest {
                         Offset(40.5f, 40.5f),
                         canvasSize,
                         controller.document,
-                    ) + Offset(0f, 64f)
+                    ) + canvasBounds().topLeft
                 pointer(PointerEventType.Press, point)
                 pointer(PointerEventType.Release, point)
                 pointer(PointerEventType.Move, Offset.Zero)

@@ -1,17 +1,10 @@
 package app.podor.ui
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -72,97 +65,90 @@ fun LayerTransformHandles(
 }
 
 @Composable
-fun LayerTransformDock(controller: StudioController, modifier: Modifier = Modifier) {
+fun LayerTransformDock(
+    controller: StudioController,
+    modifier: Modifier = Modifier,
+    floating: Boolean = false,
+) {
     val preview = controller.layerMove
     val value = preview?.transform
     val source = preview?.sourceBounds
     val active = controller.document.layers.firstOrNull { it.id == controller.document.active }
     val enabled = value != null && !controller.busy && !preview.committing
-    Row(
-        modifier
-            .widthIn(max = StudioTheme.transformDockWidth)
-            .fillMaxWidth()
-            .padding(horizontal = StudioTheme.transformDockPadding)
-            .clip(CircleShape)
-            .background(StudioTheme.panel)
-            .border(StudioTheme.moveDockBorderWidth, StudioTheme.border, CircleShape)
-            .padding(StudioTheme.transformDockGap),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            Modifier.weight(1f).horizontalScroll(rememberScrollState()),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(StudioTheme.transformDockGap),
-        ) {
-            if (value == null)
-                Text(
-                    tr(
-                        when {
-                            active?.locked == true -> "图层已锁定，请先解锁"
-                            active?.alphaLocked == true -> "请先解除透明度锁定"
-                            active?.visible == false -> "请先显示当前图层"
-                            controller.document.selection != null -> "请先取消选区，再变换图层"
-                            else -> "准备图层…"
-                        }
-                    ),
-                    fontSize = StudioTheme.moveDockTitleSize,
-                )
-            else {
-                Text(
-                    "${value.width} × ${value.height} · ${value.angle.roundToInt()}°",
-                    Modifier.padding(horizontal = StudioTheme.transformDockPadding),
-                    fontSize = StudioTheme.moveDockValueSize,
-                    color = StudioTheme.muted,
-                )
-                ToolButton(Glyph.Lock, "锁定比例", selected = preview.proportional, enabled = enabled) {
-                    preview.proportional = !preview.proportional
-                }
-                ToolButton(Glyph.Mirror, "水平翻转图层", enabled = enabled) {
-                    controller.previewLayerTransform(value.copy(flipX = !value.flipX))
-                }
-                ToolButton(Glyph.MirrorVertical, "垂直翻转图层", enabled = enabled) {
-                    controller.previewLayerTransform(value.copy(flipY = !value.flipY))
-                }
-                ToolButton(Glyph.Rotate, "顺时针旋转 90°", enabled = enabled) {
-                    controller.previewLayerTransform(
-                        value.copy(angle = normalizeTransformAngle(value.angle + 90f))
-                    )
-                }
-                ToolButton(
-                    Glyph.Selection,
-                    "像素采样",
-                    selected = value.filter == ResampleFilter.Nearest,
-                    enabled =
-                        enabled &&
-                            (controller.document.colorMode != DocumentColorMode.Indexed ||
-                                controller.document.maskEditing),
-                ) {
-                    controller.previewLayerTransform(
-                        value.copy(
-                            filter =
-                                if (value.filter == ResampleFilter.Nearest) ResampleFilter.Lanczos3
-                                else ResampleFilter.Nearest
-                        )
-                    )
-                }
-                ToolButton(Glyph.Undo, "重置变换", enabled = enabled) {
-                    if (source != null)
-                        controller.previewLayerTransform(
-                            LayerTransform(
-                                source.width.toInt(),
-                                source.height.toInt(),
-                                filter = value.filter,
-                            )
-                        )
-                }
+    ContextActionRow(
+        modifier,
+        floating,
+        trailing = {
+            ToolButton(Glyph.Close, "取消变换", enabled = preview?.committing != true) {
+                controller.cancelLayerMove(exit = true)
+                controller.tool = Tool.Brush
             }
-        }
-        ToolButton(Glyph.Close, "取消变换", enabled = preview?.committing != true) {
-            controller.cancelLayerMove(exit = true)
-            controller.tool = Tool.Brush
-        }
-        ToolButton(Glyph.Check, "确认变换", prominent = true, enabled = enabled) {
-            controller.commitLayerTransform()
+            ToolButton(Glyph.Check, "确认变换", prominent = true, enabled = enabled) {
+                controller.commitLayerTransform()
+            }
+        },
+    ) {
+        if (value == null)
+            Text(
+                tr(
+                    when {
+                        active?.locked == true -> "图层已锁定，请先解锁"
+                        active?.alphaLocked == true -> "请先解除透明度锁定"
+                        active?.visible == false -> "请先显示当前图层"
+                        controller.document.selection != null -> "请先取消选区，再变换图层"
+                        else -> "准备图层…"
+                    }
+                ),
+                fontSize = StudioTheme.moveDockTitleSize,
+            )
+        else {
+            Text(
+                "${value.width} × ${value.height} · ${value.angle.roundToInt()}°",
+                if (floating) Modifier else Modifier.fillMaxWidth(),
+                fontSize = StudioTheme.moveDockValueSize,
+                color = StudioTheme.muted,
+            )
+            ToolButton(Glyph.Lock, "锁定比例", selected = preview.proportional, enabled = enabled) {
+                preview.proportional = !preview.proportional
+            }
+            ToolButton(Glyph.Mirror, "水平翻转图层", enabled = enabled) {
+                controller.previewLayerTransform(value.copy(flipX = !value.flipX))
+            }
+            ToolButton(Glyph.MirrorVertical, "垂直翻转图层", enabled = enabled) {
+                controller.previewLayerTransform(value.copy(flipY = !value.flipY))
+            }
+            ToolButton(Glyph.Rotate, "顺时针旋转 90°", enabled = enabled) {
+                controller.previewLayerTransform(
+                    value.copy(angle = normalizeTransformAngle(value.angle + 90f))
+                )
+            }
+            ToolButton(
+                Glyph.Selection,
+                "像素采样",
+                selected = value.filter == ResampleFilter.Nearest,
+                enabled =
+                    enabled &&
+                        (controller.document.colorMode != DocumentColorMode.Indexed ||
+                            controller.document.maskEditing),
+            ) {
+                controller.previewLayerTransform(
+                    value.copy(
+                        filter =
+                            if (value.filter == ResampleFilter.Nearest) ResampleFilter.Lanczos3
+                            else ResampleFilter.Nearest
+                    )
+                )
+            }
+            ToolButton(Glyph.Undo, "重置变换", enabled = enabled) {
+                if (source != null)
+                    controller.previewLayerTransform(
+                        LayerTransform(
+                            source.width.toInt(),
+                            source.height.toInt(),
+                            filter = value.filter,
+                        )
+                    )
+            }
         }
     }
 }

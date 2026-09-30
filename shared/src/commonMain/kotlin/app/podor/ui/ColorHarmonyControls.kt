@@ -3,7 +3,6 @@ package app.podor.ui
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,7 +23,7 @@ fun ColorHarmonyControls(color: Long, onColorChange: (Long) -> Unit) {
             ToolButton(Glyph.Palette, "色彩和谐", plain = true) { expanded = !expanded }
             StudioDropdownMenu(expanded, { expanded = false }) {
                 ColorHarmony.entries.forEach { option ->
-                    DropdownMenuItem(
+                    StudioDropdownMenuItem(
                         text = {
                             Text(
                                 tr(option.label),

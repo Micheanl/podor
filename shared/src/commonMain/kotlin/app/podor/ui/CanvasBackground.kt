@@ -73,7 +73,7 @@ fun CanvasBackgroundMenu(controller: StudioController) {
             { expanded = false },
         ) {
             CanvasBackground.entries.forEach { mode ->
-                DropdownMenuItem(
+                StudioDropdownMenuItem(
                     text = { Text(tr(mode.label)) },
                     leadingIcon = {
                         if (mode == CanvasBackground.Transparent) StudioIcon(Glyph.AlphaLock)

@@ -90,7 +90,7 @@ class StudioController(
     var adjustmentPreview by mutableStateOf<AdjustmentPreview?>(null)
         private set
 
-    private var preparingAdjustment = false
+    private var preparingAdjustment: Action.PrepareAdjustment? = null
 
     var vectorObjects by mutableStateOf<VectorObjects?>(null)
         private set
@@ -214,7 +214,12 @@ class StudioController(
     var tool: Tool
         get() = currentTool
         set(value) {
-            if (value != currentTool && previewPending()) return
+            if (
+                (value != currentTool ||
+                    preparingAdjustment != null ||
+                    adjustmentPreview != null) && previewPending()
+            )
+                return
             if (document.maskEditing && value == Tool.Smudge) {
                 error = "蒙版不支持涂抹笔"
                 return
@@ -1099,12 +1104,13 @@ class StudioController(
                         }
                     if (adjustment != null) {
                         val (preview, settings) = adjustment
-                        val bytes =
+                        val result = runCatching {
                             activeEngine.call(
                                 if (preview.nodeEditing) EngineOperation.PREVIEW_LAYER_ACTION
                                 else EngineOperation.ADJUSTMENT_PREVIEW,
                                 adjustmentRequest(preview, settings).toString().encodeToByteArray(),
                             )
+                        }
                         if (
                             !withContext(Dispatchers.Main) {
                                 adjustmentPreview === preview &&
@@ -1113,6 +1119,7 @@ class StudioController(
                             }
                         )
                             return
+                        val bytes = result.getOrThrow()
                         val size = bytes.intAt(8)
                         val count = bytes.intAt(12)
                         var offset = 16
@@ -1438,6 +1445,12 @@ class StudioController(
                                     }
                                 }
                                 is Action.PrepareAdjustment -> {
+                                    if (
+                                        !withContext(Dispatchers.Main) {
+                                            preparingAdjustment === action
+                                        }
+                                    )
+                                        continue
                                     finishDrawing()
                                     check(
                                         !info.maskEditing ||
@@ -1459,6 +1472,7 @@ class StudioController(
                                             )
                                         else emptyList()
                                     withContext(Dispatchers.Main) {
+                                        if (preparingAdjustment !== action) return@withContext
                                         check(
                                             !active.effectiveLocked ||
                                                 action.kind == AdjustmentKind.LayerBlend
@@ -2307,6 +2321,13 @@ class StudioController(
                         } catch (cancel: CancellationException) {
                             throw cancel
                         } catch (exception: Exception) {
+                            if (
+                                action is Action.PrepareAdjustment &&
+                                    !withContext(Dispatchers.Main) {
+                                        preparingAdjustment === action
+                                    }
+                            )
+                                continue
                             if (action is Action.Shutdown) action.finished.complete(false)
                             if (action !is Action.AsepriteExport) {
                                 pending.clear()
@@ -2319,7 +2340,6 @@ class StudioController(
                             withContext(Dispatchers.Main) {
                                 if (action is Action.PrepareAdjustment) {
                                     adjustmentPreview = null
-                                    currentTool = action.previousTool
                                 }
                                 if (action is Action.ApplyAdjustment)
                                     adjustmentPreview?.committing = false
@@ -2368,8 +2388,9 @@ class StudioController(
                                 if (action == Action.ExtractPalette) extractingPalette = false
                                 if (action is Action.PrepareLayerMove) preparingLayerMove = false
                                 if (action == Action.PrepareGradient) preparingGradient = false
-                                if (action is Action.PrepareAdjustment) preparingAdjustment = false
-                                busy = false
+                                if (action is Action.PrepareAdjustment) {
+                                    if (preparingAdjustment === action) preparingAdjustment = null
+                                } else busy = false
                             }
                         }
                     }
@@ -2490,7 +2511,13 @@ class StudioController(
     }
 
     fun command(type: String, values: JsonObjectBuilder.() -> Unit = {}) {
+        val leavingAdjustment = preparingAdjustment != null || adjustmentPreview != null
         if (previewPending()) return
+        if (
+            leavingAdjustment &&
+                ((type == "undo" && !document.canUndo) || (type == "redo" && !document.canRedo))
+        )
+            return
         if (ready && !busy) {
             val request =
                 jsonCommand(type, values).withAnimationTarget(document, includeRevision = false)
@@ -2515,9 +2542,9 @@ class StudioController(
             error = "请先确认或取消矢量编辑"
             return true
         }
-        if (preparingAdjustment || adjustmentPreview != null) {
-            error = "请先确认或取消调整"
-            return true
+        if (preparingAdjustment != null || adjustmentPreview != null) {
+            if (adjustmentPreview?.committing == true) return true
+            cancelAdjustment()
         }
         if (gradientPreview?.line != null) {
             error = "请先确认或取消渐变"
@@ -2547,6 +2574,8 @@ class StudioController(
     }
 
     fun prepareAdjustment(kind: AdjustmentKind) {
+        if (!ready || drawingInput || adjustmentPreview?.committing == true) return
+        cancelAdjustment()
         if (!ready || busy || previewPending()) return
         val active = document.layers.firstOrNull { it.id == document.active } ?: return
         val nodeEditing = active.kind == LayerKind.Adjustment && kind != AdjustmentKind.LayerBlend
@@ -2580,10 +2609,9 @@ class StudioController(
         val previousTool = tool
         cancelGradient()
         layerMove = null
-        preparingAdjustment = true
-        busy = true
-        currentTool = Tool.Hand
-        scope.launch { actions.send(Action.PrepareAdjustment(kind, previousTool)) }
+        val request = Action.PrepareAdjustment(kind, previousTool)
+        preparingAdjustment = request
+        scope.launch { actions.send(request) }
     }
 
     fun updateAdjustment(settings: AdjustmentSettings) {
@@ -2593,10 +2621,11 @@ class StudioController(
     }
 
     fun cancelAdjustment() {
-        val preview = adjustmentPreview ?: return
-        if (preview.committing) return
+        val preview = adjustmentPreview
+        if (preview?.committing == true) return
+        preparingAdjustment = null
         adjustmentPreview = null
-        currentTool = preview.previousTool
+        if (preview != null) currentTool = preview.previousTool
     }
 
     fun commitAdjustment() {
@@ -2857,6 +2886,8 @@ class StudioController(
     }
 
     suspend fun begin(point: Offset, pressure: Float, stylusEraser: Boolean = false) {
+        if (adjustmentPreview?.committing == true) return
+        cancelAdjustment()
         if (
             !ready ||
                 busy ||

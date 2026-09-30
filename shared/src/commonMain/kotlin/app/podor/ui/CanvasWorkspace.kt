@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -49,6 +50,7 @@ import app.podor.domain.transformHandle
 import app.podor.presentation.GradientPreview
 import app.podor.presentation.LayerMovePreview
 import app.podor.presentation.StudioController
+import app.podor.ui.input.platformCanvasPointer
 import app.podor.ui.input.platformPenInput
 import app.podor.ui.input.platformTouchInput
 import kotlin.math.pow
@@ -163,7 +165,9 @@ fun CanvasWorkspace(
         modifier
             .clipToBounds()
             .focusRequester(focus)
+            .testTag("canvas-workspace")
             .focusable()
+            .platformCanvasPointer()
             .onSizeChanged { fullSize = Size(it.width.toFloat(), it.height.toFloat()) }
             .pointerInput(controller) {
                 var drawing = false
@@ -477,7 +481,7 @@ fun CanvasWorkspace(
                             }
                         }
                         cursor =
-                            if ((mouse || pen != null) && event.type != PointerEventType.Exit)
+                            if (pen != null && event.type != PointerEventType.Exit)
                                 position
                             else null
                         if (event.type == PointerEventType.Scroll) {

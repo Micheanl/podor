@@ -4,7 +4,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.scene.ComposeScenePointer
@@ -30,7 +30,6 @@ import kotlinx.serialization.json.*
 
 @OptIn(ExperimentalComposeUiApi::class, InternalComposeUiApi::class)
 class VectorWorkflowRenderingTest {
-    private val view = Size(1282f, 1136f)
 
     private data class Exported(val format: ExportFormat, val bytes: ByteArray)
 
@@ -263,6 +262,19 @@ class VectorWorkflowRenderingTest {
 
         fun render() = scene.render(time++ * 16_666_667L)
 
+        val view
+            get() = canvasBounds().size
+
+        fun canvasBounds(): Rect =
+            nodes()
+                .filter {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace" &&
+                        it.boundsInWindow.width > 100f &&
+                        it.boundsInWindow.height > 100f
+                }
+                .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+                .boundsInWindow
+
         suspend fun waitFor(predicate: () -> Boolean) =
             withTimeout(15_000) {
                 while (true) {
@@ -347,7 +359,7 @@ class VectorWorkflowRenderingTest {
         }
 
         fun position(point: Offset) =
-            controller.viewport.toView(point, view, controller.document) + Offset(0f, 64f)
+            controller.viewport.toView(point, view, controller.document) + canvasBounds().topLeft
 
         suspend fun fit() =
             withContext(Dispatchers.Main) {

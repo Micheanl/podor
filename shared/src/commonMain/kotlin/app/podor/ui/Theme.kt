@@ -9,15 +9,24 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.podor.domain.Appearance
+import app.podor.domain.InterfaceDensity
 import app.podor.domain.Language
+import app.podor.domain.WorkspaceAppearance
 
 internal val LocalPaintColor = compositionLocalOf { Color.Black }
+internal val LocalWorkspaceAppearance = staticCompositionLocalOf { WorkspaceAppearance() }
+internal val LocalStudioBaseDensity = staticCompositionLocalOf<Density?> { null }
 
 object StudioTheme {
     var appearance by mutableStateOf(Appearance.Dark)
+        internal set
+
+    var interfaceDensity by mutableStateOf(InterfaceDensity.Standard)
         internal set
 
     private val light
@@ -39,10 +48,18 @@ object StudioTheme {
     val launchWordmarkSpacing = 5.sp
     val launchWordmarkGap = 20.dp
     val hairline = 0.75.dp
-    val buttonShape = RoundedCornerShape(50)
-    val cardShape = RoundedCornerShape(16.dp)
-    val menuShape = RoundedCornerShape(12.dp)
-    val modalShape = RoundedCornerShape(22.dp)
+    val buttonShape = RoundedCornerShape(5.dp)
+    val cardShape = RoundedCornerShape(7.dp)
+    val menuShape = RoundedCornerShape(24.dp)
+    val modalShape = RoundedCornerShape(28.dp)
+    val floatingShadow = 12.dp
+    val modalShadow = 24.dp
+    val floatingAmbient
+        get() = Color.Black.copy(alpha = if (light) 0.1f else 0.24f)
+
+    val floatingSpot
+        get() = Color.Black.copy(alpha = if (light) 0.18f else 0.4f)
+
     val buttonLabelSize = 13.sp
     val controlBorder
         get() = if (light) Color.Black.copy(alpha = 0.09f) else Color.White.copy(alpha = 0.08f)
@@ -133,7 +150,6 @@ object StudioTheme {
     const val assistantGuideAlpha = 0.22f
     val lineGeneratorWidth = 340.dp
     val lineGeneratorPadding = 12.dp
-    val lineGeneratorControlsHeight = 320.dp
     val vectorGuideWidth = 1.dp
     val vectorObjectListHeight = 88.dp
     val transformHandleRadius = 4.dp
@@ -190,38 +206,64 @@ object StudioTheme {
     val paperPreview = Color.White
     val canvasGray = Color(0xFF73767D)
     val canvasCheckerSize = 12.dp
+    val canvasPointerSize = 32.dp
     val canvasBackgroundHintPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
     val canvasBackgroundHintSize = 10.sp
     val blendBackdrop = Color(0xFF7A88BA)
     val blendSource = Color(0xFFE6AABB)
     val railWidth = 68.dp
-    val animationFrameWidth = 76.dp
+    val animationPreviewMinWidth = 112.dp
+    const val animationPreviewAspectRatio = 4f / 3f
+    val animationSelectionBorder = 1.5.dp
+    val animationExposureWidth = 28.dp
     val animationCompactWidth = 560.dp
     val animationLinkSize = 14.dp
     val animationPlayIndicatorHeight = 2.dp
-    val animationTrackNameWidth = 100.dp
+    val animationTrackNameWidth = 84.dp
     val animationRulerHeight = 20.dp
     val animationTrackHeight = 24.dp
     val animationTrackViewportHeight = 170.dp
+    const val animationTrackViewportFraction = 0.3f
     val animationKeyRadius = 3.dp
-    val animationFrameHeight = 58.dp
     val animationGap = 8.dp
     val animationSettingsWidth = 256.dp
     val animationSettingsPadding = 12.dp
     val animationDurationInputWidth = 48.dp
-    val animationTimelinePadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+    val animationTimelinePadding = PaddingValues(0.dp)
     val onionPrevious = Color(0xFF5393C9)
     val onionNext = Color(0xFFD7984B)
     val inspectorWidth = 300.dp
     val viewControlsWidth = 260.dp
-    val inspectorShape = RoundedCornerShape(20.dp)
-    val inspectorMargin = 18.dp
+    val inspectorShape = cardShape
+    val inspectorMargin = 0.dp
+    val workspaceGap = 12.dp
+    val workspacePadding = 6.dp
+    val headerPadding = 12.dp
+    val headerGap = 4.dp
+    val headerHeight = 48.dp
+    val headerBrandSize = 22.dp
+    val inspectorPadding = 14.dp
+    val settingsHeight = 360.dp
+    val settingsWidth = 500.dp
+    val modalPadding = 20.dp
+    val modalGap = 16.dp
+    val modalTitleSize = 16.sp
+    val modalIconSize = 18.dp
+    val menuPadding = 8.dp
+    val canvasDockInset = 12.dp
     val moveDockPadding = PaddingValues(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
     val moveDockSpacing = 12.dp
     val moveDockBorderWidth = 1.dp
     val moveDockTitleSize = 11.sp
     val moveDockValueSize = 10.sp
-    val controlSize = 44.dp
+    val controlSize
+        get() =
+            when (interfaceDensity) {
+                InterfaceDensity.Compact -> 32.dp
+                InterfaceDensity.Standard -> 36.dp
+                InterfaceDensity.Comfortable -> 40.dp
+            }
+
     val canvasSizePreviewHeight = 190.dp
     val canvasSizePreviewPadding = 22.dp
     val canvasAnchorSize = 32.dp
@@ -238,7 +280,8 @@ object StudioTheme {
     val canvasPreviewShape = cardShape
     val canvasCheckerCell = 7.dp
     val canvasOutlineDash = floatArrayOf(5f, 4f)
-    val iconSize = 21.dp
+    val iconSize = 18.dp
+    const val iconStrokeWidth = 1.8f
     val layerStatusIconSize = 12.dp
     val layerBlendGap = 14.dp
     val layerBlendLabelSize = 12.sp
@@ -324,25 +367,46 @@ object StudioTheme {
 }
 
 object StudioMotion {
+    var reducedMotion by mutableStateOf(false)
+        internal set
+
     const val borderTrailMillis = 2800
-    const val carouselMillis = 480
-    const val sonarMillis = 4200
+    val carouselMillis
+        get() = if (reducedMotion) 0 else 300
+
+    const val sonarMillis = 0
     const val letterSwapMillis = 480
     const val letterSwapStagger = 0.45f
-    const val pressMillis = 90
-    const val feedbackMillis = 160
-    const val releaseMillis = 220
+    val pressMillis
+        get() = if (reducedMotion) 0 else 70
+
+    val feedbackMillis
+        get() = if (reducedMotion) 0 else 120
+
+    val releaseMillis
+        get() = if (reducedMotion) 0 else 120
+
     const val pressScale = 0.98f
     const val cardPressScale = 0.99f
-    const val sliderActiveScale = 1.08f
+    val sliderActiveScale
+        get() = if (reducedMotion) 1f else 1.04f
+
     const val pageMillis = 220
     const val pageFadeMillis = 80
     const val pageTravel = 6f
-    const val panelMillis = 280
-    const val dismissMillis = 180
-    const val launchHoldMillis = 1600
+    val panelMillis
+        get() = if (reducedMotion) 0 else 160
+
+    val dismissMillis
+        get() = if (reducedMotion) 0 else 120
+
+    val launchHoldMillis
+        get() = if (reducedMotion) 0 else 600
+
     const val launchSwirlSpeed = 0.9f
-    const val revealMillis = 1500
+    val revealMillis
+        get() = if (reducedMotion) 0 else 400
+
     const val dissolveTextureSize = 96
     const val dissolveSoftness = 0.12f
     val easing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
@@ -354,12 +418,29 @@ fun PodorTheme(
     language: Language = Language.Chinese,
     appearance: Appearance? = null,
     paintColor: Color = LocalPaintColor.current,
+    workspaceAppearance: WorkspaceAppearance? = null,
     content: @Composable () -> Unit,
 ) {
-    SideEffect { if (appearance != null) StudioTheme.appearance = appearance }
+    val workspace = workspaceAppearance ?: LocalWorkspaceAppearance.current
+    val baseDensity = LocalStudioBaseDensity.current ?: LocalDensity.current
+    val density =
+        remember(baseDensity, workspace.scale) {
+            Density(baseDensity.density * workspace.scale, baseDensity.fontScale)
+        }
+    SideEffect {
+        if (appearance != null) StudioTheme.appearance = appearance
+        StudioTheme.interfaceDensity = workspace.density
+        StudioMotion.reducedMotion = workspace.reducedMotion
+    }
     val base =
         if (StudioTheme.appearance == Appearance.Light) lightColorScheme() else darkColorScheme()
-    CompositionLocalProvider(LocalLanguage provides language, LocalPaintColor provides paintColor) {
+    CompositionLocalProvider(
+        LocalLanguage provides language,
+        LocalPaintColor provides paintColor,
+        LocalWorkspaceAppearance provides workspace,
+        LocalStudioBaseDensity provides baseDensity,
+        LocalDensity provides density,
+    ) {
         MaterialTheme(
             shapes =
                 Shapes(

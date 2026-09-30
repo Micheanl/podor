@@ -6,11 +6,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
+import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
@@ -25,7 +27,7 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
 import org.jetbrains.skia.EncodedImageFormat
 
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, InternalComposeUiApi::class)
 class AppearanceTest {
     @Test
     fun oldPreferencesKeepDarkAppearance() {
@@ -87,7 +89,7 @@ class AppearanceTest {
                                     "new" -> NewCanvasDialog(controller, {})
                                     "home" -> WorkspaceHome(controller)
                                     "studio" -> StudioApp(controller)
-                                    "brush" -> BrushControls(controller)
+                                    "brush" -> QuickBrushControls(controller)
                                     "header" ->
                                         Column {
                                             StudioHeader(
@@ -112,6 +114,41 @@ class AppearanceTest {
                 var frame = 0L
                 fun settle() {
                     repeat(280) { scene.render(frame++ * 16_666_667L).close() }
+                }
+                fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+                    yield(node)
+                    node.children.forEach { yieldAll(descendants(it)) }
+                }
+                fun control(
+                    label: String,
+                    action: SemanticsPropertyKey<*> = SemanticsActions.OnClick,
+                ) =
+                    scene.semanticsOwners
+                        .asSequence()
+                        .flatMap { descendants(it.rootSemanticsNode) }
+                        .filter {
+                            it.config.contains(action) &&
+                                !it.boundsInWindow.isEmpty &&
+                                descendants(it).any { child ->
+                                    child.config
+                                        .getOrNull(SemanticsProperties.ContentDescription)
+                                        ?.contains(label) == true ||
+                                        child.config.getOrNull(SemanticsProperties.Text)?.any { text
+                                            ->
+                                            text.text == label
+                                        } == true
+                                }
+                        }
+                        .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+                fun click(label: String) {
+                    val point =
+                        control(trValue(label, controller.preferences.language))
+                            .boundsInWindow
+                            .center
+                    scene.sendPointerEvent(PointerEventType.Press, point)
+                    scene.sendPointerEvent(PointerEventType.Release, point)
+                    scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
+                    settle()
                 }
                 fun capture(name: String) {
                     val path = Path.of("build/reports/screenshots/appearance-$name.png")
@@ -147,6 +184,35 @@ class AppearanceTest {
                                         appearance == Appearance.Light,
                                         background.red > 0.5f,
                                     )
+                                    val fill =
+                                        control(
+                                            trValue("颜色容差", controller.preferences.language),
+                                            SemanticsActions.SetProgress,
+                                        )
+                                    val scrolls =
+                                        scene.semanticsOwners
+                                            .asSequence()
+                                            .flatMap { descendants(it.rootSemanticsNode) }
+                                            .filter {
+                                                it.config.contains(
+                                                    SemanticsProperties.VerticalScrollAxisRange
+                                                ) &&
+                                                    descendants(it).any { child ->
+                                                        child.id == fill.id
+                                                    }
+                                            }
+                                            .toList()
+                                    assertEquals(
+                                        1,
+                                        scrolls.size,
+                                        "Adjustments must have one scroll container",
+                                    )
+                                    val viewport = scrolls.single().boundsInWindow
+                                    assertTrue(
+                                        fill.boundsInWindow.bottom >
+                                            viewport.bottom - viewport.height * 0.2f,
+                                        "$appearance fill controls are not anchored near the panel bottom",
+                                    )
                                 }
                             }
                             if (screen == "new") {
@@ -173,12 +239,8 @@ class AppearanceTest {
                     }
                     page.value = "settings"
                     settle()
-                    for ((x, expected) in
-                        listOf(550f to Appearance.Dark, 790f to Appearance.Light)) {
-                        scene.sendPointerEvent(PointerEventType.Press, Offset(x, 410f))
-                        scene.sendPointerEvent(PointerEventType.Release, Offset(x, 410f))
-                        scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
-                        settle()
+                    for (expected in listOf(Appearance.Dark, Appearance.Light)) {
+                        click(expected.label)
                         assertEquals(expected, controller.preferences.appearance)
                         assertEquals(expected, StudioTheme.appearance)
                     }
@@ -187,16 +249,25 @@ class AppearanceTest {
                     settle()
                     scene.render(frame++ * 16_666_667L).use { image ->
                         val pixels = image.toComposeImageBitmap().toPixelMap()
+                        val bounds =
+                            control(
+                                    trValue("不透明度", controller.preferences.language),
+                                    SemanticsActions.SetProgress,
+                                )
+                                .boundsInWindow
                         val count =
-                            (0 until pixels.height step 3).sumOf { y ->
-                                (0 until pixels.width step 3).count { x ->
+                            (bounds.top.toInt() until bounds.bottom.toInt() step 3).sumOf { y ->
+                                (bounds.left.toInt() until bounds.right.toInt() step 3).count { x ->
                                     val color = pixels[x, y]
                                     color.red > 0.95f &&
                                         color.green in 0.30f..0.37f &&
                                         color.blue < 0.05f
                                 }
                             }
-                        assertTrue(count > 1000, "Brush sliders must use the current paint color")
+                        assertTrue(
+                            count > 80,
+                            "Brush capsule slider must use the current paint color",
+                        )
                     }
                     page.value = "panels"
                     controller.fillTolerance = 83f
@@ -205,9 +276,15 @@ class AppearanceTest {
                     capture("Light-selected-color")
                     scene.render(frame++ * 16_666_667L).use { image ->
                         val pixels = image.toComposeImageBitmap().toPixelMap()
+                        val bounds =
+                            control(
+                                    trValue("颜色容差", controller.preferences.language),
+                                    SemanticsActions.SetProgress,
+                                )
+                                .boundsInWindow
                         val count =
-                            (0 until pixels.height step 3).sumOf { y ->
-                                (1040 until pixels.width step 3).count { x ->
+                            (bounds.top.toInt() until bounds.bottom.toInt() step 3).sumOf { y ->
+                                (bounds.left.toInt() until bounds.right.toInt() step 3).count { x ->
                                     val color = pixels[x, y]
                                     color.red < 0.03f &&
                                         color.green in 0.52f..0.56f &&
@@ -222,13 +299,9 @@ class AppearanceTest {
                     controller.brush = brush
                     page.value = "header"
                     settle()
-                    scene.sendPointerEvent(PointerEventType.Press, Offset(110f, 30f))
-                    scene.sendPointerEvent(PointerEventType.Release, Offset(110f, 30f))
-                    settle()
+                    click("工程菜单")
                     capture("Light-icon-menu")
-                    scene.sendPointerEvent(PointerEventType.Press, Offset(110f, 86f))
-                    scene.sendPointerEvent(PointerEventType.Release, Offset(110f, 86f))
-                    settle()
+                    click("新建画布")
                     assertEquals(StudioDialog.New, selectedDialog)
                     assertEquals(brush, controller.brush)
                     assertEquals(revision, controller.document.revision)

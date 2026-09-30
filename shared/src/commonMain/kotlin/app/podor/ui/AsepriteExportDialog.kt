@@ -1,7 +1,6 @@
 package app.podor.ui
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,7 +19,7 @@ fun AsepriteExportDialog(controller: StudioController, onDismiss: () -> Unit) {
     val bakeLabel = tr("导出合成帧副本")
     StudioAlertDialog(
         title = "Aseprite 工程副本",
-        glyph = Glyph.Layers,
+        glyph = Glyph.Aseprite,
         confirmLabel = "导出",
         onDismissRequest = onDismiss,
         enabled =
@@ -47,7 +46,7 @@ fun AsepriteExportDialog(controller: StudioController, onDismiss: () -> Unit) {
         if (!blocked) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(bakeLabel, Modifier.weight(1f), fontSize = StudioTheme.buttonLabelSize)
-                Switch(
+                StudioSwitch(
                     bakeLayers,
                     { bakeLayers = it },
                     Modifier.semantics { contentDescription = bakeLabel },

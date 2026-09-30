@@ -4,11 +4,12 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.scene.ComposeScenePointer
+import androidx.compose.ui.semantics.*
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
 import app.podor.domain.*
@@ -26,7 +27,10 @@ class SmudgeTest {
     private suspend fun session(
         block:
             suspend (
-                StudioController, ImageComposeScene, ByteArray, suspend () -> ByteArray,
+                StudioController,
+                ImageComposeScene,
+                ByteArray,
+                suspend () -> ByteArray,
             ) -> Unit
     ) {
         NativeLoader.load()
@@ -91,8 +95,31 @@ class SmudgeTest {
             ) delay(5)
         }
 
-    private fun position(controller: StudioController, point: Offset) =
-        controller.viewport.toView(point, Size(1042f, 836f), controller.document) + Offset(0f, 64f)
+    private fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+        yield(node)
+        for (child in node.children) yieldAll(descendants(child))
+    }
+
+    private fun canvasBounds(scene: ImageComposeScene): Rect =
+        scene.semanticsOwners
+            .asSequence()
+            .flatMap { descendants(it.rootSemanticsNode) }
+            .filter {
+                it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace" &&
+                    it.boundsInWindow.width > 100f &&
+                    it.boundsInWindow.height > 100f
+            }
+            .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+            .boundsInWindow
+
+    private fun position(
+        controller: StudioController,
+        scene: ImageComposeScene,
+        point: Offset,
+    ): Offset {
+        val bounds = canvasBounds(scene)
+        return controller.viewport.toView(point, bounds.size, controller.document) + bounds.topLeft
+    }
 
     @Test
     fun shortcutStrokeAndUndoKeepTheBrushColorAndOpacity() = runBlocking {
@@ -108,13 +135,16 @@ class SmudgeTest {
                 controller.brush =
                     controller.brush.copy(
                         size = 64f,
-                        preset = controller.brush.preset.copy(hardness = 0.55f, sizePressure = 0.5f),
+                        preset =
+                            controller.brush.preset.copy(hardness = 0.55f, sizePressure = 0.5f),
                     )
                 controller.viewport = Viewport(rotation = 17f, mirrored = true)
                 scene.render(frame++ * 16_666_667L).close()
                 val opacity = controller.brush.opacity
-                scene.sendPointerEvent(PointerEventType.Press, Offset(1200f, 486f))
-                scene.sendPointerEvent(PointerEventType.Release, Offset(1200f, 486f))
+                val strength = scene.sliderBounds("涂抹强度")
+                val strengthPoint = Offset(strength.left + strength.width * 0.3f, strength.center.y)
+                scene.sendPointerEvent(PointerEventType.Press, strengthPoint)
+                scene.sendPointerEvent(PointerEventType.Release, strengthPoint)
                 scene.render(frame++ * 16_666_667L).close()
                 assertNotEquals(StudioDefaults.smudgeStrength, controller.smudgeStrength)
                 assertEquals(opacity, controller.brush.opacity)
@@ -124,14 +154,14 @@ class SmudgeTest {
             withContext(Dispatchers.Main) {
                 scene.sendPointerEvent(
                     PointerEventType.Press,
-                    position(controller, Offset(138f, 100f)),
+                    position(controller, scene, Offset(138f, 100f)),
                 )
             }
             repeat(35) { i ->
                 withContext(Dispatchers.Main) {
                     scene.sendPointerEvent(
                         PointerEventType.Move,
-                        position(controller, Offset(138f + i * 2, 100f)),
+                        position(controller, scene, Offset(138f + i * 2, 100f)),
                     )
                     scene.render(frame++ * 16_666_667L).close()
                 }
@@ -140,7 +170,7 @@ class SmudgeTest {
             withContext(Dispatchers.Main) {
                 scene.sendPointerEvent(
                     PointerEventType.Release,
-                    position(controller, Offset(206f, 100f)),
+                    position(controller, scene, Offset(206f, 100f)),
                 )
             }
             awaitState(controller) { controller.document.revision > before }
@@ -190,7 +220,7 @@ class SmudgeTest {
             fun touch(id: Long, x: Float, down: Boolean) =
                 ComposeScenePointer(
                     PointerId(id),
-                    position(controller, Offset(x, 100f)),
+                    position(controller, scene, Offset(x, 100f)),
                     down,
                     PointerType.Touch,
                 )

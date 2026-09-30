@@ -12,7 +12,7 @@ import app.podor.presentation.StudioController
 fun ClipboardMenu(controller: StudioController) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        ToolButton(Glyph.Clipboard, "剪贴板") { expanded = true }
+        ToolButton(Glyph.Clipboard, "剪贴板") { expanded = !expanded }
         StudioDropdownMenu(
             expanded,
             { expanded = false },

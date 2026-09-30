@@ -48,12 +48,16 @@ class ViewportControlsTest {
                         scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
                         settle()
                     }
+                    fun clickLabel(vararg labels: String) {
+                        val point = scene.controlBounds(*labels).center
+                        click(point.x, point.y)
+                    }
                     try {
                         settle()
-                        click(334f, 478f)
+                        clickLabel("镜像视图", "Mirror view")
                         assertTrue(value.value.mirrored)
                         assertEquals(35f, value.value.rotation)
-                        click(280f, 478f)
+                        clickLabel("旋转视图", "Rotate view")
                         val path =
                             Path.of("build/reports/screenshots/view-controls-${language.name}.png")
                         Files.createDirectories(path.parent)
@@ -64,22 +68,25 @@ class ViewportControlsTest {
                         }
                         repeat(200) { scene.render(frame++ * 16_666_667L).close() }
                         assertFalse(scene.hasInvalidations())
-                        click(90f, 378f)
+                        clickLabel("向左旋转", "Rotate left")
                         assertEquals(20f, value.value.rotation)
-                        click(274f, 378f)
+                        clickLabel("向右旋转", "Rotate right")
                         assertEquals(35f, value.value.rotation)
-                        scene.sendPointerEvent(PointerEventType.Press, Offset(130f, 336f))
-                        scene.sendPointerEvent(PointerEventType.Move, Offset(235f, 336f))
-                        scene.sendPointerEvent(PointerEventType.Release, Offset(235f, 336f))
+                        val rotation = scene.sliderBounds("旋转视图", "Rotate view")
+                        val start = rotation.center
+                        val end = Offset(rotation.left + rotation.width * 0.85f, rotation.center.y)
+                        scene.sendPointerEvent(PointerEventType.Press, start)
+                        scene.sendPointerEvent(PointerEventType.Move, end)
+                        scene.sendPointerEvent(PointerEventType.Release, end)
                         settle()
                         assertTrue(value.value.rotation > 60f)
                         assertEquals(1.5f, value.value.zoom)
                         assertEquals(Offset(20f, -10f), value.value.pan)
                         assertTrue(value.value.mirrored)
-                        click(180f, 378f)
+                        clickLabel("回正", "Reset angle")
                         assertEquals(0f, value.value.rotation)
                         click(20f, 20f)
-                        click(378f, 478f)
+                        clickLabel("适合窗口", "Fit canvas")
                         assertEquals(Viewport(), value.value)
                     } finally {
                         scene.close()

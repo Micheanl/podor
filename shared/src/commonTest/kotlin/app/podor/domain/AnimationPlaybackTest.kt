@@ -29,6 +29,7 @@ class AnimationPlaybackTest {
                 Triple(40_000_000L, 20, 0L),
                 Triple(109_999_999L, 20, 0L),
                 Triple(110_000_000L, 30, 0L),
+                Triple(129_999_999L, 30, 0L),
                 Triple(130_000_000L, 10, 1L),
                 Triple(2_260_000_000L, 20, 17L),
             )) {
@@ -46,7 +47,61 @@ class AnimationPlaybackTest {
         assertEquals(PlaybackPosition(30, 1, true), plan.at(260_000_000L))
         assertEquals(PlaybackPosition(30, 1, true), plan.at(Long.MAX_VALUE))
         val infinite = assertNotNull(AnimationPlaybackPlan.create(animation))
-        assertFalse(infinite.at(Long.MAX_VALUE).finished)
+        assertEquals(PlaybackPosition(10, 70_949_015_668L, false), infinite.at(Long.MAX_VALUE))
+    }
+
+    @Test
+    fun unequalDurationsChooseTheFirstLaterEndAcrossEveryNanosecondBoundary() {
+        val plan =
+            assertNotNull(
+                AnimationPlaybackPlan.create(
+                    animation.copy(
+                        frames =
+                            listOf(
+                                AnimationFrame(11, 1),
+                                AnimationFrame(7, 3),
+                                AnimationFrame(23, 2),
+                                AnimationFrame(2, 60000),
+                                AnimationFrame(91, 1),
+                            )
+                    )
+                )
+            )
+        assertEquals(60_007_000_000L, plan.cycleNanos)
+        for ((elapsed, frame, cycle) in
+            listOf(
+                Triple(Long.MIN_VALUE, 11, 0L),
+                Triple(0L, 11, 0L),
+                Triple(999_999L, 11, 0L),
+                Triple(1_000_000L, 7, 0L),
+                Triple(1_000_001L, 7, 0L),
+                Triple(3_999_999L, 7, 0L),
+                Triple(4_000_000L, 23, 0L),
+                Triple(4_000_001L, 23, 0L),
+                Triple(5_999_999L, 23, 0L),
+                Triple(6_000_000L, 2, 0L),
+                Triple(6_000_001L, 2, 0L),
+                Triple(60_005_999_999L, 2, 0L),
+                Triple(60_006_000_000L, 91, 0L),
+                Triple(60_006_000_001L, 91, 0L),
+                Triple(60_006_999_999L, 91, 0L),
+                Triple(60_007_000_000L, 11, 1L),
+                Triple(60_007_000_001L, 11, 1L),
+            )) assertEquals(PlaybackPosition(frame, cycle, false), plan.at(elapsed))
+    }
+
+    @Test
+    fun singleFrameUsesLongCyclesAndMaximumFiniteRepeatKeepsTheFinalExposure() {
+        val single = animation.copy(frames = listOf(AnimationFrame(44, 1)))
+        val infinite = assertNotNull(AnimationPlaybackPlan.create(single))
+        assertEquals(1_000_000L, infinite.cycleNanos)
+        assertEquals(PlaybackPosition(44, 0L, false), infinite.at(999_999L))
+        assertEquals(PlaybackPosition(44, 1L, false), infinite.at(1_000_000L))
+        assertEquals(PlaybackPosition(44, 9_223_372_036_854L, false), infinite.at(Long.MAX_VALUE))
+        val finite = assertNotNull(AnimationPlaybackPlan.create(single, repeat = 65535))
+        assertEquals(PlaybackPosition(44, 65534L, false), finite.at(65_534_999_999L))
+        assertEquals(PlaybackPosition(44, 65534L, true), finite.at(65_535_000_000L))
+        assertEquals(PlaybackPosition(44, 65534L, true), finite.at(Long.MAX_VALUE))
     }
 
     @Test

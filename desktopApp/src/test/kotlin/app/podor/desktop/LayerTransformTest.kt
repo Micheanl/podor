@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.scene.ComposeScenePointer
+import androidx.compose.ui.semantics.*
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
 import app.podor.domain.*
@@ -59,14 +60,33 @@ class LayerTransformTest {
         val full: Boolean,
         val original: ByteArray,
     ) {
-        val area = if (full) Size(1042f, 836f) else Size(740f, 560f)
+        val area
+            get() = if (full) canvasBounds().size else Size(740f, 560f)
+
         var frame = 0L
 
         fun render() = scene.render(frame++ * 16_666_667L)
 
+        private fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+            yield(node)
+            for (child in node.children) yieldAll(descendants(child))
+        }
+
+        fun canvasBounds(): Rect =
+            scene.semanticsOwners
+                .asSequence()
+                .flatMap { descendants(it.rootSemanticsNode) }
+                .filter {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace" &&
+                        it.boundsInWindow.width > 100f &&
+                        it.boundsInWindow.height > 100f
+                }
+                .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+                .boundsInWindow
+
         fun position(point: Offset) =
             controller.viewport.toView(point, area, controller.document) +
-                if (full) Offset(0f, 64f) else Offset.Zero
+                if (full) canvasBounds().topLeft else Offset.Zero
 
         suspend fun awaitState(predicate: () -> Boolean) =
             withTimeout(15_000) {
@@ -138,7 +158,8 @@ class LayerTransformTest {
             session.awaitState { controller.ready }
             withContext(Dispatchers.Main) { controller.file(StudioController.FileAction.Open) }
             session.awaitState { controller.hasCanvas && !controller.busy }
-            if (full) withContext(Dispatchers.Main) { scene.openInspector { session.render().close() } }
+            if (full)
+                withContext(Dispatchers.Main) { scene.openInspector { session.render().close() } }
             session.block {
                 withContext(Dispatchers.Main) {
                     saved = null
@@ -315,9 +336,7 @@ class LayerTransformTest {
                 withContext(Dispatchers.Main) { key(Key.T, ctrl = true) }
                 awaitState { controller.layerMove?.transform != null && !controller.busy }
                 withContext(Dispatchers.Main) {
-                    scene.sendPointerEvent(PointerEventType.Press, Offset(383f, 817f))
-                    scene.sendPointerEvent(PointerEventType.Release, Offset(383f, 817f))
-                    render().close()
+                    scene.clickControl("水平翻转图层") { render().close() }
                     assertTrue(controller.layerMove!!.transform!!.flipX)
                     key(key)
                 }

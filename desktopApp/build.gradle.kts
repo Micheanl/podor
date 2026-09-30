@@ -84,6 +84,8 @@ compose.desktop {
                 shortcut = true
                 menuGroup = "podor"
             }
+            macOS { iconFile.set(project.file("icons/podor.icns")) }
+            linux { iconFile.set(project.file("icons/podor.png")) }
             vendor = "podor"
             packageName = "podor"
             packageVersion = libs.versions.podor.get()

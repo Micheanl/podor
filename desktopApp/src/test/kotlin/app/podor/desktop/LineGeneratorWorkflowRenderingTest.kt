@@ -4,7 +4,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.semantics.*
@@ -28,7 +28,6 @@ import kotlinx.serialization.json.*
 
 @OptIn(ExperimentalComposeUiApi::class, InternalComposeUiApi::class)
 class LineGeneratorWorkflowRenderingTest {
-    private val view = Size(1282f, 1136f)
 
     private data class Exported(val format: ExportFormat, val bytes: ByteArray)
 
@@ -583,6 +582,14 @@ class LineGeneratorWorkflowRenderingTest {
 
         fun render() = scene.render(time++ * 16_666_667L)
 
+        val view
+            get() = canvasBounds().size
+
+        fun canvasBounds(): Rect =
+            nodes()
+                .single { it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace" }
+                .boundsInWindow
+
         suspend fun waitFor(allowError: Boolean = false, predicate: () -> Boolean) =
             withTimeout(15_000) {
                 while (true) {
@@ -644,6 +651,17 @@ class LineGeneratorWorkflowRenderingTest {
 
         suspend fun click(label: String) {
             settle()
+            if (Tool.entries.any { trValue(it.label, Language.English) == label }) {
+                val visible =
+                    withContext(Dispatchers.Main) {
+                        nodes().any {
+                            it.config.contains(SemanticsActions.OnClick) &&
+                                !it.boundsInWindow.isEmpty &&
+                                descendants(it).any { child -> matches(child, label) }
+                        }
+                    }
+                if (!visible) click("More tools")
+            }
             val point =
                 withContext(Dispatchers.Main) {
                     val value =
@@ -687,7 +705,7 @@ class LineGeneratorWorkflowRenderingTest {
                                     candidate.id == target.id
                                 }
                             }
-                        val container =
+                        val containers =
                             descendants(owner.rootSemanticsNode)
                                 .filter {
                                     it.config.contains(
@@ -697,24 +715,20 @@ class LineGeneratorWorkflowRenderingTest {
                                             candidate.id == target.id
                                         }
                                 }
-                                .minByOrNull { it.boundsInWindow.height }
+                                .toList()
+                        assertEquals(1, containers.size, "$label has nested parameter scrolling")
+                        val container = containers.single()
+                        val targetTop = target.positionInWindow.y
+                        val targetBottom = targetTop + target.size.height
                         if (
-                            container == null ||
-                                !target.boundsInWindow.isEmpty &&
-                                    target.boundsInWindow.top >=
-                                        container.boundsInWindow.top - 1f &&
-                                    target.boundsInWindow.bottom <=
-                                        container.boundsInWindow.bottom + 1f
+                            !target.boundsInWindow.isEmpty &&
+                                targetTop >= container.boundsInWindow.top - 1f &&
+                                targetBottom <= container.boundsInWindow.bottom + 1f
                         )
                             null
                         else
                             container.boundsInWindow.center to
-                                if (
-                                    !target.boundsInWindow.isEmpty &&
-                                        target.boundsInWindow.top < container.boundsInWindow.top
-                                )
-                                    -4f
-                                else 4f
+                                if (targetTop < container.boundsInWindow.top) -4f else 4f
                     } ?: return
                 withContext(Dispatchers.Main) {
                     scene.sendPointerEvent(
@@ -730,7 +744,33 @@ class LineGeneratorWorkflowRenderingTest {
         }
 
         suspend fun slider(label: String, fraction: Float) {
-            reveal(label, SemanticsActions.SetProgress)
+            val quick = label == "Line count" || label == "Line width"
+            if (quick) {
+                withContext(Dispatchers.Main) {
+                    assertTrue(
+                        nodes().none {
+                            it.config.contains(SemanticsActions.SetProgress) && matches(it, label)
+                        },
+                        "$label is duplicated in the sidebar",
+                    )
+                }
+                click(label)
+                withContext(Dispatchers.Main) {
+                    val capsule =
+                        nodes().single {
+                            it.config.getOrNull(SemanticsProperties.TestTag) ==
+                                "capsule-slider-popup"
+                        }
+                    val slider = node(label, SemanticsActions.SetProgress)
+                    assertTrue(descendants(capsule).any { it.id == slider.id })
+                    assertEquals(
+                        1,
+                        nodes().count {
+                            it.config.contains(SemanticsActions.SetProgress) && matches(it, label)
+                        },
+                    )
+                }
+            } else reveal(label, SemanticsActions.SetProgress)
             val points =
                 withContext(Dispatchers.Main) {
                     val slider = node(label, SemanticsActions.SetProgress)
@@ -749,6 +789,49 @@ class LineGeneratorWorkflowRenderingTest {
             pointer(PointerEventType.Release, points.second)
             pointer(PointerEventType.Move, Offset.Zero)
             previewReady()
+            if (quick) {
+                val settings = controller.lineGeneratorPreview!!.settings.request()
+                val outside =
+                    withContext(Dispatchers.Main) {
+                        Offset(
+                            node("Tool options").boundsInWindow.center.x,
+                            canvasBounds().top + 1f,
+                        )
+                    }
+                pointer(PointerEventType.Press, outside)
+                pointer(PointerEventType.Release, outside)
+                pointer(PointerEventType.Move, Offset.Zero)
+                settle()
+                withContext(Dispatchers.Main) {
+                    assertTrue(
+                        nodes().none {
+                            it.config.getOrNull(SemanticsProperties.TestTag) ==
+                                "capsule-slider-popup"
+                        }
+                    )
+                    assertEquals(settings, controller.lineGeneratorPreview!!.settings.request())
+                }
+            }
+        }
+
+        suspend fun openLineSettings() {
+            val settings = controller.lineGeneratorPreview!!.settings.request()
+            val shown =
+                withContext(Dispatchers.Main) {
+                    nodes().any {
+                        it.config.contains(SemanticsActions.OnClick) &&
+                            matches(it, "Tool options") &&
+                            it.config.getOrNull(SemanticsProperties.Selected) == true &&
+                            !it.boundsInWindow.isEmpty
+                    }
+                }
+            if (!shown) click("Line settings")
+            reveal("Line opacity", SemanticsActions.SetProgress)
+            withContext(Dispatchers.Main) {
+                assertTrue(node("Tool options").config[SemanticsProperties.Selected])
+                assertNotNull(node("Line opacity", SemanticsActions.SetProgress))
+                assertEquals(settings, controller.lineGeneratorPreview!!.settings.request())
+            }
         }
 
         suspend fun text(label: String, value: String) {
@@ -765,7 +848,7 @@ class LineGeneratorWorkflowRenderingTest {
         }
 
         fun position(point: Offset) =
-            controller.viewport.toView(point, view, controller.document) + Offset(0f, 64f)
+            controller.viewport.toView(point, view, controller.document) + canvasBounds().topLeft
 
         suspend fun fit() =
             withContext(Dispatchers.Main) {
@@ -918,14 +1001,18 @@ class LineGeneratorWorkflowRenderingTest {
         }
     }
 
-    private suspend fun withSession(source: ByteArray, block: suspend Session.() -> Unit) {
+    private suspend fun withSession(
+        source: ByteArray,
+        height: Int = 1200,
+        block: suspend Session.() -> Unit,
+    ) {
         val files = MemoryFiles(source)
         val previousAppearance = StudioTheme.appearance
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         val controller = withContext(Dispatchers.Main) { StudioController(files, scope) }
         val scene =
             withContext(Dispatchers.Main) {
-                ImageComposeScene(1600, 1200) {
+                ImageComposeScene(1600, height) {
                     StudioApp(controller)
                     UnsavedChangesDialog(controller)
                 }
@@ -1127,7 +1214,7 @@ class LineGeneratorWorkflowRenderingTest {
         runBlocking {
             val source = project()
             val raw = planes(source)
-            withSession(source) {
+            withSession(source, height = 600) {
                 val original = save()
                 val before = controller.document
                 val frame = controller.frame
@@ -1141,7 +1228,7 @@ class LineGeneratorWorkflowRenderingTest {
                     AssistantPoint(32f, 32f),
                     controller.lineGeneratorPreview!!.settings.origin,
                 )
-                click("Line settings")
+                openLineSettings()
                 val controls =
                     listOf(
                         "Line opacity" to 0.65f,
@@ -1166,7 +1253,7 @@ class LineGeneratorWorkflowRenderingTest {
                 text("Seed", "1999")
                 previewReady()
                 assertEquals(1999L, controller.lineGeneratorPreview!!.settings.seed)
-                click("Line settings")
+                openLineSettings()
                 val draft = controller.lineGeneratorPreview!!
                 assertNotEquals(initial, draft.settings)
                 val settings = draft.settings.request()
@@ -1223,7 +1310,7 @@ class LineGeneratorWorkflowRenderingTest {
             for (isolation in listOf("isolated", "pass_through")) {
                 val source = project(nested = isolation)
                 val raw = planes(source)
-                withSession(source) {
+                withSession(source, height = 600) {
                     val original = save()
                     val before = controller.document
                     val oldPixels = withContext(Dispatchers.Main) { pixels() }
@@ -1234,7 +1321,7 @@ class LineGeneratorWorkflowRenderingTest {
                         AssistantPoint(72f, 40f),
                         controller.lineGeneratorPreview!!.settings.center,
                     )
-                    click("Line settings")
+                    openLineSettings()
                     for ((label, fraction) in
                         listOf(
                             "Start angle" to 0.6f,
@@ -1252,7 +1339,7 @@ class LineGeneratorWorkflowRenderingTest {
                             label,
                         )
                     }
-                    click("Line settings")
+                    openLineSettings()
                     val draft = controller.lineGeneratorPreview!!
                     assertEquals(3, draft.parentId)
                     assertEquals(2, draft.index)
@@ -1295,7 +1382,12 @@ class LineGeneratorWorkflowRenderingTest {
                         waitFor { controller.vectorObjects?.id == id }
                         assertFalse(controller.document.canUndo)
                         assertEquals(expectedObjects, objects(save(), id).values.toList())
-                        click("Layers")
+                        if (
+                            !withContext(Dispatchers.Main) {
+                                node("Layers").config[SemanticsProperties.Selected]
+                            }
+                        )
+                            click("Layers")
                         click("Edit nodes")
                         selectObject(1)
                         val first = controller.selectedVectorObject!!.`object`
@@ -1305,7 +1397,7 @@ class LineGeneratorWorkflowRenderingTest {
                         val sampled =
                             first.localPoint(
                                 controller.viewport.toDocument(
-                                    movedPointer - Offset(0f, 64f),
+                                    movedPointer - canvasBounds().topLeft,
                                     view,
                                     controller.document,
                                 )
@@ -1341,6 +1433,14 @@ class LineGeneratorWorkflowRenderingTest {
                             all.values.toList(),
                         )
                         assertPlanes(raw, planes(editedProject))
+                        waitFor {
+                            controller.selectedVectorObject?.let {
+                                it.objectId == 1 &&
+                                    it.revision == controller.document.revision &&
+                                    it.`object` == edited
+                            } == true
+                        }
+                        selectObject(1)
                         click("Object visibility")
                         waitFor {
                             controller.document.revision == revision + 2 &&

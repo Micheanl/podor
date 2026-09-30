@@ -8,7 +8,7 @@ import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.scene.ComposeScenePointer
@@ -35,7 +35,6 @@ import kotlinx.serialization.json.*
 
 @OptIn(ExperimentalComposeUiApi::class, InternalComposeUiApi::class)
 class MaskStackWorkflowRenderingTest {
-    private val view = Size(640f, 880f)
 
     private data class Exported(val format: ExportFormat, val bytes: ByteArray)
 
@@ -260,6 +259,19 @@ class MaskStackWorkflowRenderingTest {
 
         fun render() = scene.render(time++ * 16_666_667L)
 
+        val view
+            get() = canvasBounds().size
+
+        fun canvasBounds(): Rect =
+            nodes()
+                .filter {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace" &&
+                        it.boundsInWindow.width > 100f &&
+                        it.boundsInWindow.height > 100f
+                }
+                .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+                .boundsInWindow
+
         suspend fun waitFor(predicate: () -> Boolean) {
             withTimeout(15_000) {
                 while (true) {
@@ -336,9 +348,27 @@ class MaskStackWorkflowRenderingTest {
                     control.boundsInWindow.center
                 }
             clickPoint(point)
+            if (
+                label == "Add mask" ||
+                    label == "Mask settings" ||
+                    label.endsWith(" · Mask settings")
+            )
+                withContext(Dispatchers.Main) { assertMaskSettingsDialog() }
         }
 
-        suspend fun dismissMenu() = clickPoint(Offset(400f, 32f))
+        fun assertMaskSettingsDialog() {
+            assertTrue(nodes().any { it.config.contains(SemanticsProperties.IsDialog) })
+            assertTrue(
+                nodes().any {
+                    it.config.getOrNull(SemanticsProperties.Text)?.any { text ->
+                        text.text == "Mask settings"
+                    } == true
+                }
+            )
+            assertFalse(node("Close").config.contains(SemanticsProperties.Disabled))
+        }
+
+        suspend fun dismissMaskSettings() = click("Close")
 
         suspend fun text(label: String, value: String) {
             withContext(Dispatchers.Main) {
@@ -396,17 +426,12 @@ class MaskStackWorkflowRenderingTest {
             settle()
             val point =
                 withContext(Dispatchers.Main) {
-                    val cards =
-                        nodes()
-                            .filter {
-                                it.config.getOrNull(SemanticsProperties.Role) == Role.RadioButton &&
-                                    descendants(it).any { child ->
-                                        layer().masks.any { entry -> matches(child, entry.name) }
-                                    }
-                            }
-                            .sortedBy { it.boundsInWindow.left }
-                            .toList()
-                    descendants(cards[index])
+                    val entry =
+                        nodes().single {
+                            it.config.getOrNull(SemanticsProperties.TestTag) ==
+                                "mask-stack-entry-${mask.id}"
+                        }
+                    descendants(entry)
                         .filter {
                             it.config.contains(SemanticsActions.OnClick) &&
                                 matches(it, "${mask.name} · Mask settings")
@@ -416,6 +441,7 @@ class MaskStackWorkflowRenderingTest {
                         .center
                 }
             clickPoint(point)
+            withContext(Dispatchers.Main) { assertMaskSettingsDialog() }
             click("Mask name")
             text("Mask name", replacement)
             click("Save")
@@ -456,7 +482,7 @@ class MaskStackWorkflowRenderingTest {
             }
 
         fun position(point: Offset) =
-            controller.viewport.toView(point, view, controller.document) + Offset(0f, 64f)
+            controller.viewport.toView(point, view, controller.document) + canvasBounds().topLeft
 
         suspend fun stroke(gray: Int, point: Offset) {
             withContext(Dispatchers.Main) {
@@ -757,7 +783,7 @@ class MaskStackWorkflowRenderingTest {
                         node("Apply all masks").config.contains(SemanticsProperties.Disabled)
                     )
                 }
-                dismissMenu()
+                dismissMaskSettings()
             }
         }
         val indexed = project(stack = true, indexed = true)
@@ -769,7 +795,7 @@ class MaskStackWorkflowRenderingTest {
             withContext(Dispatchers.Main) {
                 assertTrue(node("Apply all masks").config.contains(SemanticsProperties.Disabled))
             }
-            dismissMenu()
+            dismissMaskSettings()
             assertEquals(before, controller.document)
             val saved = save()
             assertContentEquals(slots, rawSlots(saved))

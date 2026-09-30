@@ -1,7 +1,6 @@
 package app.podor.ui
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -31,7 +30,7 @@ internal fun LayerGroupControls(
         ToolButton(Glyph.More, "图层操作", enabled = enabled, selected = selecting) { menu = !menu }
         StudioDropdownMenu(menu, { menu = false }) {
             if (document.maxVectorObjects > 0)
-                DropdownMenuItem(
+                StudioDropdownMenuItem(
                     text = { Text(tr("新建矢量图层")) },
                     leadingIcon = { StudioIcon(Glyph.Vector) },
                     enabled =
@@ -45,7 +44,7 @@ internal fun LayerGroupControls(
                         controller.createVectorLayer()
                     },
                 )
-            DropdownMenuItem(
+            StudioDropdownMenuItem(
                 text = { Text(tr("新建图层组")) },
                 leadingIcon = { StudioIcon(Glyph.Folder) },
                 enabled =
@@ -60,7 +59,7 @@ internal fun LayerGroupControls(
             )
             listOf(AdjustmentKind.Tone, AdjustmentKind.Curves, AdjustmentKind.GradientMap)
                 .forEach { kind ->
-                    DropdownMenuItem(
+                    StudioDropdownMenuItem(
                         text = { Text("${tr("新建调整图层")} · ${tr(kind.label)}") },
                         leadingIcon = { StudioIcon(Glyph.Adjustments) },
                         enabled =
@@ -73,7 +72,7 @@ internal fun LayerGroupControls(
                         },
                     )
                 }
-            DropdownMenuItem(
+            StudioDropdownMenuItem(
                 text = { Text(tr(if (selecting) "结束选择图层" else "选择多个图层")) },
                 leadingIcon = { StudioIcon(Glyph.Selection) },
                 onClick = {
@@ -85,7 +84,7 @@ internal fun LayerGroupControls(
                 val chosen = document.layers.filter { it.id in selectedIds }
                 val siblings = document.siblings(chosen.firstOrNull()?.parentId)
                 val indices = chosen.map(siblings::indexOf)
-                DropdownMenuItem(
+                StudioDropdownMenuItem(
                     text = { Text(tr("将选中图层分组")) },
                     leadingIcon = { StudioIcon(Glyph.Folder) },
                     enabled =
@@ -105,7 +104,7 @@ internal fun LayerGroupControls(
             if (active != null) {
                 if (active.parentId != null) {
                     val parent = document.layers.first { it.id == active.parentId }
-                    DropdownMenuItem(
+                    StudioDropdownMenuItem(
                         text = { Text(tr("移出图层组")) },
                         leadingIcon = { StudioIcon(Glyph.Up) },
                         enabled = !active.effectiveLocked,
@@ -132,7 +131,7 @@ internal fun LayerGroupControls(
                 if (groups.isNotEmpty()) {
                     HorizontalDivider(color = StudioTheme.border)
                     groups.forEach { target ->
-                        DropdownMenuItem(
+                        StudioDropdownMenuItem(
                             text = { Text("${tr("移入图层组")} · ${tr(target.name)}") },
                             leadingIcon = { StudioIcon(Glyph.Folder) },
                             enabled = !active.effectiveLocked,
@@ -150,7 +149,7 @@ internal fun LayerGroupControls(
                 if (active.kind == LayerKind.Group) {
                     HorizontalDivider(color = StudioTheme.border)
                     GroupIsolation.entries.forEach { isolation ->
-                        DropdownMenuItem(
+                        StudioDropdownMenuItem(
                             text = { Text(tr(isolation.label)) },
                             leadingIcon = { StudioIcon(Glyph.Layers) },
                             trailingIcon = {
@@ -178,7 +177,7 @@ internal fun LayerGroupControls(
                             },
                         )
                     }
-                    DropdownMenuItem(
+                    StudioDropdownMenuItem(
                         text = { Text(tr("取消图层分组")) },
                         leadingIcon = { StudioIcon(Glyph.Layers) },
                         enabled =

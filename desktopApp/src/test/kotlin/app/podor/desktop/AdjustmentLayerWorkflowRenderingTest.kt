@@ -8,7 +8,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.semantics.*
@@ -33,7 +33,6 @@ import kotlinx.serialization.json.*
 
 @OptIn(ExperimentalComposeUiApi::class)
 class AdjustmentLayerWorkflowRenderingTest {
-    private val view = Size(640f, 880f)
 
     private data class Exported(val format: ExportFormat, val bytes: ByteArray)
 
@@ -219,6 +218,19 @@ class AdjustmentLayerWorkflowRenderingTest {
 
         fun render() = scene.render(time++ * 16_666_667L)
 
+        val view
+            get() = canvasBounds().size
+
+        fun canvasBounds(): Rect =
+            nodes()
+                .filter {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace" &&
+                        it.boundsInWindow.width > 100f &&
+                        it.boundsInWindow.height > 100f
+                }
+                .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+                .boundsInWindow
+
         suspend fun waitFor(allowError: Boolean = false, predicate: () -> Boolean) {
             withTimeout(15_000) {
                 while (true) {
@@ -267,11 +279,53 @@ class AdjustmentLayerWorkflowRenderingTest {
             nodes()
                 .filter {
                     it.config.contains(action) &&
-                        !it.boundsInWindow.isEmpty &&
                         descendants(it).any { child -> matches(child, label) }
                 }
-                .minByOrNull { it.boundsInWindow.width * it.boundsInWindow.height }
+                .minByOrNull { it.size.width * it.size.height }
                 ?: error("Missing adjustment-layer control: $label")
+
+        private suspend fun reveal(
+            label: String,
+            action: SemanticsPropertyKey<*> = SemanticsActions.OnClick,
+        ): SemanticsNode {
+            repeat(24) {
+                val visible =
+                    withContext(Dispatchers.Main) {
+                        val target = node(label, action)
+                        val containers =
+                            nodes()
+                                .filter {
+                                    it.config.contains(
+                                        SemanticsProperties.VerticalScrollAxisRange
+                                    ) && descendants(it).any { child -> child.id == target.id }
+                                }
+                                .toList()
+                        if (containers.isEmpty()) {
+                            assertFalse(target.boundsInWindow.isEmpty, label)
+                            return@withContext target
+                        }
+                        assertEquals(1, containers.size, "Adjustment control has nested scrolling")
+                        val viewport = containers.single().boundsInWindow
+                        val top = target.positionInWindow.y
+                        val bottom = top + target.size.height
+                        if (
+                            !target.boundsInWindow.isEmpty &&
+                                top >= viewport.top - 1f &&
+                                bottom <= viewport.bottom + 1f
+                        )
+                            return@withContext target
+                        scene.sendPointerEvent(
+                            PointerEventType.Scroll,
+                            viewport.center,
+                            scrollDelta = Offset(0f, if (top < viewport.top) -4f else 4f),
+                        )
+                        null
+                    }
+                if (visible != null) return visible
+                settle()
+            }
+            error("Adjustment control did not scroll fully into view: $label")
+        }
 
         private fun textNode(label: String) =
             nodes()
@@ -287,9 +341,9 @@ class AdjustmentLayerWorkflowRenderingTest {
 
         suspend fun click(label: String) {
             settle()
+            val control = reveal(label)
             val point =
                 withContext(Dispatchers.Main) {
-                    val control = node(label)
                     assertFalse(control.config.contains(SemanticsProperties.Disabled), label)
                     control.boundsInWindow.center
                 }
@@ -300,13 +354,10 @@ class AdjustmentLayerWorkflowRenderingTest {
         }
 
         suspend fun slider(label: String, value: Float) {
+            val control = reveal(label, SemanticsActions.SetProgress)
             withContext(Dispatchers.Main) {
                 assertTrue(
-                    assertNotNull(
-                        node(label, SemanticsActions.SetProgress)
-                            .config[SemanticsActions.SetProgress]
-                            .action
-                    )(value)
+                    assertNotNull(control.config[SemanticsActions.SetProgress].action)(value)
                 )
             }
             previewReady()
@@ -315,9 +366,10 @@ class AdjustmentLayerWorkflowRenderingTest {
 
         suspend fun dragSlider(label: String) {
             settle()
+            val control = reveal(label, SemanticsActions.SetProgress)
             val bounds =
                 withContext(Dispatchers.Main) {
-                    node(label, SemanticsActions.SetProgress).boundsInWindow
+                    control.boundsInWindow
                 }
             val start = Offset(bounds.center.x, bounds.center.y)
             val end = Offset(bounds.left + bounds.width * 0.75f, bounds.center.y)
@@ -329,13 +381,12 @@ class AdjustmentLayerWorkflowRenderingTest {
         }
 
         suspend fun text(label: String, value: String) {
+            val control = reveal(label, SemanticsActions.SetText)
             withContext(Dispatchers.Main) {
                 assertTrue(
-                    assertNotNull(
-                        node(label, SemanticsActions.SetText)
-                            .config[SemanticsActions.SetText]
-                            .action
-                    )(AnnotatedString(value))
+                    assertNotNull(control.config[SemanticsActions.SetText].action)(
+                        AnnotatedString(value)
+                    )
                 )
             }
             previewReady()
@@ -426,7 +477,7 @@ class AdjustmentLayerWorkflowRenderingTest {
         fun scenePixel(x: Int, y: Int): Int {
             val point =
                 controller.viewport.toView(Offset(x + 0.5f, y + 0.5f), view, controller.document) +
-                    Offset(0f, 64f)
+                    canvasBounds().topLeft
             return render().use { image ->
                 val pixels = IntArray(image.width * image.height)
                 image.toComposeImageBitmap().readPixels(pixels)
@@ -442,7 +493,7 @@ class AdjustmentLayerWorkflowRenderingTest {
             }
             val point =
                 controller.viewport.toView(Offset(x, y), view, controller.document) +
-                    Offset(0f, 64f)
+                    canvasBounds().topLeft
             pointer(PointerEventType.Press, point)
             pointer(PointerEventType.Release, point)
             pointer(PointerEventType.Move, Offset.Zero)

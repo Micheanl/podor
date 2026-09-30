@@ -1,9 +1,9 @@
 package app.podor.desktop
 
 import androidx.compose.runtime.*
-import app.podor.domain.Appearance
 import androidx.compose.ui.graphics.Color
 import app.podor.desktop.input.TabletInput
+import app.podor.domain.Appearance
 import app.podor.domain.TabletInputMode
 import app.podor.ui.StudioTheme
 import com.sun.jna.Callback
@@ -71,6 +71,8 @@ internal interface WindowApi : StdCallLibrary {
 
     fun MonitorFromWindow(window: Pointer, flags: Int): Pointer
 
+    fun MonitorFromRect(rect: Pointer, flags: Int): Pointer
+
     fun GetMonitorInfoW(monitor: Pointer, info: Pointer): Boolean
 
     fun SendMessageW(window: Pointer, message: Int, wParam: Long, lParam: Long): Long
@@ -85,6 +87,16 @@ private interface DwmApi : StdCallLibrary {
         value: IntByReference,
         size: Int,
     ): Int
+}
+
+internal fun WindowApi.calculateClientArea(window: Pointer, client: Pointer, monitor: Pointer) {
+    if (!IsZoomed(window)) return
+    monitor.setInt(0, 40)
+    if (!GetMonitorInfoW(MonitorFromRect(client, 2), monitor)) return
+    client.setInt(0, maxOf(client.getInt(0), monitor.getInt(20)))
+    client.setInt(4, maxOf(client.getInt(4), monitor.getInt(24)))
+    client.setInt(8, minOf(client.getInt(8), monitor.getInt(28)))
+    client.setInt(12, minOf(client.getInt(12), monitor.getInt(32)))
 }
 
 internal object WindowHit {
@@ -150,7 +162,10 @@ internal class NativeWindowChrome(
             ): Long {
                 if (penInput.message(message, wParam, lParam)) return 0L
                 when (message) {
-                    0x0083 -> return 0L
+                    0x0083 -> {
+                        user.calculateClientArea(windowHandle, Pointer(lParam), monitor)
+                        return 0L
+                    }
                     0x0084 -> {
                         hit(lParam)?.let {
                             return it.toLong()
@@ -207,7 +222,12 @@ internal class NativeWindowChrome(
 
     fun updateAppearance(appearance: Appearance, border: Color) {
         val dwm = Native.load("dwmapi", DwmApi::class.java)
-        dwm.DwmSetWindowAttribute(handle, 20, IntByReference(if (appearance == Appearance.Dark) 1 else 0), 4)
+        dwm.DwmSetWindowAttribute(
+            handle,
+            20,
+            IntByReference(if (appearance == Appearance.Dark) 1 else 0),
+            4,
+        )
         dwm.DwmSetWindowAttribute(handle, 34, IntByReference(border.colorRef()), 4)
     }
 

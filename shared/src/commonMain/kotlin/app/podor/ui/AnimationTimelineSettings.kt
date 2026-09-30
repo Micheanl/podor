@@ -124,7 +124,7 @@ internal fun AnimationTimelineSettings(
                     StudioIcon(Glyph.Chevron, StudioTheme.muted)
                 }
                 StudioDropdownMenu(ranges, { ranges = false }) {
-                    DropdownMenuItem(
+                    StudioDropdownMenuItem(
                         text = { Text(tr("全部帧")) },
                         onClick = {
                             ranges = false
@@ -134,7 +134,7 @@ internal fun AnimationTimelineSettings(
                         trailingIcon = { if (tag == null) StudioIcon(Glyph.Check) },
                     )
                     animation.tags.forEach { value ->
-                        DropdownMenuItem(
+                        StudioDropdownMenuItem(
                             text = { Text(value.name) },
                             onClick = {
                                 ranges = false
@@ -207,29 +207,18 @@ internal fun AnimationTimelineSettings(
         if (compact) {
             HorizontalDivider(color = StudioTheme.border)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                listOf(false, true).forEach { linked ->
-                    ToolButton(
-                        if (linked) Glyph.Link else Glyph.Copy,
-                        if (linked) "共享复制帧" else "复制动画帧",
-                        plain = true,
-                        enabled = animation.frames.size < animation.maxFrames,
-                    ) {
-                        onDismiss()
-                        controller.animationCommand("duplicate_frame") {
-                            put("frame_id", active.id)
-                            put("index", index + 1)
-                            put("linked", linked)
-                        }
-                    }
-                }
                 ToolButton(
-                    Glyph.Trash,
-                    "删除动画帧",
+                    Glyph.Link,
+                    "共享复制帧",
                     plain = true,
-                    enabled = animation.frames.size > 1,
+                    enabled = animation.frames.size < animation.maxFrames,
                 ) {
                     onDismiss()
-                    controller.animationCommand("delete_frame") { put("frame_id", active.id) }
+                    controller.animationCommand("duplicate_frame") {
+                        put("frame_id", active.id)
+                        put("index", index + 1)
+                        put("linked", true)
+                    }
                 }
             }
         }

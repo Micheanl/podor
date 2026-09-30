@@ -6,6 +6,8 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.semantics.*
@@ -19,6 +21,7 @@ import app.podor.presentation.StudioController
 import app.podor.ui.*
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.math.roundToInt
 import kotlin.test.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
@@ -89,6 +92,42 @@ class LayerMaskRenderingTest {
             pointer(PointerEventType.Release, point)
             pointer(PointerEventType.Move, Offset.Zero)
             settle()
+            if (label == "Add mask" || label == "Mask settings")
+                withContext(Dispatchers.Main) {
+                    assertTrue(
+                        scene.semanticsOwners.any { owner ->
+                            descendants(owner.rootSemanticsNode).any {
+                                it.config.contains(SemanticsProperties.IsDialog)
+                            }
+                        }
+                    )
+                    assertFalse(
+                        node("Close", action = true).config.contains(SemanticsProperties.Disabled)
+                    )
+                }
+        }
+
+        fun assertSquareWhiteMaskPreviews() {
+            val layer = controller.document.layers.single()
+            val mask = assertNotNull(layer.mask)
+            assertNotNull(controller.previews.maskEntries[mask.id])
+            val image = render().use { it.toComposeImageBitmap().toPixelMap() }
+            for ((label, size) in
+                listOf(
+                    "${layer.name} · Edit mask" to StudioTheme.layerMaskPreviewSize,
+                    mask.name to StudioTheme.maskStackPreviewHeight,
+                )) {
+                val bounds = node(label, action = true).boundsInWindow
+                assertEquals(size.value, bounds.width, 0.01f)
+                assertEquals(size.value, bounds.height, 0.01f)
+                for (x in listOf(bounds.left + 2f, bounds.right - 2f)) {
+                    for (y in listOf(bounds.top + 2f, bounds.bottom - 2f)) assertEquals(
+                        0xFFFFFFFF.toInt(),
+                        image[x.roundToInt(), y.roundToInt()].toArgb(),
+                        "$label artwork clipped at $x,$y",
+                    )
+                }
+            }
         }
 
         suspend fun option(label: String) {
@@ -222,6 +261,7 @@ class LayerMaskRenderingTest {
             withSession {
                 option("Reveal all")
                 waitFor { controller.document.maskEditing && controller.previews.masks[1] != null }
+                withContext(Dispatchers.Main) { assertSquareWhiteMaskPreviews() }
                 val content = controller.document.contentId
                 click("Ink · Edit layer pixels")
                 waitFor { !controller.document.maskEditing }
@@ -280,8 +320,7 @@ class LayerMaskRenderingTest {
                             .contains(SemanticsProperties.Disabled)
                     )
                 }
-                pointer(PointerEventType.Press, Offset(5f, 5f))
-                pointer(PointerEventType.Release, Offset(5f, 5f))
+                click("Close")
                 option("Unlink mask")
                 waitFor { controller.document.layers.first().mask?.linked == false }
                 option("Enable mask")
@@ -302,8 +341,7 @@ class LayerMaskRenderingTest {
                             .contains(SemanticsProperties.Disabled)
                     )
                 }
-                pointer(PointerEventType.Press, Offset(5f, 5f))
-                pointer(PointerEventType.Release, Offset(5f, 5f))
+                click("Close")
                 click("Unlock alpha")
                 waitFor { !controller.document.layers.first().alphaLocked }
                 option("Apply mask")

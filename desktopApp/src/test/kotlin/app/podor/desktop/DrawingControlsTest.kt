@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
 import app.podor.domain.Tool
+import app.podor.domain.WorkspaceAppearance
 import app.podor.presentation.StudioController
 import app.podor.ui.*
 import java.nio.file.Files
@@ -197,7 +198,7 @@ class DrawingControlsTest {
                                     contentAlignment = Alignment.TopStart,
                                 ) {
                                     Column(Modifier.padding(top = 40.dp)) {
-                                        StudioTools(controller)
+                                        WorkspaceToolDock(controller, WorkspaceAppearance(), {})
                                     }
                                 }
                             }

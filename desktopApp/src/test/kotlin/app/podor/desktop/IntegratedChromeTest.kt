@@ -4,10 +4,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
+import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.semantics.*
+import androidx.compose.ui.unit.Density
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
 import app.podor.domain.Language
@@ -19,7 +22,7 @@ import kotlin.test.*
 import kotlinx.coroutines.*
 import org.jetbrains.skia.EncodedImageFormat
 
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, InternalComposeUiApi::class)
 class IntegratedChromeTest {
     @Test
     fun mergedHeaderKeepsToolsWindowControlsAndDraggingSeparate() = runBlocking {
@@ -40,8 +43,9 @@ class IntegratedChromeTest {
                 for (width in listOf(1360, 680, 400)) {
                     var drag = Rect.Zero
                     var closed = false
+                    val density = Density(1f)
                     val scene =
-                        ImageComposeScene(width, 900) {
+                        ImageComposeScene(width, 900, density = density) {
                             Box(Modifier.fillMaxSize().borderTrail(true)) {
                                 StudioApp(
                                     controller,
@@ -59,6 +63,22 @@ class IntegratedChromeTest {
                             }
                         }
                     try {
+                        fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+                            yield(node)
+                            node.children.forEach { yieldAll(descendants(it)) }
+                        }
+                        fun control(label: String) =
+                            scene.semanticsOwners
+                                .asSequence()
+                                .flatMap { descendants(it.rootSemanticsNode) }
+                                .filter {
+                                    it.config.contains(SemanticsActions.OnClick) &&
+                                        it.config
+                                            .getOrNull(SemanticsProperties.ContentDescription)
+                                            ?.contains(label) == true &&
+                                        !it.boundsInWindow.isEmpty
+                                }
+                                .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
                         val recording =
                             width == 1360 && System.getenv("PODOR_CAPTURE_BORDER") == "1"
                         val frames = Path.of("build/reports/border-trail")
@@ -79,21 +99,43 @@ class IntegratedChromeTest {
                             }
                         }
                         assertEquals(0f, drag.top)
-                        assertEquals(StudioTheme.windowTitleHeight.value, drag.bottom)
+                        assertEquals(with(density) { StudioTheme.headerHeight.toPx() }, drag.bottom)
                         assertTrue(drag.width >= 40f, "A usable drag region must remain at $width")
                         val hit: (Int, Int) -> Boolean = { x, y ->
                             drag.contains(Offset(x.toFloat(), y.toFloat()))
                         }
                         assertEquals(
                             WindowHit.CLIENT,
-                            WindowHit.at(60, 22, width, 900, 1f, false, hit),
+                            control(trValue("工程菜单", controller.preferences.language))
+                                .boundsInWindow
+                                .center
+                                .let {
+                                    WindowHit.at(
+                                        it.x.toInt(),
+                                        it.y.toInt(),
+                                        width,
+                                        900,
+                                        density.density,
+                                        false,
+                                        hit,
+                                    )
+                                },
                         )
                         assertEquals(
                             WindowHit.CAPTION,
-                            WindowHit.at(drag.center.x.toInt(), 22, width, 900, 1f, false, hit),
+                            WindowHit.at(
+                                drag.center.x.toInt(),
+                                drag.center.y.toInt(),
+                                width,
+                                900,
+                                density.density,
+                                false,
+                                hit,
+                            ),
                         )
-                        scene.sendPointerEvent(PointerEventType.Press, Offset(width - 23f, 22f))
-                        scene.sendPointerEvent(PointerEventType.Release, Offset(width - 23f, 22f))
+                        val close = control("Close").boundsInWindow.center
+                        scene.sendPointerEvent(PointerEventType.Press, close)
+                        scene.sendPointerEvent(PointerEventType.Release, close)
                         assertTrue(closed)
                         scene.sendPointerEvent(PointerEventType.Move, Offset(1f, 400f))
                         repeat(30) { scene.render(4_100_000_000L + it * 16_666_667L).close() }

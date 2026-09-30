@@ -96,7 +96,13 @@ fun ToolButton(
                 },
             contentAlignment = Alignment.Center,
         ) {
-            StudioIcon(glyph, tint.value)
+            StudioIcon(
+                glyph,
+                tint.value,
+                interactionSource = interaction,
+                enabled = enabled && LocalButtonIconEnabled.current,
+                selected = selected,
+            )
             if (header && selected)
                 Box(
                     Modifier.align(Alignment.BottomCenter)

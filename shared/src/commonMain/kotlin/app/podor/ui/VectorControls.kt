@@ -26,21 +26,15 @@ private fun VectorEditorTool.glyph() =
     }
 
 @Composable
-internal fun VectorDock(controller: StudioController, modifier: Modifier = Modifier) {
-    Surface(modifier, color = StudioTheme.panel, shape = StudioTheme.cardShape) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            VectorEditorTool.entries.forEach { mode ->
-                ToolButton(
-                    mode.glyph(),
-                    mode.label,
-                    selected = controller.vectorTool == mode,
-                    enabled = !controller.busy,
-                    plain = true,
-                ) {
-                    controller.cancelVector()
-                    controller.vectorTool = mode
-                }
-            }
+internal fun VectorDock(
+    controller: StudioController,
+    modifier: Modifier = Modifier,
+    floating: Boolean = false,
+) {
+    ContextActionRow(
+        modifier,
+        floating,
+        trailing = {
             ToolButton(
                 Glyph.Close,
                 "取消矢量编辑",
@@ -56,6 +50,19 @@ internal fun VectorDock(controller: StudioController, modifier: Modifier = Modif
                 plain = true,
             ) {
                 controller.commitVector()
+            }
+        },
+    ) {
+        VectorEditorTool.entries.forEach { mode ->
+            ToolButton(
+                mode.glyph(),
+                mode.label,
+                selected = controller.vectorTool == mode,
+                enabled = !controller.busy,
+                plain = true,
+            ) {
+                controller.cancelVector()
+                controller.vectorTool = mode
             }
         }
     }
@@ -199,11 +206,11 @@ internal fun LayerVectorControls(controller: StudioController, enabled: Boolean)
             var settings by remember { mutableStateOf(false) }
             Box {
                 ToolButton(Glyph.More, "矢量对象设置", enabled = editable, plain = true) {
-                    settings = true
+                    settings = !settings
                 }
                 StudioDropdownMenu(settings, { settings = false }) {
                     val index = objects?.objects?.indexOfFirst { it.id == selected.objectId } ?: -1
-                    DropdownMenuItem(
+                    StudioDropdownMenuItem(
                         text = { Text(tr("上移对象")) },
                         enabled = index >= 0 && index < (objects?.objects?.lastIndex ?: -1),
                         onClick = {
@@ -211,7 +218,7 @@ internal fun LayerVectorControls(controller: StudioController, enabled: Boolean)
                             controller.vectorObjectCommand("reorder_vector_object", index + 1)
                         },
                     )
-                    DropdownMenuItem(
+                    StudioDropdownMenuItem(
                         text = { Text(tr("下移对象")) },
                         enabled = index > 0,
                         onClick = {
@@ -219,7 +226,7 @@ internal fun LayerVectorControls(controller: StudioController, enabled: Boolean)
                             controller.vectorObjectCommand("reorder_vector_object", index - 1)
                         },
                     )
-                    DropdownMenuItem(
+                    StudioDropdownMenuItem(
                         text = { Text(tr("奇偶填充")) },
                         onClick = {
                             settings = false
@@ -237,7 +244,7 @@ internal fun LayerVectorControls(controller: StudioController, enabled: Boolean)
                         },
                     )
                     if (value.geometry is VectorGeometry.Path)
-                        DropdownMenuItem(
+                        StudioDropdownMenuItem(
                             text = { Text(tr("闭合路径")) },
                             onClick = {
                                 settings = false
@@ -255,7 +262,7 @@ internal fun LayerVectorControls(controller: StudioController, enabled: Boolean)
                         )
                     value.style.stroke?.let { stroke ->
                         VectorCap.entries.forEach { cap ->
-                            DropdownMenuItem(
+                            StudioDropdownMenuItem(
                                 text = { Text(tr("端点") + " · " + tr(cap.name)) },
                                 onClick = {
                                     settings = false
@@ -269,7 +276,7 @@ internal fun LayerVectorControls(controller: StudioController, enabled: Boolean)
                             )
                         }
                         VectorJoin.entries.forEach { join ->
-                            DropdownMenuItem(
+                            StudioDropdownMenuItem(
                                 text = { Text(tr("连接") + " · " + tr(join.name)) },
                                 onClick = {
                                     settings = false

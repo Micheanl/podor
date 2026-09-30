@@ -112,10 +112,12 @@ fun QuickBrushControls(controller: StudioController, colorsOnly: Boolean = false
                     "${controller.brush.size.roundToInt()} px",
                     tint = Color(controller.brush.color),
                 ) {
-                    controller.brush = controller.brush.copy(
-                        size = if (controller.brush.preset.raster == BrushRaster.Antialiased)
-                            it else it.roundToInt().toFloat()
-                    )
+                    controller.brush =
+                        controller.brush.copy(
+                            size =
+                                if (controller.brush.preset.raster == BrushRaster.Antialiased) it
+                                else it.roundToInt().toFloat()
+                        )
                 }
             val strength = if (smudge) controller.smudgeStrength else controller.brush.opacity
             CapsuleSlider(
@@ -179,13 +181,15 @@ fun QuickBrushControls(controller: StudioController, colorsOnly: Boolean = false
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CapsuleSlider(
+internal fun CapsuleSlider(
     label: String,
     value: Float,
     range: ClosedFloatingPointRange<Float>,
     display: String,
     colors: List<Color>? = null,
     tint: Color = LocalPaintColor.current,
+    glyph: Glyph? = null,
+    modifier: Modifier = Modifier,
     onChange: (Float) -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -197,23 +201,31 @@ private fun CapsuleSlider(
     val change by rememberUpdatedState(onChange)
     val distance = with(LocalDensity.current) { StudioTheme.sliderFineDistance.toPx() }
     Row(
-        Modifier.fillMaxWidth()
+        modifier
+            .fillMaxWidth()
             .height(StudioTheme.quickControlHeight)
-            .shadow(StudioTheme.quickShadow, CircleShape)
+            .shadow(
+                StudioTheme.floatingShadow,
+                CircleShape,
+                clip = false,
+                ambientColor = StudioTheme.floatingAmbient,
+                spotColor = StudioTheme.floatingSpot,
+            )
             .background(StudioTheme.panel, CircleShape)
             .borderTrail(true, StudioTheme.quickTrailRadius)
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         HintIcon(
-            when (label) {
-                "大小" -> Glyph.BrushSize
-                "不透明度" -> Glyph.Opacity
-                "涂抹强度" -> Glyph.Smudge
-                "色相" -> Glyph.Palette
-                "饱和度" -> Glyph.Gradient
-                else -> Glyph.Sun
-            },
+            glyph
+                ?: when (label) {
+                    "大小" -> Glyph.BrushSize
+                    "不透明度" -> Glyph.Opacity
+                    "涂抹强度" -> Glyph.Smudge
+                    "色相" -> Glyph.Palette
+                    "饱和度" -> Glyph.Gradient
+                    else -> Glyph.Sun
+                },
             label,
             Modifier.width(48.dp),
         )

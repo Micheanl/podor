@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Surface
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
+import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.toComposeImageBitmap
@@ -24,8 +25,13 @@ import kotlin.test.*
 import kotlinx.coroutines.*
 import org.jetbrains.skia.EncodedImageFormat
 
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, InternalComposeUiApi::class)
 class ImportLayerTest {
+    private fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+        yield(node)
+        node.children.forEach { yieldAll(descendants(it)) }
+    }
+
     @Test
     fun layerButtonImportsWithoutReplacingTheArtworkAndCancellationIsHarmless() =
         runBlocking<Unit> {
@@ -98,10 +104,6 @@ class ImportLayerTest {
             suspend fun importFromButton() {
                 render()
                 withContext(Dispatchers.Main) {
-                    fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
-                        yield(node)
-                        for (child in node.children) yieldAll(descendants(child))
-                    }
                     val button =
                         scene!!
                             .semanticsOwners
@@ -175,7 +177,24 @@ class ImportLayerTest {
                     val path = Path.of("build/reports/screenshots/import-layer.png")
                     Files.createDirectories(path.parent)
                     scene!!.render(time++ * 16_666_667L).use { image ->
-                        val preview = image.toComposeImageBitmap().toPixelMap()[630, 88]
+                        val label =
+                            "Reference · ${trValue("拖动缩略图排序", controller.preferences.language)}"
+                        val bounds =
+                            scene!!
+                                .semanticsOwners
+                                .asSequence()
+                                .flatMap { descendants(it.unmergedRootSemanticsNode) }
+                                .single {
+                                    it.config
+                                        .getOrNull(SemanticsProperties.ContentDescription)
+                                        ?.contains(label) == true
+                                }
+                                .boundsInWindow
+                        assertTrue(bounds.width > 0f && bounds.height > 0f)
+                        val preview =
+                            image
+                                .toComposeImageBitmap()
+                                .toPixelMap()[bounds.center.x.toInt(), bounds.center.y.toInt()]
                         assertTrue(preview.blue > preview.red + 0.2f)
                         image.encodeToData(EncodedImageFormat.PNG)!!.use {
                             Files.write(path, it.bytes)

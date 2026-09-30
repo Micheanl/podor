@@ -23,13 +23,17 @@ import app.podor.presentation.StudioController
 import app.podor.presentation.UpdateController
 
 @Composable
-fun SettingsDialog(controller: StudioController, onDismiss: () -> Unit, updates: UpdateController? = null) {
+fun SettingsDialog(
+    controller: StudioController,
+    onDismiss: () -> Unit,
+    updates: UpdateController? = null,
+) {
     var tab by remember { mutableStateOf(0) }
     var recording by remember { mutableStateOf<ShortcutAction?>(null) }
     var conflict by remember { mutableStateOf<String?>(null) }
     val focus = remember { FocusRequester() }
     LaunchedEffect(recording) { if (recording != null) focus.requestFocus() }
-    StudioModal("设置", Glyph.Settings, onDismiss, width = 500.dp) {
+    StudioModal("设置", Glyph.Settings, onDismiss, width = StudioTheme.settingsWidth) {
         Column(
             Modifier.fillMaxWidth()
                 .weight(1f, false)
@@ -54,11 +58,9 @@ fun SettingsDialog(controller: StudioController, onDismiss: () -> Unit, updates:
                 .focusable(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Row(
-                Modifier.fillMaxWidth()
-                    .background(StudioTheme.background, CircleShape)
-                    .padding(6.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
+            FlowRow(
+                Modifier.fillMaxWidth().padding(vertical = StudioTheme.workspacePadding),
+                horizontalArrangement = Arrangement.spacedBy(StudioTheme.workspaceGap),
             ) {
                 ToolButton(Glyph.Settings, "通用", tab == 0) {
                     tab = 0
@@ -76,32 +78,54 @@ fun SettingsDialog(controller: StudioController, onDismiss: () -> Unit, updates:
                     tab = 3
                     recording = null
                 }
+                ToolButton(if (tab == 4) Glyph.Sidebar else Glyph.SidebarClosed, "界面", tab == 4) {
+                    tab = 4
+                    recording = null
+                }
             }
+            HorizontalDivider(color = StudioTheme.border, thickness = StudioTheme.hairline)
             PageTransition(
                 tab,
-                Modifier.weight(1f, false).height(360.dp),
+                Modifier.weight(1f, false).height(StudioTheme.settingsHeight),
             ) { activeTab ->
                 Column(
                     Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     when (activeTab) {
-                        3 -> UpdateSettings(updates) { release, installer ->
-                            onDismiss()
-                            controller.navigate(WorkspaceDestination.InstallUpdate(release, installer))
-                        }
+                        4 ->
+                            WorkspaceAppearanceControls(
+                                controller.preferences.workspaceAppearance,
+                                {
+                                    controller.updatePreferences(
+                                        controller.preferences.copy(workspaceAppearance = it)
+                                    )
+                                },
+                                enabled = !controller.drawingInput,
+                            )
+                        3 ->
+                            UpdateSettings(updates) { release, installer ->
+                                onDismiss()
+                                controller.navigate(
+                                    WorkspaceDestination.InstallUpdate(release, installer)
+                                )
+                            }
                         0 -> {
                             SectionLabel("外观")
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Appearance.entries.forEach { appearance ->
                                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                                         ToolButton(
-                                            if (appearance == Appearance.Dark) Glyph.Moon else Glyph.Sun,
+                                            if (appearance == Appearance.Dark) Glyph.Moon
+                                            else Glyph.Sun,
                                             appearance.label,
-                                            selected = controller.preferences.appearance == appearance,
+                                            selected =
+                                                controller.preferences.appearance == appearance,
                                             plain = true,
                                         ) {
-                                            controller.updatePreferences(controller.preferences.copy(appearance = appearance))
+                                            controller.updatePreferences(
+                                                controller.preferences.copy(appearance = appearance)
+                                            )
                                         }
                                     }
                                 }
@@ -116,6 +140,7 @@ fun SettingsDialog(controller: StudioController, onDismiss: () -> Unit, updates:
                                         )
                                     },
                                     Modifier.fillMaxWidth(),
+                                    shape = CircleShape,
                                 ) {
                                     Row(
                                         Modifier.fillMaxWidth().heightIn(min = 26.dp),
@@ -134,12 +159,25 @@ fun SettingsDialog(controller: StudioController, onDismiss: () -> Unit, updates:
                             StartupScreen.entries.forEach { screen ->
                                 ChoiceSurface(
                                     controller.preferences.startupScreen == screen,
-                                    { controller.updatePreferences(controller.preferences.copy(startupScreen = screen)) },
+                                    {
+                                        controller.updatePreferences(
+                                            controller.preferences.copy(startupScreen = screen)
+                                        )
+                                    },
                                     Modifier.fillMaxWidth(),
+                                    shape = CircleShape,
                                 ) {
-                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                        Text(tr(screen.label), Modifier.weight(1f), fontSize = 13.sp)
-                                        if (controller.preferences.startupScreen == screen) StudioIcon(Glyph.Check, StudioTheme.accent)
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            tr(screen.label),
+                                            Modifier.weight(1f),
+                                            fontSize = 13.sp,
+                                        )
+                                        if (controller.preferences.startupScreen == screen)
+                                            StudioIcon(Glyph.Check, StudioTheme.accent)
                                     }
                                 }
                             }
@@ -147,17 +185,29 @@ fun SettingsDialog(controller: StudioController, onDismiss: () -> Unit, updates:
                             TabletInputMode.entries.forEach { mode ->
                                 ChoiceSurface(
                                     controller.preferences.tabletInputMode == mode,
-                                    { controller.updatePreferences(controller.preferences.copy(tabletInputMode = mode)) },
+                                    {
+                                        controller.updatePreferences(
+                                            controller.preferences.copy(tabletInputMode = mode)
+                                        )
+                                    },
                                     Modifier.fillMaxWidth(),
+                                    shape = CircleShape,
                                 ) {
-                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
                                         Text(tr(mode.label), Modifier.weight(1f), fontSize = 13.sp)
-                                        if (controller.preferences.tabletInputMode == mode) StudioIcon(Glyph.Check, StudioTheme.accent)
+                                        if (controller.preferences.tabletInputMode == mode)
+                                            StudioIcon(Glyph.Check, StudioTheme.accent)
                                     }
                                 }
                             }
-                            Text(tr("自动优先使用 WinTab，驱动不可用时使用 Windows Ink。笔侧键按住落笔取色。"),
-                                fontSize = 12.sp, color = StudioTheme.muted)
+                            Text(
+                                tr("自动优先使用 WinTab，驱动不可用时使用 Windows Ink。笔侧键按住落笔取色。"),
+                                fontSize = 12.sp,
+                                color = StudioTheme.muted,
+                            )
                         }
                         1 -> {
                             ShortcutAction.entries.forEach { action ->
@@ -238,7 +288,7 @@ fun SettingsDialog(controller: StudioController, onDismiss: () -> Unit, updates:
                                             color = StudioTheme.muted,
                                         )
                                     }
-                                    Switch(
+                                    StudioSwitch(
                                         pack.enabled,
                                         { enabled ->
                                             controller.updatePreferences(

@@ -1,14 +1,13 @@
 package app.podor.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import app.podor.domain.SelectionKind
 import app.podor.domain.SelectionMode
 import app.podor.domain.SelectionRefinement
@@ -18,15 +17,23 @@ import app.podor.presentation.StudioController
 import kotlin.math.roundToInt
 
 @Composable
-fun SelectionDock(controller: StudioController, modifier: Modifier = Modifier) {
-    Row(
-        modifier
-            .clip(CircleShape)
-            .background(StudioTheme.panel)
-            .border(StudioTheme.selectionDockBorder, StudioTheme.border, CircleShape)
-            .padding(StudioTheme.selectionDockPadding),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(StudioTheme.selectionDockGap),
+fun SelectionDock(
+    controller: StudioController,
+    modifier: Modifier = Modifier,
+    floating: Boolean = false,
+) {
+    ContextActionRow(
+        modifier,
+        floating,
+        trailing = {
+            ToolButton(
+                Glyph.Close,
+                controller.shortcutLabel(app.podor.domain.ShortcutAction.Deselect),
+                enabled = controller.document.selection != null,
+            ) {
+                controller.clearSelection()
+            }
+        },
     ) {
         SelectionKind.entries.forEach { kind ->
             ToolButton(
@@ -66,26 +73,22 @@ fun SelectionDock(controller: StudioController, modifier: Modifier = Modifier) {
             ) {
                 expanded = !expanded
             }
-            StudioDropdownMenu(
-                expanded,
-                { expanded = false },
-            ) {
-                SelectionMode.entries.forEach { mode ->
-                    DropdownMenuItem(
-                        text = { Text(tr(mode.label)) },
-                        leadingIcon = { StudioIcon(glyph(mode)) },
-                        trailingIcon = {
-                            if (controller.selectionMode == mode) StudioIcon(Glyph.Check)
-                        },
-                        enabled =
-                            controller.document.selection != null ||
-                                mode == SelectionMode.Replace ||
-                                mode == SelectionMode.Add,
-                        onClick = {
+            CapsulePopup(expanded, { expanded = false }) {
+                ContextActionRow(Modifier, floating = true) {
+                    SelectionMode.entries.forEach { mode ->
+                        ToolButton(
+                            glyph(mode),
+                            mode.label,
+                            selected = controller.selectionMode == mode,
+                            enabled =
+                                controller.document.selection != null ||
+                                    mode == SelectionMode.Replace ||
+                                    mode == SelectionMode.Add,
+                        ) {
                             controller.changeSelectionMode(mode)
                             expanded = false
-                        },
-                    )
+                        }
+                    }
                 }
             }
         }
@@ -97,13 +100,6 @@ fun SelectionDock(controller: StudioController, modifier: Modifier = Modifier) {
             controller.invertSelection()
         }
         SelectionRefinementOptions(controller)
-        ToolButton(
-            Glyph.Close,
-            controller.shortcutLabel(app.podor.domain.ShortcutAction.Deselect),
-            enabled = controller.document.selection != null,
-        ) {
-            controller.clearSelection()
-        }
     }
 }
 
@@ -113,25 +109,37 @@ private fun SelectionRefinementOptions(controller: StudioController) {
     var kind by remember { mutableStateOf(SelectionRefinement.Expand) }
     var radius by remember { mutableFloatStateOf(StudioDefaults.selectionRefinementRadius) }
     val enabled = controller.document.selection != null && controller.ready && !controller.busy
+    fun glyph(kind: SelectionRefinement) =
+        when (kind) {
+            SelectionRefinement.Expand -> Glyph.SelectionAdd
+            SelectionRefinement.Contract -> Glyph.SelectionSubtract
+            SelectionRefinement.Smooth -> Glyph.Stabilize
+            SelectionRefinement.Feather -> Glyph.Blur
+        }
     Box {
         ToolButton(Glyph.Adjustments, "调整选区", selected = expanded, enabled = enabled) {
             expanded = !expanded
         }
-        StudioDropdownMenu(expanded, { expanded = false }) {
+        CapsulePopup(expanded, { expanded = false }) {
+            val windowWidth =
+                with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() }
             Column(
-                Modifier.width(StudioTheme.colorSelectionWidth)
-                    .padding(StudioTheme.colorSelectionPadding),
+                Modifier.width(minOf(StudioTheme.colorSelectionWidth, windowWidth)),
                 verticalArrangement = Arrangement.spacedBy(StudioTheme.colorSelectionGap),
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(StudioTheme.selectionDockGap)) {
+                ContextActionRow(
+                    Modifier,
+                    floating = true,
+                    trailing = {
+                        ToolButton(Glyph.Check, "应用", enabled = enabled) {
+                            controller.refineSelection(kind, radius.roundToInt())
+                            expanded = false
+                        }
+                    },
+                ) {
                     SelectionRefinement.entries.forEach { entry ->
                         ToolButton(
-                            when (entry) {
-                                SelectionRefinement.Expand -> Glyph.SelectionAdd
-                                SelectionRefinement.Contract -> Glyph.SelectionSubtract
-                                SelectionRefinement.Smooth -> Glyph.Stabilize
-                                SelectionRefinement.Feather -> Glyph.Blur
-                            },
+                            glyph(entry),
                             entry.label,
                             selected = kind == entry,
                             enabled = enabled,
@@ -140,19 +148,14 @@ private fun SelectionRefinementOptions(controller: StudioController) {
                         }
                     }
                 }
-                LabeledSlider(
+                CapsuleSlider(
                     kind.label,
                     radius,
                     0f..StudioDefaults.maxSelectionRefinementRadius,
                     "${radius.roundToInt()} px",
+                    glyph = glyph(kind),
                 ) {
                     if (enabled) radius = it.roundToInt().toFloat()
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    ToolButton(Glyph.Check, "应用", enabled = enabled) {
-                        controller.refineSelection(kind, radius.roundToInt())
-                        expanded = false
-                    }
                 }
             }
         }
@@ -187,7 +190,10 @@ private fun ColorSelectionOptions(controller: StudioController) {
                         Modifier.weight(1f),
                         fontSize = StudioTheme.colorSelectionLabelSize,
                     )
-                    Switch(controller.selectionContiguous, { controller.selectionContiguous = it })
+                    StudioSwitch(
+                        controller.selectionContiguous,
+                        { controller.selectionContiguous = it },
+                    )
                 }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -195,7 +201,7 @@ private fun ColorSelectionOptions(controller: StudioController) {
                         Modifier.weight(1f),
                         fontSize = StudioTheme.colorSelectionLabelSize,
                     )
-                    Switch(controller.selectionMerged, { controller.selectionMerged = it })
+                    StudioSwitch(controller.selectionMerged, { controller.selectionMerged = it })
                 }
             }
         }

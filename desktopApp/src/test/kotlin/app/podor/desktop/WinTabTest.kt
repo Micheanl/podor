@@ -14,6 +14,7 @@ import java.awt.event.MouseEvent
 import javax.swing.SwingUtilities
 import kotlin.test.*
 import kotlinx.serialization.json.Json
+import org.junit.Assume.assumeTrue
 
 class WinTabTest {
     @Test
@@ -120,6 +121,7 @@ class WinTabTest {
 
     @Test
     fun nativePacketBatchReachesAwtWithMappedTipAndPressureAndCancelsOnFocusLoss() {
+        assumeTrue(System.getProperty("os.name").startsWith("Windows"))
         val events = mutableListOf<PenMouseEvent>()
         val api = FakeWinTab()
         val user = Native.load("user32", WindowApi::class.java)

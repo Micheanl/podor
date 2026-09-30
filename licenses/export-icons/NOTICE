@@ -1,0 +1,15 @@
+Export format icons
+
+Aseprite uses unmodified artwork from the official Aseprite v1.1.6 repository.
+SVG uses the official W3C SVG Logo without the W3C wordmark.
+See each asset's subdirectory for its source, attribution, and license.
+
+PNG, JPEG/JPG, WebP, ORA, TIFF, BMP, PSD, indexed PNG, GIF, and PNG sprite-sheet
+export use text badges naming the actual file format. These are original UI
+labels, not third-party software logos or claims of an official format logo.
+
+Adobe's Photoshop application icon is not bundled. The published Adobe icon
+policy does not grant permission to use application icons in a third-party
+application: https://www.adobe.com/legal/permissions/icons-web-logos.html
+OpenRaster is an interchange format, rather than one particular application:
+https://www.openraster.org/

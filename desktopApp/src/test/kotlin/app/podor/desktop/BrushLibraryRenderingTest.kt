@@ -4,9 +4,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Surface
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
+import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.semantics.*
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
@@ -21,7 +24,7 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
 import org.jetbrains.skia.EncodedImageFormat
 
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, InternalComposeUiApi::class)
 class BrushLibraryRenderingTest {
     @Test
     fun favoritesAndSearchChooseBrushesWithoutChangingCanvasAndStopRenderingWhenIdle() =
@@ -73,11 +76,56 @@ class BrushLibraryRenderingTest {
                     delay(2)
                 }
             }
-            suspend fun click(x: Float, y: Float) {
-                scene.sendPointerEvent(PointerEventType.Press, Offset(x, y))
-                scene.sendPointerEvent(PointerEventType.Release, Offset(x, y))
+            fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+                yield(node)
+                node.children.forEach { yieldAll(descendants(it)) }
+            }
+            fun nodes() =
+                scene.semanticsOwners.asSequence().flatMap { descendants(it.rootSemanticsNode) }
+            suspend fun click(label: String) {
+                val point =
+                    nodes()
+                        .filter {
+                            it.config.contains(SemanticsActions.OnClick) &&
+                                !it.boundsInWindow.isEmpty &&
+                                descendants(it).any { child ->
+                                    child.config
+                                        .getOrNull(SemanticsProperties.ContentDescription)
+                                        ?.contains(label) == true ||
+                                        child.config.getOrNull(SemanticsProperties.Text)?.any { text
+                                            ->
+                                            text.text == label
+                                        } == true
+                                }
+                        }
+                        .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+                        .boundsInWindow
+                        .center
+                scene.sendPointerEvent(PointerEventType.Press, point)
+                scene.sendPointerEvent(PointerEventType.Release, point)
                 scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
                 settle()
+            }
+            suspend fun collection(value: BrushCollection) {
+                click(trValue(controller.brushCollection.label, controller.preferences.language))
+                click(trValue(value.label, controller.preferences.language))
+                assertEquals(value, controller.brushCollection)
+            }
+            suspend fun search(value: String) {
+                val input =
+                    nodes().single {
+                        it.config.contains(SemanticsActions.SetText) &&
+                            it.config.getOrNull(SemanticsProperties.EditableText)?.text ==
+                                controller.brushLibraryQuery &&
+                            !it.boundsInWindow.isEmpty
+                    }
+                assertTrue(
+                    assertNotNull(input.config[SemanticsActions.SetText].action)(
+                        AnnotatedString(value)
+                    )
+                )
+                settle()
+                assertEquals(value, controller.brushLibraryQuery)
             }
             fun screenshot(name: String) {
                 val file = Path.of("build/reports/screenshots/$name.png")
@@ -98,35 +146,34 @@ class BrushLibraryRenderingTest {
                     val document = controller.document
                     settle()
                     screenshot("brush-library")
-                    click(149f, 514f)
+                    click(
+                        "Favorite brush · ${trValue(BrushPreset.Ink.label, preferences.language)}"
+                    )
                     assertEquals(setOf("ink"), controller.preferences.favoriteBrushes)
                     assertEquals(
                         "marker",
                         controller.brush.preset.id,
                         "Starring must not select the brush",
                     )
-                    click(318f, 407f)
+                    click(trValue(BrushCollection.All.label, preferences.language))
                     screenshot("brush-library-collections")
-                    click(275f, 509f)
+                    click(trValue(BrushCollection.Favorites.label, preferences.language))
                     assertEquals(BrushCollection.Favorites, controller.brushCollection)
                     screenshot("brush-library-favorites")
-                    click(65f, 477f)
+                    click(trValue(BrushPreset.Ink.label, preferences.language))
                     assertEquals("ink", controller.brush.preset.id)
-                    click(274f, 407f)
-                    controller.brushCollection = BrushCollection.Extensions
-                    controller.brushLibraryQuery = " STUDIO "
-                    settle()
+                    click("Search brushes")
+                    collection(BrushCollection.Extensions)
+                    search(" STUDIO ")
                     screenshot("brush-library-search")
-                    click(65f, 540f)
+                    click("Studio liner")
                     assertEquals("plugin:studio/ink", controller.brush.preset.id)
-                    controller.brushCollection = BrushCollection.Custom
-                    controller.brushLibraryQuery = "My"
-                    settle()
-                    click(65f, 540f)
+                    collection(BrushCollection.Custom)
+                    search("My")
+                    click("My ink")
                     assertEquals("custom-1", controller.brush.preset.id)
-                    controller.brushCollection = BrushCollection.All
-                    controller.brushLibraryQuery = "no such brush"
-                    settle()
+                    collection(BrushCollection.All)
+                    search("no such brush")
                     screenshot("brush-library-empty")
                     assertSame(pixels, controller.frame)
                     assertEquals(document, controller.document)

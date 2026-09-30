@@ -6,6 +6,7 @@ import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
@@ -33,19 +34,31 @@ class SelectionRenderingTest {
         val full: Boolean,
     ) {
         var frame = 0L
-        val view =
-            if (full)
-                Size(
-                    1360f - StudioTheme.inspectorWidth.value - StudioTheme.inspectorMargin.value,
-                    836f,
-                )
-            else Size(680f, 560f)
+        val view
+            get() = if (full) canvasBounds().size else Size(680f, 560f)
 
         fun render() = scene.render(frame++ * 16_666_667L)
 
+        private fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+            yield(node)
+            for (child in node.children) yieldAll(descendants(child))
+        }
+
+        fun canvasBounds(): Rect =
+            scene.semanticsOwners
+                .asSequence()
+                .flatMap { descendants(it.rootSemanticsNode) }
+                .filter {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace" &&
+                        it.boundsInWindow.width > 100f &&
+                        it.boundsInWindow.height > 100f
+                }
+                .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+                .boundsInWindow
+
         fun position(point: Offset) =
             controller.viewport.toView(point, view, controller.document) +
-                if (full) Offset(0f, 64f) else Offset.Zero
+                if (full) canvasBounds().topLeft else Offset.Zero
 
         suspend fun waitFor(predicate: () -> Boolean) =
             withTimeout(10_000) {

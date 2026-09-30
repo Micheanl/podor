@@ -10,6 +10,7 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import kotlin.test.*
 import kotlinx.coroutines.runBlocking
+import org.junit.Assume.assumeTrue
 
 class DesktopInstallerTest {
     private class Helper(private val alive: Boolean) : Process() {
@@ -34,6 +35,7 @@ class DesktopInstallerTest {
 
     @Test
     fun installerIsReverifiedAndHelperMustBeReadyBeforeTheAppExits() = runBlocking {
+        assumeTrue(System.getProperty("os.name").startsWith("Windows"))
         val root = Files.createDirectories(Path.of("build", "installer-tests").toAbsolutePath())
         val directory = Files.createTempDirectory(root, "update with spaces ")
         try {

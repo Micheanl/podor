@@ -7,6 +7,7 @@ import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
@@ -14,6 +15,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.podor.data.ProjectFiles
@@ -82,6 +84,23 @@ class LayerMoveTest {
 
         fun render() = scene.render(frame++ * 16_666_667L)
 
+        private fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+            yield(node)
+            for (child in node.children) yieldAll(descendants(child))
+        }
+
+        fun canvasBounds(): Rect =
+            scene.semanticsOwners
+                .asSequence()
+                .flatMap { descendants(it.rootSemanticsNode) }
+                .filter {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace" &&
+                        it.boundsInWindow.width > 100f &&
+                        it.boundsInWindow.height > 100f
+                }
+                .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+                .boundsInWindow
+
         suspend fun awaitState(predicate: () -> Boolean) =
             withTimeout(10_000) {
                 while (
@@ -94,8 +113,9 @@ class LayerMoveTest {
 
         suspend fun pointer(type: PointerEventType, point: Offset) =
             withContext(Dispatchers.Main) {
-                val area = if (fullStudio) Size(1360f, 836f) else view
-                val origin = if (fullStudio) Offset(0f, 64f) else Offset.Zero
+                val bounds = if (fullStudio) canvasBounds() else null
+                val area = bounds?.size ?: view
+                val origin = bounds?.topLeft ?: Offset.Zero
                 scene.sendPointerEvent(
                     type,
                     controller.viewport.toView(point, area, controller.document) + origin,

@@ -66,6 +66,7 @@ fun BrushControls(controller: StudioController) {
         }
     val smudge = controller.tool == Tool.Smudge
     val lasso = controller.tool == Tool.LassoFill
+    val floatingBrush = controller.tool == Tool.Brush || controller.tool == Tool.Eraser
     val strength = if (smudge) controller.smudgeStrength else controller.brush.opacity
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -110,7 +111,7 @@ fun BrushControls(controller: StudioController) {
                         )
                 }
                 Column {
-                    if (!lasso)
+                    if (!lasso && !floatingBrush)
                         LabeledSlider(
                             "大小",
                             controller.brush.size,
@@ -130,17 +131,18 @@ fun BrushControls(controller: StudioController) {
                                         else it.roundToInt().toFloat()
                                 )
                         }
-                    LabeledSlider(
-                        if (smudge) "涂抹强度" else "不透明度",
-                        strength,
-                        0.01f..1f,
-                        "${(strength*100).roundToInt()}%",
-                        tint = Color(controller.brush.color),
-                        glyph = if (smudge) Glyph.Smudge else Glyph.Opacity,
-                    ) {
-                        if (smudge) controller.smudgeStrength = it
-                        else controller.brush = controller.brush.copy(opacity = it)
-                    }
+                    if (!floatingBrush)
+                        LabeledSlider(
+                            if (smudge) "涂抹强度" else "不透明度",
+                            strength,
+                            0.01f..1f,
+                            "${(strength*100).roundToInt()}%",
+                            tint = Color(controller.brush.color),
+                            glyph = if (smudge) Glyph.Smudge else Glyph.Opacity,
+                        ) {
+                            if (smudge) controller.smudgeStrength = it
+                            else controller.brush = controller.brush.copy(opacity = it)
+                        }
                     if (!lasso && controller.brush.preset.raster == BrushRaster.Antialiased)
                         LabeledSlider(
                             "稳笔",
@@ -190,7 +192,7 @@ fun BrushControls(controller: StudioController) {
                             { collections = false },
                         ) {
                             BrushCollection.entries.forEach { collection ->
-                                DropdownMenuItem(
+                                StudioDropdownMenuItem(
                                     text = { Text(tr(collection.label)) },
                                     leadingIcon = { StudioIcon(glyph(collection)) },
                                     trailingIcon = {
@@ -292,7 +294,7 @@ fun BrushControls(controller: StudioController) {
                 Spacer(Modifier.width(10.dp))
                 Text(tr("手指绘画"), fontSize = 12.sp, modifier = Modifier.weight(1f))
                 CompositionLocalProvider(LocalRippleConfiguration provides null) {
-                    Switch(controller.fingerDrawing, { controller.fingerDrawing = it })
+                    StudioSwitch(controller.fingerDrawing, { controller.fingerDrawing = it })
                 }
             }
         }
@@ -416,7 +418,7 @@ private fun BrushEditor(controller: StudioController, onDismiss: () -> Unit) {
                             }
                             StudioDropdownMenu(rasterModes, { rasterModes = false }) {
                                 BrushRaster.entries.forEach { raster ->
-                                    DropdownMenuItem(
+                                    StudioDropdownMenuItem(
                                         text = { Text(tr(raster.label)) },
                                         trailingIcon = {
                                             if (raster == preset.raster) StudioIcon(Glyph.Check)
@@ -446,7 +448,7 @@ private fun BrushEditor(controller: StudioController, onDismiss: () -> Unit) {
                                 }
                                 StudioDropdownMenu(materials, { materials = false }) {
                                     BrushTexture.entries.forEach { texture ->
-                                        DropdownMenuItem(
+                                        StudioDropdownMenuItem(
                                             text = { Text(tr(texture.label)) },
                                             trailingIcon = {
                                                 if (texture == preset.texture)
@@ -510,7 +512,7 @@ private fun BrushEditor(controller: StudioController, onDismiss: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(tr("跟随笔画方向"), Modifier.weight(1f), fontSize = 13.sp)
-                            Switch(
+                            StudioSwitch(
                                 preset.followDirection,
                                 { update(preset.copy(followDirection = it)) },
                             )

@@ -101,9 +101,8 @@ fun AnimationExportDialog(
                     ) {
                         val selected = format == value
                         val tint = if (selected) StudioTheme.accent else StudioTheme.muted
-                        StudioIcon(
-                            if (value == AnimationExportFormat.Gif) Glyph.Animation
-                            else Glyph.TileGrid,
+                        FormatIcon(
+                            if (value == AnimationExportFormat.Gif) "GIF" else "PNG",
                             tint,
                         )
                         Spacer(Modifier.width(StudioTheme.animationGap))
@@ -242,7 +241,7 @@ fun AnimationExportDialog(
                             Modifier.weight(1f),
                             fontSize = StudioTheme.canvasLabelSize,
                         )
-                        Switch(
+                        StudioSwitch(
                             timing == GifTimingPolicy.Exact,
                             {
                                 timing = if (it) GifTimingPolicy.Exact else GifTimingPolicy.Round
@@ -322,7 +321,7 @@ private fun <T> AnimationExportChoice(
             }
             StudioDropdownMenu(expanded, { expanded = false }) {
                 values.forEach { item ->
-                    DropdownMenuItem(
+                    StudioDropdownMenuItem(
                         text = { Text(label(item)) },
                         trailingIcon = { if (item == value) StudioIcon(Glyph.Check) },
                         onClick = {

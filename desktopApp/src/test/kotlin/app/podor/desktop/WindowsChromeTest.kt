@@ -12,8 +12,10 @@ import app.podor.ui.StudioTheme
 import com.sun.jna.Memory
 import com.sun.jna.Native
 import com.sun.jna.Pointer
+import java.lang.reflect.Proxy
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.math.roundToInt
 import kotlin.test.*
 import kotlinx.coroutines.*
 import org.jetbrains.skia.EncodedImageFormat
@@ -21,6 +23,127 @@ import org.junit.Assume.assumeTrue
 
 @OptIn(ExperimentalComposeUiApi::class)
 class WindowsChromeTest {
+    private fun clientRect(
+        proposed: List<Int>,
+        workArea: List<Int>?,
+        maximized: Boolean = true,
+        structureSize: Long = 16,
+    ): List<Int> =
+        Memory(structureSize).use { client ->
+            Memory(40).use { monitor ->
+                proposed.forEachIndexed { index, value -> client.setInt(index * 4L, value) }
+                for (offset in 16 until structureSize.toInt() step 4) client.setInt(
+                    offset.toLong(),
+                    0x5A5A5A5A,
+                )
+                val window = Pointer(1)
+                val targetMonitor = Pointer(2)
+                var monitorRequests = 0
+                val api =
+                    Proxy.newProxyInstance(
+                        WindowApi::class.java.classLoader,
+                        arrayOf(WindowApi::class.java),
+                    ) { _, method, arguments ->
+                        when (method.name) {
+                            "IsZoomed" -> {
+                                assertEquals(window, arguments!![0])
+                                maximized
+                            }
+                            "MonitorFromRect" -> {
+                                assertEquals(
+                                    proposed,
+                                    List(4) { (arguments!![0] as Pointer).getInt(it * 4L) },
+                                )
+                                assertEquals(2, arguments!![1])
+                                monitorRequests++
+                                targetMonitor
+                            }
+                            "GetMonitorInfoW" -> {
+                                assertEquals(targetMonitor, arguments!![0])
+                                val info = arguments[1] as Pointer
+                                assertEquals(40, info.getInt(0))
+                                workArea?.forEachIndexed { index, value ->
+                                    info.setInt(20 + index * 4L, value)
+                                }
+                                workArea != null
+                            }
+                            else -> error("Unexpected window API: ${method.name}")
+                        }
+                    } as WindowApi
+                api.calculateClientArea(window, client, monitor)
+                assertEquals(if (maximized) 1 else 0, monitorRequests)
+                for (offset in 16 until structureSize.toInt() step 4) assertEquals(
+                    0x5A5A5A5A,
+                    client.getInt(offset.toLong()),
+                )
+                List(4) { client.getInt(it * 4L) }
+            }
+        }
+
+    @Test
+    fun maximizedClientsExcludeResizeFrameOverscanAndTaskbarsAtEachDpi() {
+        for (scale in listOf(1f, 1.25f, 1.5f, 2f)) {
+            val width = (1920 * scale).roundToInt()
+            val height = (1080 * scale).roundToInt()
+            val taskbar = (40 * scale).roundToInt()
+            val frame = (8 * scale).roundToInt()
+            for (workArea in
+                listOf(
+                    listOf(0, 0, width, height - taskbar),
+                    listOf(0, taskbar, width, height),
+                    listOf(taskbar, 0, width, height),
+                    listOf(0, 0, width - taskbar, height),
+                )) {
+                val proposed =
+                    listOf(
+                        workArea[0] - frame,
+                        workArea[1] - frame,
+                        workArea[2] + frame,
+                        workArea[3] + frame,
+                    )
+                for (size in listOf(16L, 48L + Native.POINTER_SIZE)) assertEquals(
+                    workArea,
+                    clientRect(proposed, workArea, structureSize = size),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun maximizedClientsKeepNegativeSecondaryMonitorCoordinates() {
+        for (workArea in
+            listOf(
+                listOf(-1920, 0, 0, 1040),
+                listOf(-3840, -2160, -1920, -1120),
+                listOf(-1080, -1920, 0, -40),
+            )) {
+            val proposed =
+                listOf(workArea[0] - 12, workArea[1] - 12, workArea[2] + 12, workArea[3] + 12)
+            assertEquals(workArea, clientRect(proposed, workArea))
+        }
+    }
+
+    @Test
+    fun floatingClientsKeepTheirFullUndecoratedArea() {
+        val proposed = listOf(-3000, -2000, -2200, -1400)
+        assertEquals(proposed, clientRect(proposed, listOf(0, 0, 1920, 1040), maximized = false))
+    }
+
+    @Test
+    fun maximizedClientsAlreadyInsideTheWorkAreaDoNotGainInsets() {
+        val workArea = listOf(0, 0, 1920, 1040)
+        for (proposed in listOf(workArea, listOf(20, 30, 1300, 950))) assertEquals(
+            proposed,
+            clientRect(proposed, workArea),
+        )
+    }
+
+    @Test
+    fun missingMonitorInformationKeepsTheProposedClientArea() {
+        val proposed = listOf(-8, -8, 1928, 1048)
+        assertEquals(proposed, clientRect(proposed, null))
+    }
+
     @Test
     fun titleHitTestingKeepsControlsClickableAndSupportsResizingAtBothScales() {
         for (scale in listOf(1f, 1.5f, 2f)) {

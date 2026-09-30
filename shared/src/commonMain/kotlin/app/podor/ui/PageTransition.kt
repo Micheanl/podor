@@ -23,19 +23,22 @@ fun PageTransition(
     modifier: Modifier = Modifier,
     content: @Composable (Int) -> Unit,
 ) {
+    val reducedMotion = StudioMotion.reducedMotion
     val pages = updateTransition(page, label = "inspector pages")
     val direction = if (pages.targetState >= pages.currentState) 1f else -1f
     pages.AnimatedContent(
         modifier.clipToBounds(),
         transitionSpec = {
-            fadeIn(
-                    tween(
-                        StudioMotion.pageMillis - StudioMotion.pageFadeMillis,
-                        delayMillis = StudioMotion.pageFadeMillis,
-                        easing = StudioMotion.easing,
-                    )
-                )
-                .togetherWith(fadeOut(tween(StudioMotion.pageFadeMillis)))
+            (if (reducedMotion) EnterTransition.None.togetherWith(ExitTransition.None)
+                else
+                    fadeIn(
+                            tween(
+                                StudioMotion.pageMillis - StudioMotion.pageFadeMillis,
+                                delayMillis = StudioMotion.pageFadeMillis,
+                                easing = StudioMotion.easing,
+                            )
+                        )
+                        .togetherWith(fadeOut(tween(StudioMotion.pageFadeMillis))))
                 .apply { targetContentZIndex = 1f }
                 .using(SizeTransform(clip = true, sizeAnimationSpec = { _, _ -> tween(0) }))
         },
@@ -43,14 +46,21 @@ fun PageTransition(
     ) { activePage ->
         val turn =
             transition.animateFloat(
-                transitionSpec = { tween(StudioMotion.pageMillis, easing = StudioMotion.easing) },
+                transitionSpec = {
+                    tween(
+                        if (reducedMotion) 0 else StudioMotion.pageMillis,
+                        easing = StudioMotion.easing,
+                    )
+                },
                 label = "page turn",
             ) { state ->
-                when (state) {
-                    EnterExitState.PreEnter -> direction
-                    EnterExitState.Visible -> 0f
-                    EnterExitState.PostExit -> -direction
-                }
+                if (reducedMotion) 0f
+                else
+                    when (state) {
+                        EnterExitState.PreEnter -> direction
+                        EnterExitState.Visible -> 0f
+                        EnterExitState.PostExit -> -direction
+                    }
             }
         val active = activePage == page
         Box(

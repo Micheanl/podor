@@ -2,9 +2,11 @@ package app.podor.desktop
 
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
+import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.semantics.*
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
 import app.podor.domain.*
@@ -19,8 +21,25 @@ import kotlin.test.*
 import kotlinx.coroutines.*
 import org.jetbrains.skia.EncodedImageFormat
 
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, InternalComposeUiApi::class)
 class SymmetryDrawingTest {
+    private fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+        yield(node)
+        for (child in node.children) yieldAll(descendants(child))
+    }
+
+    private fun canvasBounds(scene: ImageComposeScene): Rect =
+        scene.semanticsOwners
+            .asSequence()
+            .flatMap { descendants(it.rootSemanticsNode) }
+            .filter {
+                it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace" &&
+                    it.boundsInWindow.width > 100f &&
+                    it.boundsInWindow.height > 100f
+            }
+            .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+            .boundsInWindow
+
     @Test
     fun controlsGuidesAndRotatedCanvasPaintingShareTheSameAxes() =
         runBlocking<Unit> {
@@ -76,9 +95,11 @@ class SymmetryDrawingTest {
                     }
                 }
             }
-            fun position(point: Offset) =
-                controller.viewport.toView(point, Size(1042f, 836f), controller.document) +
-                    Offset(0f, 64f)
+            fun position(point: Offset): Offset {
+                val bounds = canvasBounds(scene)
+                return controller.viewport.toView(point, bounds.size, controller.document) +
+                    bounds.topLeft
+            }
             try {
                 awaitState { controller.ready }
                 withContext(Dispatchers.Main) { controller.file(StudioController.FileAction.Open) }
@@ -96,18 +117,27 @@ class SymmetryDrawingTest {
                     render()
                     val pixels = controller.frame
                     val revision = controller.document.revision
-                    click(1242f, 269f)
+                    scene.clickControl("对称绘画") { render() }
                     screenshot("symmetry-menu")
-                    click(1210f, 364f)
+                    scene.clickControl("双轴对称") { render() }
                     screenshot("symmetry-menu-selected")
                     assertEquals(SymmetryMode.Quadrant, controller.symmetry.mode)
-                    click(1060f, 488f)
+                    val axis = scene.sliderBounds("横向位置")
+                    val axisPoint = Offset(axis.left + axis.width * 0.2f, axis.center.y)
+                    click(axisPoint.x, axisPoint.y)
                     assertTrue(controller.symmetry.x < 0.4f)
-                    click(1050f, 705f)
+                    scene.clickControl("对称轴居中") { render() }
                     assertEquals(0.5f, controller.symmetry.x)
-                    click(1225f, 644f)
+                    val toggle =
+                        scene.semanticsOwners
+                            .asSequence()
+                            .flatMap { descendants(it.rootSemanticsNode) }
+                            .single { it.config.getOrNull(SemanticsProperties.Role) == Role.Switch }
+                            .boundsInWindow
+                            .center
+                    click(toggle.x, toggle.y)
                     assertFalse(controller.symmetry.guides)
-                    click(1225f, 644f)
+                    click(toggle.x, toggle.y)
                     assertTrue(controller.symmetry.guides)
                     controller.updatePreferences(
                         controller.preferences.copy(language = Language.English)

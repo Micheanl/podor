@@ -6,12 +6,14 @@ import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.scene.ComposeScenePointer
+import androidx.compose.ui.semantics.*
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
 import app.podor.domain.*
@@ -58,14 +60,33 @@ class GradientTest {
         val full: Boolean,
         val original: ByteArray,
     ) {
-        val view = if (full) Size(1042f, 836f) else Size(740f, 560f)
+        val view
+            get() = if (full) canvasBounds().size else Size(740f, 560f)
+
         var frame = 0L
 
         fun render() = scene.render(frame++ * 16_666_667L)
 
+        fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+            yield(node)
+            for (child in node.children) yieldAll(descendants(child))
+        }
+
+        fun canvasBounds(): Rect =
+            scene.semanticsOwners
+                .asSequence()
+                .flatMap { descendants(it.rootSemanticsNode) }
+                .filter {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace" &&
+                        it.boundsInWindow.width > 100f &&
+                        it.boundsInWindow.height > 100f
+                }
+                .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+                .boundsInWindow
+
         fun position(point: Offset) =
             controller.viewport.toView(point, view, controller.document) +
-                if (full) Offset(0f, 64f) else Offset.Zero
+                if (full) canvasBounds().topLeft else Offset.Zero
 
         suspend fun awaitState(check: () -> Boolean) =
             withTimeout(15_000) {
@@ -119,7 +140,8 @@ class GradientTest {
             session.awaitState { controller.ready }
             withContext(Dispatchers.Main) { controller.file(StudioController.FileAction.Open) }
             session.awaitState { controller.hasCanvas && !controller.busy }
-            if (full) withContext(Dispatchers.Main) { scene.openInspector { session.render().close() } }
+            if (full)
+                withContext(Dispatchers.Main) { scene.openInspector { session.render().close() } }
             session.block {
                 withContext(Dispatchers.Main) {
                     saved = null
@@ -267,17 +289,50 @@ class GradientTest {
                     scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
                     repeat(35) { render().close() }
                 }
-                click(356f, 819f)
+                fun dockColor(label: String) {
+                    val dock =
+                        scene.semanticsOwners
+                            .asSequence()
+                            .flatMap { descendants(it.rootSemanticsNode) }
+                            .single {
+                                it.config.getOrNull(SemanticsProperties.TestTag) ==
+                                    "context-tool-dock"
+                            }
+                    val point =
+                        descendants(dock)
+                            .single {
+                                it.config
+                                    .getOrNull(SemanticsProperties.ContentDescription)
+                                    ?.contains(label) == true
+                            }
+                            .boundsInWindow
+                            .center
+                    click(point.x, point.y)
+                }
+                dockColor("颜色 #000000")
                 assertTrue(controller.gradientEditingStart)
-                click(1200f, 400f)
+                val firstPlane = scene.controlBounds("饱和度与明度色板")
+                val firstPoint =
+                    firstPlane.topLeft + Offset(firstPlane.width * 0.7f, firstPlane.height * 0.3f)
+                click(firstPoint.x, firstPoint.y)
                 val from = controller.gradient.from
                 assertNotEquals(brush.color, from)
-                click(444f, 819f)
+                dockColor("颜色 #ffffff")
                 assertFalse(controller.gradientEditingStart)
-                click(1160f, 430f)
+                val secondPlane = scene.controlBounds("饱和度与明度色板")
+                val secondPoint =
+                    secondPlane.topLeft +
+                        Offset(secondPlane.width * 0.3f, secondPlane.height * 0.5f)
+                click(secondPoint.x, secondPoint.y)
                 assertEquals(from, controller.gradient.from)
                 assertNotEquals(StudioDefaults.gradientEndColor, controller.gradient.to)
                 assertEquals(brush, controller.brush)
+                val endLabel =
+                    "颜色 #${(controller.gradient.to and 0xFFFFFF).toString(16).padStart(6, '0')}"
+                dockColor(endLabel)
+                assertFailsWith<NoSuchElementException> { scene.controlBounds("饱和度与明度色板") }
+                dockColor(endLabel)
+                assertFalse(scene.controlBounds("饱和度与明度色板").isEmpty)
                 assertFalse(scene.hasInvalidations())
                 render().use { image ->
                     image.encodeToData(EncodedImageFormat.PNG)!!.use {

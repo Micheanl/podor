@@ -4,7 +4,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.*
@@ -104,15 +104,20 @@ class ColorSelectionTest {
             scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
             repeat(35) { render().close() }
         }
-        fun position(point: Offset) =
-            controller.viewport.toView(
-                point,
-                Size(
-                    1360f - StudioTheme.inspectorWidth.value - StudioTheme.inspectorMargin.value,
-                    836f,
-                ),
-                controller.document,
-            ) + Offset(0f, 64f)
+        fun canvasBounds(): Rect =
+            controls()
+                .filter {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace" &&
+                        it.boundsInWindow.width > 100f &&
+                        it.boundsInWindow.height > 100f
+                }
+                .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+                .boundsInWindow
+        fun position(point: Offset): Offset {
+            val bounds = canvasBounds()
+            return controller.viewport.toView(point, bounds.size, controller.document) +
+                bounds.topLeft
+        }
         suspend fun waitFor(predicate: () -> Boolean) =
             withTimeout(10_000) {
                 while (

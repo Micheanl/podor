@@ -26,6 +26,63 @@ class WorkspaceAppearanceTest {
         )
 
     @Test
+    fun legacyPreferencesReceiveWorkspaceDefaultsWithoutReplacingUserChoices() {
+        val restored =
+            Json.decodeFromString<Preferences>(
+                    """{"language":"English","shortcuts":{"Brush":{"key":"B","alt":true}},"palette":[4294901760,4278190335]}"""
+                )
+                .withNewShortcuts()
+        assertTrue(restored.valid())
+        assertEquals(WorkspaceAppearance(), restored.workspaceAppearance)
+        assertEquals(Language.English, restored.language)
+        assertEquals(Shortcut("B", alt = true), restored.shortcut(ShortcutAction.Brush))
+        assertEquals(listOf(0xFFFF0000L, 0xFF0000FFL), restored.palette)
+    }
+
+    @Test
+    fun workspacePreferencesPersistTogetherWithUnrelatedSettings() {
+        val restored =
+            Json.decodeFromString<Preferences>(
+                    """{"language":"English","workspaceAppearance":{"toolDock":"Bottom","hiddenTools":["Picker"],"inspectorPosition":"Left","density":"Comfortable","scale":1.75,"reducedMotion":true},"shortcuts":{"Brush":{"key":"G","alt":true}},"palette":[4294901760]}"""
+                )
+                .withNewShortcuts()
+        assertTrue(restored.valid())
+        val saved = Json.decodeFromString<Preferences>(Json.encodeToString(restored))
+        assertEquals(ToolDockPosition.Bottom, saved.workspaceAppearance.toolDock)
+        assertEquals(setOf("Picker"), saved.workspaceAppearance.hiddenTools)
+        assertEquals(InspectorPosition.Left, saved.workspaceAppearance.inspectorPosition)
+        assertEquals(InterfaceDensity.Comfortable, saved.workspaceAppearance.density)
+        assertEquals(1.75f, saved.workspaceAppearance.scale)
+        assertTrue(saved.workspaceAppearance.reducedMotion)
+        assertEquals(originalOrder, saved.workspaceAppearance.toolOrder)
+        assertEquals(Language.English, saved.language)
+        assertEquals(Shortcut("G", alt = true), saved.shortcut(ShortcutAction.Brush))
+        assertEquals(listOf(0xFFFF0000L), saved.palette)
+    }
+
+    @Test
+    fun invalidWorkspaceValuesCannotMakeAnOtherwiseValidPreferenceImportValid() {
+        val base = Preferences()
+        assertTrue(base.valid())
+        assertFalse(base.copy(workspaceAppearance = WorkspaceAppearance(scale = 2.01f)).valid())
+        assertFalse(
+            base
+                .copy(
+                    workspaceAppearance = WorkspaceAppearance(toolOrder = originalOrder.dropLast(1))
+                )
+                .valid()
+        )
+        assertFalse(
+            base
+                .copy(workspaceAppearance = WorkspaceAppearance(hiddenTools = setOf("Unknown")))
+                .valid()
+        )
+        assertFalse(
+            Json.decodeFromString<Preferences>("""{"workspaceAppearance":{"scale":0.5}}""").valid()
+        )
+    }
+
+    @Test
     fun missingAppearanceFieldsRestoreTheDefaultWorkspace() {
         val restored = Json.decodeFromString<WorkspaceAppearance>("{}")
         assertTrue(restored.valid())
@@ -33,7 +90,6 @@ class WorkspaceAppearanceTest {
         assertEquals(InspectorPosition.Right, restored.inspectorPosition)
         assertEquals(InterfaceDensity.Standard, restored.density)
         assertEquals(1f, restored.scale)
-        assertTrue(restored.showStatusBar)
         assertFalse(restored.reducedMotion)
         assertEquals(originalOrder, restored.toolOrder)
         assertEquals(emptySet(), restored.hiddenTools)
@@ -42,14 +98,13 @@ class WorkspaceAppearanceTest {
     @Test
     fun aSavedWorkspaceRestoresEveryChoiceFromAnIndependentJsonFixture() {
         val fixture =
-            """{"toolDock":"Top","toolOrder":["Picker","Brush","Eraser","Select","Fill","Hand","MoveLayer","TransformLayer","Gradient","Smudge","LassoFill","Vector","Assistant","LineGenerator"],"hiddenTools":["Eraser","Smudge"],"inspectorPosition":"Left","density":"Compact","scale":1.5,"showStatusBar":false,"reducedMotion":true}"""
+            """{"toolDock":"Top","toolOrder":["Picker","Brush","Eraser","Select","Fill","Hand","MoveLayer","TransformLayer","Gradient","Smudge","LassoFill","Vector","Assistant","LineGenerator"],"hiddenTools":["Eraser","Smudge"],"inspectorPosition":"Left","density":"Compact","scale":1.5,"reducedMotion":true}"""
         val restored = Json.decodeFromString<WorkspaceAppearance>(fixture)
         assertTrue(restored.valid())
         assertEquals(ToolDockPosition.Top, restored.toolDock)
         assertEquals(InspectorPosition.Left, restored.inspectorPosition)
         assertEquals(InterfaceDensity.Compact, restored.density)
         assertEquals(1.5f, restored.scale)
-        assertFalse(restored.showStatusBar)
         assertTrue(restored.reducedMotion)
         assertEquals(
             originalOrder.filter { it != "Picker" }.let { listOf("Picker") + it },

@@ -39,7 +39,7 @@ internal fun Modifier.controlFeedback(
     val keyboardFocus = focused && LocalInputModeManager.current.inputMode == InputMode.Keyboard
     val scale =
         animateFloatAsState(
-            if (pressed && enabled) pressedScale else 1f,
+            if (pressed && enabled && !StudioMotion.reducedMotion) pressedScale else 1f,
             tween(
                 if (pressed) StudioMotion.pressMillis else StudioMotion.releaseMillis,
                 easing = StudioMotion.easing,
@@ -108,7 +108,8 @@ fun StudioButton(
     val interaction = remember { MutableInteractionSource() }
     CompositionLocalProvider(
         LocalRippleConfiguration provides null,
-        LocalButtonInteraction provides if (enabled) interaction else null,
+        LocalButtonInteraction provides interaction,
+        LocalButtonIconEnabled provides (LocalButtonIconEnabled.current && enabled),
     ) {
         Button(
             onClick,
@@ -133,7 +134,11 @@ fun StudioButton(
                     disabledContainerColor = Color.Transparent,
                     disabledContentColor = StudioTheme.muted.copy(alpha = 0.4f),
                 ),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+            contentPadding =
+                PaddingValues(
+                    horizontal = StudioTheme.workspaceGap,
+                    vertical = StudioTheme.workspacePadding,
+                ),
         ) {
             ProvideTextStyle(
                 LocalTextStyle.current.copy(
@@ -153,19 +158,17 @@ fun ChoiceSurface(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    shape: Shape = StudioTheme.cardShape,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val hovered by interaction.collectIsHoveredAsState()
-    val shape = StudioTheme.cardShape
     val background =
         animateColorAsState(
-            if (selected) StudioTheme.selection else StudioTheme.elevated,
+            if (selected) StudioTheme.selection else Color.Transparent,
             tween(StudioMotion.feedbackMillis),
         )
     Column(
         modifier
-            .borderTrail(hovered, StudioTheme.cardTrailRadius)
             .selectable(
                 selected,
                 interaction,
@@ -174,7 +177,7 @@ fun ChoiceSurface(
                 enabled = enabled,
                 onClick = onClick,
             )
-            .controlFeedback(interaction, shape)
+            .controlFeedback(interaction, shape, enabled)
             .drawBehind { drawRect(background.value) }
             .border(
                 StudioTheme.hairline,
@@ -183,7 +186,14 @@ fun ChoiceSurface(
                 shape,
             )
             .padding(12.dp),
-        content = content,
+        content = {
+            CompositionLocalProvider(
+                LocalButtonInteraction provides interaction,
+                LocalButtonIconEnabled provides (LocalButtonIconEnabled.current && enabled),
+            ) {
+                content()
+            }
+        },
     )
 }
 
@@ -199,7 +209,8 @@ fun StudioTextButton(
     val interaction = remember { MutableInteractionSource() }
     CompositionLocalProvider(
         LocalRippleConfiguration provides null,
-        LocalButtonInteraction provides if (enabled) interaction else null,
+        LocalButtonInteraction provides interaction,
+        LocalButtonIconEnabled provides (LocalButtonIconEnabled.current && enabled),
     ) {
         TextButton(
             onClick,

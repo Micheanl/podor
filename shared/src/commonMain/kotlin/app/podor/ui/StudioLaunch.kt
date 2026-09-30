@@ -49,10 +49,17 @@ fun PodorApp(
     onTitleDragRegion: (Rect) -> Unit = {},
     titleBar: @Composable (Boolean) -> Unit = {},
 ) {
+    var workspace by
+        remember(controller) { mutableStateOf(controller.preferences.workspaceAppearance) }
+    val drawingInput = controller.drawingInput
+    SideEffect {
+        if (!drawingInput) workspace = controller.preferences.workspaceAppearance
+    }
     PodorTheme(
         controller.preferences.language,
         controller.preferences.appearance,
         androidx.compose.ui.graphics.Color(controller.brush.color),
+        workspaceAppearance = workspace,
     ) {
         val integrated = titleBarHeight > 0.dp && !controller.showWorkspace
         StudioLaunch(
@@ -82,26 +89,27 @@ fun StudioLaunch(
     titleBar: @Composable (Boolean) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
-    var shownEnough by remember { mutableStateOf(false) }
-    var dismissed by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        delay(StudioMotion.launchHoldMillis.toLong())
+    val reducedMotion = StudioMotion.reducedMotion
+    var shownEnough by remember { mutableStateOf(reducedMotion) }
+    var dismissed by remember { mutableStateOf(reducedMotion) }
+    LaunchedEffect(reducedMotion) {
+        if (reducedMotion) dismissed = true else delay(StudioMotion.launchHoldMillis.toLong())
         shownEnough = true
     }
     val reveal = remember { Animatable(0f) }
     val texture by
-        produceState<ImageBitmap?>(null, dismissed) {
+        produceState<ImageBitmap?>(null, dismissed, reducedMotion) {
             value =
-                if (dismissed) null
+                if (dismissed || reducedMotion) null
                 else withContext(Dispatchers.Default) { createDissolveTexture() }
         }
-    LaunchedEffect(ready, shownEnough, dismissed) {
-        if (ready && shownEnough && !dismissed) {
+    LaunchedEffect(ready, shownEnough, dismissed, reducedMotion) {
+        if (ready && shownEnough && !dismissed && !reducedMotion) {
             reveal.animateTo(1f, tween(StudioMotion.revealMillis, easing = LinearEasing))
             dismissed = true
         }
     }
-    val visible = !dismissed
+    val visible = !dismissed && !reducedMotion
     Box(
         Modifier.fillMaxSize().onPreviewKeyEvent {
             if (visible && it.type == KeyEventType.KeyDown && it.key == Key.Escape) {

@@ -1,24 +1,16 @@
 package app.podor.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.key.*
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import app.podor.domain.*
 import app.podor.presentation.StudioController
@@ -32,17 +24,31 @@ fun StudioApp(
     windowControls: (@Composable () -> Unit)? = null,
     onTitleDragRegion: (Rect) -> Unit = {},
 ) {
+    var workspace by
+        remember(controller) { mutableStateOf(controller.preferences.workspaceAppearance) }
+    val drawingInput = controller.drawingInput
+    SideEffect {
+        if (!drawingInput) workspace = controller.preferences.workspaceAppearance
+    }
     PodorTheme(
         controller.preferences.language,
         controller.preferences.appearance,
         androidx.compose.ui.graphics.Color(controller.brush.color),
+        workspaceAppearance = workspace,
     ) {
-        var panel by remember { mutableStateOf(StudioPanel.Brushes) }
-        var showInspector by remember { mutableStateOf(false) }
-        var inspectorExpanded by remember { mutableStateOf(false) }
+        var panel by remember { mutableStateOf(StudioPanel.ToolOptions) }
+        var inspectorVisible by remember { mutableStateOf(false) }
+        var requestedPanel by remember { mutableStateOf<StudioPanel?>(null) }
         var dialog by remember { mutableStateOf(StudioDialog.None) }
         val focus = remember { FocusRequester() }
-        LaunchedEffect(controller.tool) { focus.requestFocus() }
+        LaunchedEffect(controller.tool) {
+            panel = controller.defaultToolPanel()
+            focus.requestFocus()
+        }
+        LaunchedEffect(controller.adjustmentPreview != null) {
+            if (controller.adjustmentPreview != null && panel != StudioPanel.Adjustments)
+                panel = StudioPanel.ToolOptions
+        }
         fun clipboardShortcut(event: KeyEvent): Boolean {
             if ((event.isCtrlPressed || event.isMetaPressed) && !event.isAltPressed) {
                 when (event.key) {
@@ -232,7 +238,21 @@ fun StudioApp(
                                     .coerceAtMost(StudioDefaults.maxBrushSize)
                         )
                 ShortcutAction.Undo -> controller.command("undo")
-                ShortcutAction.AnimationTimeline -> controller.toggleAnimationTimeline()
+                ShortcutAction.AnimationTimeline -> {
+                    val wasVisible = controller.animationTimelineVisible
+                    val wasTransitioning = controller.animationTransition
+                    val panelOpen = panel == StudioPanel.Animation && inspectorVisible
+                    controller.toggleAnimationTimeline()
+                    if (
+                        controller.animationTimelineVisible != wasVisible ||
+                            (!wasTransitioning && controller.animationTransition)
+                    ) {
+                        controller.animationTimelineVisible = !panelOpen
+                        if (panelOpen) {
+                            inspectorVisible = false
+                        } else requestedPanel = StudioPanel.Animation
+                    }
+                }
                 ShortcutAction.PlayAnimation -> {
                     if (controller.animationPlaying) controller.stopAnimation()
                     else controller.startAnimation()
@@ -301,133 +321,107 @@ fun StudioApp(
                         if (windowControls != null) 1100.dp
                         else if (controller.clipboardAvailable) 880.dp else 820.dp
                 val headerCompact = compact || (windowControls != null && maxWidth < 1000.dp)
-                fun openPanel(next: StudioPanel) {
+                fun openPanel(next: StudioPanel, toggle: Boolean = true) {
+                    if (controller.drawingInput) return
+                    val activePanel =
+                        if (panel == StudioPanel.ToolOptions) controller.defaultToolPanel()
+                        else panel
+                    if (toggle && activePanel == next && inspectorVisible) {
+                        inspectorVisible = false
+                        return
+                    }
                     panel = next
-                    if (wide) inspectorExpanded = true else showInspector = true
+                    inspectorVisible = true
                 }
-                val inspectorInset =
-                    if (wide && inspectorExpanded)
-                        StudioTheme.inspectorWidth + StudioTheme.inspectorMargin
-                    else 0.dp
+                fun toggleInspector() {
+                    if (controller.drawingInput) return
+                    inspectorVisible = !inspectorVisible
+                }
+                LaunchedEffect(
+                    wide,
+                    inspectorVisible,
+                    controller.busy,
+                    controller.document.revision,
+                    controller.adjustmentPreview != null,
+                ) {
+                    if ((wide || !inspectorVisible) && !controller.busy) focus.requestFocus()
+                }
+                LaunchedEffect(requestedPanel, wide, controller.drawingInput) {
+                    if (!controller.drawingInput) {
+                        requestedPanel?.let { openPanel(it, toggle = false) }
+                        requestedPanel = null
+                    }
+                }
+                @Composable
+                fun tools() {
+                    WorkspaceToolDock(
+                        controller,
+                        workspace,
+                        { openPanel(StudioPanel.Colors) },
+                    )
+                }
+                @Composable
+                fun inspector() {
+                    Row(
+                        Modifier.width(StudioTheme.inspectorWidth)
+                            .fillMaxHeight()
+                            .background(StudioTheme.panel)
+                    ) {
+                        if (workspace.inspectorPosition == InspectorPosition.Right)
+                            VerticalDivider(
+                                thickness = StudioTheme.hairline,
+                                color = StudioTheme.border,
+                            )
+                        Inspector(
+                            controller,
+                            panel,
+                            { openPanel(it) },
+                            Modifier.weight(1f).fillMaxHeight(),
+                            onAnimationExport = { dialog = StudioDialog.AnimationExport },
+                        )
+                        if (workspace.inspectorPosition == InspectorPosition.Left)
+                            VerticalDivider(
+                                thickness = StudioTheme.hairline,
+                                color = StudioTheme.border,
+                            )
+                    }
+                }
                 Column(Modifier.fillMaxSize()) {
                     StudioHeader(
                         controller,
                         headerCompact,
                         showDocument,
                         { dialog = it },
-                        inspectorExpanded = inspectorExpanded,
-                        onToggleInspector =
-                            if (wide) ({ inspectorExpanded = !inspectorExpanded }) else null,
+                        inspectorExpanded = inspectorVisible,
+                        onToggleInspector = { toggleInspector() },
                         windowControls = windowControls,
                         onTitleDragRegion = onTitleDragRegion,
                     )
-                    Box(Modifier.weight(1f).fillMaxWidth()) {
-                        CanvasWorkspace(
-                            controller,
-                            Modifier.fillMaxSize(),
-                            endInset = inspectorInset,
+                    HorizontalDivider(thickness = StudioTheme.hairline, color = StudioTheme.border)
+                    if (workspace.toolDock == ToolDockPosition.Top) tools()
+                    Row(Modifier.weight(1f).fillMaxWidth()) {
+                        if (workspace.toolDock == ToolDockPosition.Left) tools()
+                        if (
+                            wide &&
+                                inspectorVisible &&
+                                workspace.inspectorPosition == InspectorPosition.Left
                         )
-                        Box(Modifier.fillMaxSize().padding(end = inspectorInset)) {
-                            if (!compact) {
-                                Column(
-                                    Modifier.align(Alignment.CenterStart)
-                                        .padding(start = 16.dp)
-                                        .shadow(14.dp, RoundedCornerShape(32.dp))
-                                        .clip(RoundedCornerShape(32.dp))
-                                        .background(StudioTheme.panel)
-                                        .border(
-                                            1.dp,
-                                            StudioTheme.border.copy(alpha = 0.65f),
-                                            RoundedCornerShape(32.dp),
-                                        )
-                                        .verticalScroll(rememberScrollState())
-                                        .padding(8.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                                ) {
-                                    StudioTools(controller)
-                                    HorizontalDivider(
-                                        Modifier.width(26.dp).padding(vertical = 5.dp),
-                                        color = StudioTheme.border,
-                                    )
-                                    Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                                        var colors by remember { mutableStateOf(false) }
-                                        ColorSwatch(controller.brush.color, true) { colors = true }
-                                        if (colors)
-                                            QuickBrushPopup(
-                                                controller,
-                                                androidx.compose.ui.geometry.Offset.Zero,
-                                                besideTool = true,
-                                                colorsOnly = true,
-                                            ) {
-                                                colors = false
-                                            }
-                                    }
-                                    if (!wide)
-                                        ToolButton(Glyph.Layers, "图层与工作台") {
-                                            openPanel(StudioPanel.Layers)
-                                        }
-                                }
-                                if (controller.tool == Tool.MoveLayer)
-                                    LayerMoveDock(
-                                        controller,
-                                        Modifier.align(Alignment.BottomCenter)
-                                            .padding(bottom = 55.dp),
-                                    )
-                            }
-                            if (
-                                controller.adjustmentPreview != null &&
-                                    !(controller.adjustmentPreview?.settings?.kind ==
-                                        AdjustmentKind.LayerBlend &&
-                                        panel in
-                                            listOf(StudioPanel.Layers, StudioPanel.Adjustments) &&
-                                        (wide && inspectorExpanded || showInspector))
-                            )
-                                AdjustmentDock(
+                            inspector()
+                        Box(Modifier.weight(1f).fillMaxHeight()) {
+                            CanvasWorkspace(controller, Modifier.fillMaxSize())
+                            if (!controller.drawingInput)
+                                ContextToolDock(
                                     controller,
-                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
+                                    { openPanel(StudioPanel.Colors, toggle = it) },
+                                    { openPanel(StudioPanel.ToolOptions) },
+                                    Modifier.align(Alignment.BottomCenter)
+                                        .padding(
+                                            horizontal = StudioTheme.canvasDockInset,
+                                            vertical =
+                                                StudioTheme.floatingShadow +
+                                                    StudioTheme.workspacePadding,
+                                        ),
                                 )
-                            if (controller.tool == Tool.Select)
-                                SelectionDock(
-                                    controller,
-                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
-                                )
-                            if (controller.tool == Tool.LassoFill)
-                                LassoFillDock(
-                                    controller,
-                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
-                                )
-                            if (controller.tool == Tool.Vector)
-                                VectorDock(
-                                    controller,
-                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
-                                )
-                            if (controller.tool == Tool.Assistant)
-                                AssistantDock(
-                                    controller,
-                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
-                                )
-                            if (controller.tool == Tool.LineGenerator)
-                                LineGeneratorDock(
-                                    controller,
-                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
-                                )
-                            if (controller.tool == Tool.TransformLayer)
-                                LayerTransformDock(
-                                    controller,
-                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
-                                )
-                            if (controller.tool == Tool.Gradient)
-                                GradientDock(
-                                    controller,
-                                    Modifier.align(Alignment.BottomCenter).padding(bottom = 55.dp),
-                                ) {
-                                    openPanel(StudioPanel.Colors)
-                                }
-                            CanvasFooter(
-                                controller,
-                                Modifier.align(Alignment.BottomCenter),
-                            )
                             if (!controller.ready)
                                 CircularProgressIndicator(
                                     Modifier.size(26.dp).align(Alignment.Center),
@@ -438,70 +432,24 @@ fun StudioApp(
                                     Modifier.fillMaxWidth().align(Alignment.TopCenter)
                                 )
                         }
-                        if (wide && inspectorExpanded) {
-                            Box(
-                                Modifier.align(Alignment.CenterEnd)
-                                    .padding(
-                                        top = StudioTheme.inspectorMargin,
-                                        end = StudioTheme.inspectorMargin,
-                                        bottom = StudioTheme.inspectorMargin,
-                                    )
-                                    .width(StudioTheme.inspectorWidth)
-                                    .fillMaxHeight()
-                                    .clip(StudioTheme.inspectorShape)
-                                    .background(StudioTheme.panel)
-                                    .border(
-                                        1.dp,
-                                        StudioTheme.border.copy(alpha = 0.6f),
-                                        StudioTheme.inspectorShape,
-                                    )
-                                    .pointerInput(Unit) { detectTapGestures {} }
-                            ) {
-                                Inspector(
-                                    controller,
-                                    panel,
-                                    { panel = it },
-                                    Modifier.fillMaxSize(),
-                                )
-                            }
-                        }
+                        if (
+                            wide &&
+                                inspectorVisible &&
+                                workspace.inspectorPosition == InspectorPosition.Right
+                        )
+                            inspector()
+                        if (workspace.toolDock == ToolDockPosition.Right) tools()
                     }
-                    if (
-                        controller.document.animation != null && controller.animationTimelineVisible
-                    )
-                        AnimationTimeline(controller, { dialog = StudioDialog.AnimationExport })
-                    if (compact) {
-                        Row(
-                            Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
-                                .fillMaxWidth()
-                                .clip(StudioTheme.inspectorShape)
-                                .background(StudioTheme.panel)
-                                .border(
-                                    1.dp,
-                                    StudioTheme.border.copy(alpha = 0.6f),
-                                    StudioTheme.inspectorShape,
-                                )
-                                .padding(vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                        ) {
-                            StudioTools(controller, compact = true)
-                            Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                                ColorSwatch(controller.brush.color, true) {
-                                    openPanel(StudioPanel.Colors)
-                                }
-                            }
-                            ToolButton(Glyph.Layers, "画笔、颜色与图层") { openPanel(StudioPanel.Brushes) }
-                        }
-                    }
+                    if (workspace.toolDock == ToolDockPosition.Bottom) tools()
                 }
-                if (showInspector)
-                    StudioModal("工作台", Glyph.Layers, { showInspector = false }, width = 380.dp) {
+                if (!wide && inspectorVisible)
+                    StudioModal("工作台", Glyph.Layers, { inspectorVisible = false }, width = 380.dp) {
                         Inspector(
                             controller,
                             panel,
-                            { panel = it },
+                            { openPanel(it) },
                             Modifier.weight(1f).fillMaxWidth(),
+                            onAnimationExport = { dialog = StudioDialog.AnimationExport },
                         )
                     }
                 StudioDialogs(controller, dialog, updates) { dialog = StudioDialog.None }

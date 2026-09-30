@@ -77,7 +77,7 @@ fun SymmetryControls(controller: StudioController) {
                             Modifier.weight(1f),
                             fontSize = StudioTheme.brushLabelSize,
                         )
-                        Switch(
+                        StudioSwitch(
                             settings.guides,
                             { controller.symmetry = settings.copy(guides = it) },
                         )

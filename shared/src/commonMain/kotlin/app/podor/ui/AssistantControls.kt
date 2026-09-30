@@ -2,10 +2,8 @@ package app.podor.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -19,99 +17,30 @@ import kotlin.math.sin
 import kotlinx.serialization.json.put
 
 @Composable
-internal fun AssistantDock(controller: StudioController, modifier: Modifier = Modifier) {
+internal fun AssistantDock(
+    controller: StudioController,
+    modifier: Modifier = Modifier,
+    floating: Boolean = false,
+) {
     var adding by remember { mutableStateOf(false) }
     var selecting by remember { mutableStateOf(false) }
     val selected = controller.selectedAssistant
     val editable = controller.ready && !controller.busy && controller.assistantPreview == null
-    Surface(modifier, color = StudioTheme.panel, shape = StudioTheme.cardShape) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box {
-                ToolButton(
-                    Glyph.Plus,
-                    "添加助手",
-                    enabled =
-                        editable &&
-                            controller.document.assistants.items.size <
-                                controller.document.maxDrawingAssistants,
-                    plain = true,
-                ) {
-                    adding = true
-                }
-                StudioDropdownMenu(adding, { adding = false }) {
-                    AssistantPreset.entries.forEach { preset ->
-                        DropdownMenuItem(
-                            text = { Text(tr(preset.label)) },
-                            onClick = {
-                                adding = false
-                                controller.addAssistant(preset)
-                            },
-                        )
-                    }
-                }
-            }
-            Box {
-                ToolButton(
-                    Glyph.Assistant,
-                    "选择助手",
-                    enabled = editable && controller.document.assistants.items.isNotEmpty(),
-                    plain = true,
-                ) {
-                    selecting = true
-                }
-                StudioDropdownMenu(selecting, { selecting = false }) {
-                    controller.document.assistants.items.forEach { assistant ->
-                        DropdownMenuItem(
-                            text = { Text(assistant.name) },
-                            leadingIcon = {
-                                if (assistant.id == selected?.id) StudioIcon(Glyph.Check)
-                            },
-                            onClick = {
-                                selecting = false
-                                controller.selectAssistant(assistant.id)
-                            },
-                        )
-                    }
-                }
-            }
-            ToolButton(
-                Glyph.MagicWand,
-                "吸附助手",
-                selected =
-                    selected?.id == controller.document.assistants.snapId && selected != null,
-                enabled = editable && selected != null,
-                plain = true,
-            ) {
-                controller.command("set_assistant_snap") {
-                    put(
-                        "id",
-                        selected?.id?.takeUnless { it == controller.document.assistants.snapId },
-                    )
-                    put("revision", controller.document.revision)
-                }
-            }
-            ToolButton(
-                if (selected?.visible != false) Glyph.Eye else Glyph.Hidden,
-                "助手可见性",
-                enabled = editable && selected != null,
-                plain = true,
-            ) {
-                selected?.let {
-                    controller.command("set_assistant") {
-                        put("id", it.id)
-                        put("assistant", it.spec().copy(visible = !it.visible).request())
-                        put("revision", controller.document.revision)
-                    }
-                }
-            }
-            ToolButton(Glyph.Trash, "删除助手", enabled = editable && selected != null, plain = true) {
-                selected?.let {
-                    controller.command("delete_assistant") {
-                        put("id", it.id)
-                        put("revision", controller.document.revision)
-                    }
-                }
-            }
+    val finish: @Composable () -> Unit = {
+        ToolButton(
+            Glyph.Brush,
+            "结束编辑",
+            enabled = controller.assistantPreview?.committing != true,
+            plain = true,
+        ) {
+            controller.cancelAssistant()
+            controller.tool = Tool.Brush
+        }
+    }
+    ContextActionRow(
+        modifier,
+        floating,
+        trailing = {
             ToolButton(
                 Glyph.Close,
                 "取消助手编辑",
@@ -131,16 +60,95 @@ internal fun AssistantDock(controller: StudioController, modifier: Modifier = Mo
             ) {
                 controller.commitAssistant()
             }
+            if (!floating) finish()
+        },
+    ) {
+        Box {
             ToolButton(
-                Glyph.Brush,
-                "结束编辑",
-                enabled = controller.assistantPreview?.committing != true,
+                Glyph.Plus,
+                "添加助手",
+                enabled =
+                    editable &&
+                        controller.document.assistants.items.size <
+                            controller.document.maxDrawingAssistants,
                 plain = true,
             ) {
-                controller.cancelAssistant()
-                controller.tool = Tool.Brush
+                adding = true
+            }
+            StudioDropdownMenu(adding, { adding = false }) {
+                AssistantPreset.entries.forEach { preset ->
+                    StudioDropdownMenuItem(
+                        text = { Text(tr(preset.label)) },
+                        onClick = {
+                            adding = false
+                            controller.addAssistant(preset)
+                        },
+                    )
+                }
             }
         }
+        Box {
+            ToolButton(
+                Glyph.Assistant,
+                "选择助手",
+                enabled = editable && controller.document.assistants.items.isNotEmpty(),
+                plain = true,
+            ) {
+                selecting = true
+            }
+            StudioDropdownMenu(selecting, { selecting = false }) {
+                controller.document.assistants.items.forEach { assistant ->
+                    StudioDropdownMenuItem(
+                        text = { Text(assistant.name) },
+                        leadingIcon = {
+                            if (assistant.id == selected?.id) StudioIcon(Glyph.Check)
+                        },
+                        onClick = {
+                            selecting = false
+                            controller.selectAssistant(assistant.id)
+                        },
+                    )
+                }
+            }
+        }
+        ToolButton(
+            Glyph.MagicWand,
+            "吸附助手",
+            selected = selected?.id == controller.document.assistants.snapId && selected != null,
+            enabled = editable && selected != null,
+            plain = true,
+        ) {
+            controller.command("set_assistant_snap") {
+                put(
+                    "id",
+                    selected?.id?.takeUnless { it == controller.document.assistants.snapId },
+                )
+                put("revision", controller.document.revision)
+            }
+        }
+        ToolButton(
+            if (selected?.visible != false) Glyph.Eye else Glyph.Hidden,
+            "助手可见性",
+            enabled = editable && selected != null,
+            plain = true,
+        ) {
+            selected?.let {
+                controller.command("set_assistant") {
+                    put("id", it.id)
+                    put("assistant", it.spec().copy(visible = !it.visible).request())
+                    put("revision", controller.document.revision)
+                }
+            }
+        }
+        ToolButton(Glyph.Trash, "删除助手", enabled = editable && selected != null, plain = true) {
+            selected?.let {
+                controller.command("delete_assistant") {
+                    put("id", it.id)
+                    put("revision", controller.document.revision)
+                }
+            }
+        }
+        if (floating) finish()
     }
 }
 

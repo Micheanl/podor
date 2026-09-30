@@ -12,6 +12,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.pointer.PointerEventType
+import app.podor.domain.Appearance
+import app.podor.ui.PodorTheme
 import app.podor.ui.StudioLaunch
 import app.podor.ui.StudioMotion
 import app.podor.ui.StudioTheme
@@ -26,26 +28,29 @@ class StudioLaunchTest {
     @Test
     fun titleControlsRemainClickableAboveTheContinuousSwirl() = runBlocking {
         withContext(Dispatchers.Main) {
+            val appearance = StudioTheme.appearance
             var minimized = 0
             var maximized = 0
             var closed = 0
             val scene =
                 ImageComposeScene(800, 600) {
-                    StudioLaunch(
-                        false,
-                        StudioTheme.windowTitleHeight,
-                        {
-                            WindowTitleBar(
-                                app.podor.domain.Language.English,
-                                false,
-                                { minimized++ },
-                                { maximized++ },
-                                { closed++ },
-                                Color.Transparent,
-                            )
-                        },
-                    ) {
-                        Box(Modifier.fillMaxSize().background(Color.White))
+                    PodorTheme(appearance = Appearance.Dark) {
+                        StudioLaunch(
+                            false,
+                            StudioTheme.windowTitleHeight,
+                            {
+                                WindowTitleBar(
+                                    app.podor.domain.Language.English,
+                                    false,
+                                    { minimized++ },
+                                    { maximized++ },
+                                    { closed++ },
+                                    Color.Transparent,
+                                )
+                            },
+                        ) {
+                            Box(Modifier.fillMaxSize().background(Color.White))
+                        }
                     }
                 }
             try {
@@ -60,11 +65,24 @@ class StudioLaunchTest {
                 assertEquals(1, closed)
                 scene.render(100_000_000L).use { image ->
                     val pixels = image.toComposeImageBitmap().toPixelMap()
-                    assertTrue((0..650).count { pixels[it, 20].green > 0.9f } > 20)
+                    assertTrue(
+                        (0..650).count {
+                            val color = pixels[it, 20]
+                            maxOf(color.red, color.green, color.blue) -
+                                minOf(color.red, color.green, color.blue) > 0.05f
+                        } > 20,
+                        "The transparent title region must show the colored swirl background",
+                    )
                     assertTrue(pixels[400, 300].green < 0.1f)
                 }
             } finally {
                 scene.close()
+                val restore = ImageComposeScene(1, 1) { PodorTheme(appearance = appearance) {} }
+                try {
+                    restore.render().close()
+                } finally {
+                    restore.close()
+                }
             }
         }
     }
@@ -180,16 +198,22 @@ class StudioLaunchTest {
     fun readyWorkspaceKeepsTheLogoDissolveWithSwirl() =
         runBlocking<Unit> {
             withContext(Dispatchers.Main) {
+                val appearance = StudioTheme.appearance
                 val scene =
                     ImageComposeScene(320, 240) {
-                        StudioLaunch(true) { Box(Modifier.fillMaxSize().background(Color.White)) }
+                        PodorTheme(appearance = Appearance.Dark) {
+                            StudioLaunch(true) {
+                                Box(Modifier.fillMaxSize().background(Color.White))
+                            }
+                        }
                     }
                 try {
                     scene.render(0).close()
                     delay((StudioMotion.launchHoldMillis + 100).toLong())
+                    val midpointFrame = (StudioMotion.revealMillis * 500_000L / 16_666_667L).toInt()
                     for (frame in 1..105) {
                         scene.render(500_000_000L + frame * 16_666_667L).use { image ->
-                            if (frame == 50) {
+                            if (frame == midpointFrame) {
                                 val red = image.toComposeImageBitmap().toPixelMap()[8, 8].red
                                 assertTrue(red > StudioTheme.launchSwirlBack.red && red < 0.99f)
                             }
@@ -201,6 +225,12 @@ class StudioLaunchTest {
                     assertFalse(scene.hasInvalidations())
                 } finally {
                     scene.close()
+                    val restore = ImageComposeScene(1, 1) { PodorTheme(appearance = appearance) {} }
+                    try {
+                        restore.render(0).close()
+                    } finally {
+                        restore.close()
+                    }
                 }
             }
         }

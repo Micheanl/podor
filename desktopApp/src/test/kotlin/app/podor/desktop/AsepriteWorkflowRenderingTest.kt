@@ -440,6 +440,16 @@ class AsepriteWorkflowRenderingTest {
             click("Export Aseprite project copy")
         }
 
+        suspend fun closeProjectMenu() {
+            if (withContext(Dispatchers.Main) { control("New canvas") != null }) {
+                withContext(Dispatchers.Main) {
+                    clickNow("Project")
+                }
+                settle()
+                withContext(Dispatchers.Main) { assertNull(control("New canvas")) }
+            }
+        }
+
         fun assertExportBlocked() {
             val node = assertNotNull(control("Export Aseprite project copy"))
             assertTrue(node.config.contains(SemanticsProperties.Disabled))
@@ -496,10 +506,18 @@ class AsepriteWorkflowRenderingTest {
             val count = files.saveRequests.size
             val cancel = files.cancelSave.getAndSet(true)
             try {
+                closeProjectMenu()
                 if (withContext(Dispatchers.Main) { control("Save project") == null })
                     click("Project")
-                click("Save project")
+                waitFor {
+                    control("Save project")?.config?.contains(SemanticsProperties.Disabled) == false
+                }
+                withContext(Dispatchers.Main) {
+                    val node = assertNotNull(control("Save project"))
+                    assertTrue(assertNotNull(node.config[SemanticsActions.OnClick].action).invoke())
+                }
                 waitFor { files.saveRequests.size == count + 1 }
+                settle()
             } finally {
                 files.cancelSave.set(cancel)
             }
@@ -1067,7 +1085,8 @@ class AsepriteWorkflowRenderingTest {
             val gate = CompletableDeferred<Unit>()
             files.saveGate.set(gate)
             try {
-                click("Project")
+                if (withContext(Dispatchers.Main) { control("Save project") == null })
+                    click("Project")
                 withContext(Dispatchers.Main) { clickNow("Save project") }
                 withTimeout(15_000) {
                     while (

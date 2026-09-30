@@ -274,7 +274,7 @@ private fun ProjectCard(
                 menu,
                 { menu = false },
             ) {
-                DropdownMenuItem(
+                StudioDropdownMenuItem(
                     { Text(tr("从列表移除")) },
                     {
                         controller.forgetProject(project.reference)

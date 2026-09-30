@@ -22,6 +22,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import app.podor.domain.DocumentColorMode
+import app.podor.domain.DocumentInfo
 import app.podor.domain.ImageSize
 import app.podor.domain.ResampleFilter
 import app.podor.domain.StudioDefaults
@@ -30,8 +31,20 @@ import kotlin.math.roundToInt
 
 @Composable
 fun ImageSizeDialog(controller: StudioController, onDismiss: () -> Unit) {
-    val original = remember { controller.document }
-    var settings by remember {
+    val editor = rememberImageSizeEditor(controller)
+    StudioAlertDialog(
+        title = "图像尺寸",
+        glyph = Glyph.Fit,
+        confirmLabel = "应用",
+        onDismissRequest = onDismiss,
+        enabled = editor.canApply(controller),
+        onConfirm = { editor.apply(controller) },
+        text = { ImageSizeEditorContent(controller, editor) },
+    )
+}
+
+internal class ImageSizeEditor(val original: DocumentInfo) {
+    var settings by
         mutableStateOf(
             ImageSize(original.width, original.height).let {
                 if (original.colorMode == DocumentColorMode.Indexed)
@@ -39,33 +52,42 @@ fun ImageSizeDialog(controller: StudioController, onDismiss: () -> Unit) {
                 else it
             }
         )
+
+    fun canApply(controller: StudioController): Boolean =
+        settings.valid &&
+            settings.changed &&
+            controller.ready &&
+            !controller.busy &&
+            !controller.drawingInput &&
+            !controller.animationPlaying &&
+            !controller.animationTransition &&
+            controller.adjustmentPreview == null
+
+    fun apply(controller: StudioController) {
+        if (canApply(controller))
+            controller.resizeImage(
+                settings.width.toInt(),
+                settings.height.toInt(),
+                settings.filter,
+                original.revision,
+            )
     }
-    StudioAlertDialog(
-        title = "图像尺寸",
-        glyph = Glyph.Fit,
-        confirmLabel = "应用",
-        onDismissRequest = onDismiss,
-        enabled = settings.valid && settings.changed && !controller.busy,
-        onConfirm = {
-            if (settings.valid)
-                controller.resizeImage(
-                    settings.width.toInt(),
-                    settings.height.toInt(),
-                    settings.filter,
-                    original.revision,
-                )
-        },
-        text = {
-            ImageSizeSettings(
-                settings,
-                controller.previews.images[0],
-                if (original.colorMode == DocumentColorMode.Indexed) listOf(ResampleFilter.Nearest)
-                else ResampleFilter.entries,
-            ) {
-                settings = it
-            }
-        },
-    )
+}
+
+@Composable
+internal fun rememberImageSizeEditor(controller: StudioController): ImageSizeEditor =
+    remember(controller, controller.document.revision) { ImageSizeEditor(controller.document) }
+
+@Composable
+internal fun ImageSizeEditorContent(controller: StudioController, editor: ImageSizeEditor) {
+    ImageSizeSettings(
+        editor.settings,
+        controller.previews.images[0],
+        if (editor.original.colorMode == DocumentColorMode.Indexed) listOf(ResampleFilter.Nearest)
+        else ResampleFilter.entries,
+    ) {
+        editor.settings = it
+    }
 }
 
 @Composable

@@ -31,7 +31,6 @@ data class WorkspaceAppearance(
     val inspectorPosition: InspectorPosition = StudioDefaults.inspectorPosition,
     val density: InterfaceDensity = StudioDefaults.interfaceDensity,
     val scale: Float = StudioDefaults.interfaceScale,
-    val showStatusBar: Boolean = StudioDefaults.showStatusBar,
     val reducedMotion: Boolean = StudioDefaults.reducedMotion,
 ) {
     fun valid(): Boolean =

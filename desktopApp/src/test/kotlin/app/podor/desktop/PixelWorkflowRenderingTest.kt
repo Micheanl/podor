@@ -4,10 +4,11 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.scene.ComposeScenePointer
+import androidx.compose.ui.semantics.*
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
 import app.podor.domain.*
@@ -26,12 +27,30 @@ import org.jetbrains.skia.EncodedImageFormat
 class PixelWorkflowRenderingTest {
     private class Session(val controller: StudioController, val scene: ImageComposeScene) {
         private var frame = 0L
-        private val view = Size(1360f, 836f)
+        private val view
+            get() = canvasBounds().size
 
         fun render() = scene.render(frame++ * 16_666_667L)
 
+        private fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+            yield(node)
+            for (child in node.children) yieldAll(descendants(child))
+        }
+
+        fun canvasBounds(): Rect =
+            scene.semanticsOwners
+                .asSequence()
+                .flatMap { descendants(it.rootSemanticsNode) }
+                .filter {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace" &&
+                        it.boundsInWindow.width > 100f &&
+                        it.boundsInWindow.height > 100f
+                }
+                .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+                .boundsInWindow
+
         fun position(point: Offset) =
-            controller.viewport.toView(point, view, controller.document) + Offset(0f, 64f)
+            controller.viewport.toView(point, view, controller.document) + canvasBounds().topLeft
 
         suspend fun waitFor(predicate: () -> Boolean) =
             withTimeout(10_000) {

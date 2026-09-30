@@ -467,7 +467,6 @@ object StudioDefaults {
     val inspectorPosition = InspectorPosition.Right
     val interfaceDensity = InterfaceDensity.Standard
     const val interfaceScale = 1f
-    const val showStatusBar = true
     const val reducedMotion = false
     val workspaceToolOrder =
         listOf(

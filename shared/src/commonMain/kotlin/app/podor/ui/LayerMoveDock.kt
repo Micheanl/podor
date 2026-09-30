@@ -1,20 +1,19 @@
 package app.podor.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import app.podor.domain.Tool
 import app.podor.presentation.StudioController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LayerMoveDock(controller: StudioController, modifier: Modifier = Modifier) {
+fun LayerMoveDock(
+    controller: StudioController,
+    modifier: Modifier = Modifier,
+    floating: Boolean = false,
+) {
     val active = controller.document.layers.firstOrNull { it.id == controller.document.active }
     val preview = controller.layerMove
     val label =
@@ -26,14 +25,15 @@ fun LayerMoveDock(controller: StudioController, modifier: Modifier = Modifier) {
             preview == null -> "准备图层…"
             else -> "移动图层"
         }
-    Row(
-        modifier
-            .clip(CircleShape)
-            .background(StudioTheme.panel)
-            .border(StudioTheme.moveDockBorderWidth, StudioTheme.border, CircleShape)
-            .padding(StudioTheme.moveDockPadding),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(StudioTheme.moveDockSpacing),
+    ContextActionRow(
+        modifier,
+        floating,
+        trailing = {
+            ToolButton(Glyph.Close, "取消移动", enabled = preview?.committing != true) {
+                controller.cancelLayerMove(exit = true)
+                controller.tool = Tool.Brush
+            }
+        },
     ) {
         TooltipBox(
             positionProvider =
@@ -58,10 +58,6 @@ fun LayerMoveDock(controller: StudioController, modifier: Modifier = Modifier) {
                     fontSize = StudioTheme.moveDockValueSize,
                     color = StudioTheme.muted,
                 )
-        }
-        ToolButton(Glyph.Close, "取消移动", enabled = preview?.committing != true) {
-            controller.cancelLayerMove(exit = true)
-            controller.tool = Tool.Brush
         }
     }
 }

@@ -4,16 +4,16 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.semantics.*
 import app.podor.data.*
 import app.podor.desktop.engine.NativeLoader
 import app.podor.domain.*
 import app.podor.presentation.*
 import app.podor.ui.StudioApp
-import app.podor.ui.StudioTheme
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
@@ -26,6 +26,23 @@ import org.jetbrains.skia.EncodedImageFormat
 
 @OptIn(ExperimentalComposeUiApi::class, InternalComposeUiApi::class)
 class ReferenceRenderingTest {
+    private fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+        yield(node)
+        for (child in node.children) yieldAll(descendants(child))
+    }
+
+    private fun canvasBounds(scene: ImageComposeScene): Rect =
+        scene.semanticsOwners
+            .asSequence()
+            .flatMap { descendants(it.rootSemanticsNode) }
+            .filter {
+                it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace" &&
+                    it.boundsInWindow.width > 100f &&
+                    it.boundsInWindow.height > 100f
+            }
+            .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+            .boundsInWindow
+
     private fun image(width: Int = 320, height: Int = 240): ByteArray {
         val bitmap = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
         for (y in 0 until height) for (x in 0 until width) {
@@ -81,18 +98,22 @@ class ReferenceRenderingTest {
         val references = controller.references
         var scene: ImageComposeScene? = null
         var tick = 0L
-        val view =
-            Size(1360f - StudioTheme.inspectorWidth.value - StudioTheme.inspectorMargin.value, 836f)
         fun settle() {
             repeat(35) { scene!!.render(tick++ * 16_666_667L).close() }
         }
-        fun at(point: Offset) =
-            controller.viewport.toView(point, view, controller.document) + Offset(0f, 64f)
+        fun at(point: Offset): Offset {
+            val bounds = canvasBounds(scene!!)
+            return controller.viewport.toView(point, bounds.size, controller.document) +
+                bounds.topLeft
+        }
         fun drag(from: Offset, to: Offset) {
-            scene!!.sendPointerEvent(PointerEventType.Press, at(from))
-            scene!!.sendPointerEvent(PointerEventType.Move, at((from + to) / 2f))
-            scene!!.sendPointerEvent(PointerEventType.Move, at(to))
-            scene!!.sendPointerEvent(PointerEventType.Release, at(to))
+            val bounds = canvasBounds(scene!!)
+            val points = listOf(from, (from + to) / 2f, to).map(::at)
+            points.forEach { assertTrue(bounds.contains(it), "$it outside actual canvas $bounds") }
+            scene!!.sendPointerEvent(PointerEventType.Press, points.first())
+            scene!!.sendPointerEvent(PointerEventType.Move, points[1])
+            scene!!.sendPointerEvent(PointerEventType.Move, points.last())
+            scene!!.sendPointerEvent(PointerEventType.Release, points.last())
             scene!!.sendPointerEvent(PointerEventType.Move, Offset.Zero)
             settle()
         }

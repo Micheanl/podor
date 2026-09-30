@@ -1,5 +1,6 @@
 package app.podor.desktop
 
+import androidx.compose.material3.DividerDefaults
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.InternalComposeUiApi
@@ -9,9 +10,12 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.scene.ComposeScenePointer
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
 import app.podor.domain.*
@@ -377,8 +381,12 @@ class AnimationWorkflowRenderingTest {
         val controller: StudioController,
         val scene: ImageComposeScene,
         val files: MemoryFiles,
+        val density: Density,
+        val width: Int,
+        val height: Int,
     ) {
         private var time = 0L
+        private val framePattern = Regex("(?:^| · )Frame (\\d+)$")
 
         fun render() = scene.render(time++ * 16_666_667L)
 
@@ -417,6 +425,51 @@ class AnimationWorkflowRenderingTest {
         private fun nodes() =
             scene.semanticsOwners.asSequence().flatMap { descendants(it.rootSemanticsNode) }
 
+        private fun frameNumber(label: String) =
+            framePattern.find(label)?.groupValues?.get(1)?.toInt()
+
+        private fun frameCardId(label: String): Int? {
+            val number = frameNumber(label) ?: return null
+            val id = controller.document.animation?.frames?.getOrNull(number - 1)?.id ?: return null
+            return scene.semanticsOwners
+                .asSequence()
+                .flatMap { descendants(it.unmergedRootSemanticsNode) }
+                .singleOrNull { node ->
+                    node.config.contains(SemanticsActions.OnClick) &&
+                        node.config
+                            .getOrNull(SemanticsProperties.ContentDescription)
+                            ?.contains(label) == true &&
+                        descendants(node).any {
+                            it.config.getOrNull(SemanticsProperties.TestTag) ==
+                                "animation-thumbnail-$id"
+                        }
+                }
+                ?.id
+        }
+
+        fun thumbnailBounds(frameId: Int): Rect =
+            scene.semanticsOwners
+                .asSequence()
+                .flatMap { descendants(it.unmergedRootSemanticsNode) }
+                .single {
+                    it.config.getOrNull(SemanticsProperties.TestTag) ==
+                        "animation-thumbnail-$frameId"
+                }
+                .boundsInWindow
+
+        fun taggedNode(tag: String): SemanticsNode =
+            nodes().single {
+                it.config.getOrNull(SemanticsProperties.TestTag) == tag
+            }
+
+        fun rulerNode(frameId: Int): SemanticsNode = taggedNode("animation-ruler-$frameId")
+
+        fun tracksNode(): SemanticsNode =
+            nodes().single {
+                it.config.contains(SemanticsActions.ScrollToIndex) &&
+                    it.config.contains(SemanticsProperties.HorizontalScrollAxisRange)
+            }
+
         private fun matches(node: SemanticsNode, label: String) =
             node.config.getOrNull(SemanticsProperties.ContentDescription)?.any {
                 it == label || it.startsWith("$label ·")
@@ -426,14 +479,22 @@ class AnimationWorkflowRenderingTest {
         private fun findNode(
             label: String,
             action: SemanticsPropertyKey<*> = SemanticsActions.OnClick,
-        ): SemanticsNode? =
-            nodes()
+            visibleOnly: Boolean = true,
+        ): SemanticsNode? {
+            val frame = frameNumber(label) != null && label.startsWith("Frame ")
+            val cardId = if (frame) frameCardId(label) else null
+            return nodes()
                 .filter {
                     it.config.contains(action) &&
-                        !it.boundsInWindow.isEmpty &&
-                        descendants(it).any { child -> matches(child, label) }
+                        (!visibleOnly || !it.boundsInWindow.isEmpty) &&
+                        if (frame) it.id == cardId
+                        else descendants(it).any { child -> matches(child, label) }
                 }
-                .minByOrNull { it.boundsInWindow.width * it.boundsInWindow.height }
+                .minByOrNull {
+                    if (visibleOnly) it.boundsInWindow.width * it.boundsInWindow.height
+                    else it.size.width.toFloat() * it.size.height
+                }
+        }
 
         fun node(
             label: String,
@@ -453,11 +514,7 @@ class AnimationWorkflowRenderingTest {
 
         fun canvasBounds(): Rect =
             nodes()
-                .filter {
-                    it.config.contains(SemanticsProperties.Focused) &&
-                        it.boundsInWindow.width > 1000f
-                }
-                .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+                .single { it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace" }
                 .boundsInWindow
 
         fun screenshot(name: String) =
@@ -476,23 +533,105 @@ class AnimationWorkflowRenderingTest {
                 render().close()
             }
 
+        private suspend fun scrollToFrame(label: String) {
+            val number = frameNumber(label) ?: return
+            val frame = label == "Frame $number"
+            withContext(Dispatchers.Main) {
+                assertTrue(number in 1..animation().frames.size, label)
+                val axis =
+                    if (frame) SemanticsProperties.VerticalScrollAxisRange
+                    else SemanticsProperties.HorizontalScrollAxisRange
+                val list =
+                    nodes().single {
+                        it.config.contains(SemanticsActions.ScrollToIndex) &&
+                            it.config.contains(axis)
+                    }
+                val range = list.config[axis]
+                assertTrue(range.value() >= 0f && range.value() <= range.maxValue())
+                assertTrue(
+                    assertNotNull(list.config[SemanticsActions.ScrollToIndex].action)(number - 1)
+                )
+            }
+            settle()
+            val scrolls =
+                withContext(Dispatchers.Main) {
+                    nodes()
+                        .filter {
+                            it.config.contains(SemanticsActions.ScrollBy) &&
+                                !it.config.contains(SemanticsActions.ScrollToIndex) &&
+                                it.config.contains(SemanticsProperties.VerticalScrollAxisRange) &&
+                                descendants(it).any { child -> matches(child, label) }
+                        }
+                        .sortedByDescending { it.size.width.toFloat() * it.size.height }
+                        .toList()
+                }
+            for ((index, scroll) in scrolls.withIndex()) {
+                for (attempt in 0 until 10) {
+                    val complete =
+                        withContext(Dispatchers.Main) {
+                            val target =
+                                scrolls.getOrNull(index + 1)
+                                    ?: assertNotNull(findNode(label, visibleOnly = false))
+                            val viewport = scroll.boundsInWindow
+                            val top = target.positionInWindow.y
+                            val bottom = top + target.size.height
+                            val delta =
+                                when {
+                                    top < viewport.top -> top - viewport.top
+                                    bottom > viewport.bottom -> bottom - viewport.bottom
+                                    else -> 0f
+                                }
+                            if (delta == 0f) true
+                            else {
+                                assertTrue(
+                                    assertNotNull(scroll.config[SemanticsActions.ScrollBy].action)(
+                                        0f,
+                                        delta,
+                                    )
+                                )
+                                false
+                            }
+                        }
+                    if (complete) break
+                    settle()
+                }
+            }
+            withContext(Dispatchers.Main) {
+                val control = node(label)
+                val bounds = control.boundsInWindow
+                assertTrue(
+                    bounds.left >= 0f &&
+                        bounds.top >= 0f &&
+                        bounds.right <= width &&
+                        bounds.bottom <= height,
+                    "$label escaped ${width}x$height: $bounds",
+                )
+                assertEquals(control.size.width.toFloat(), bounds.width, 0.5f, label)
+                assertEquals(control.size.height.toFloat(), bounds.height, 0.5f, label)
+            }
+        }
+
         suspend fun click(label: String) {
+            scrollToFrame(label)
             waitFor {
                 findNode(label)?.let { !it.config.contains(SemanticsProperties.Disabled) } == true
             }
             val point =
                 withContext(Dispatchers.Main) {
                     val button =
-                        nodes()
-                            .filter {
-                                it.config.contains(SemanticsActions.OnClick) &&
-                                    it.config.getOrNull(SemanticsProperties.Role) == Role.Button &&
-                                    !it.config.contains(SemanticsProperties.Disabled) &&
-                                    !it.boundsInWindow.isEmpty &&
-                                    descendants(it).any { child -> matches(child, label) }
-                            }
-                            .minByOrNull { it.boundsInWindow.width * it.boundsInWindow.height }
-                            ?: node(label)
+                        if (frameNumber(label) != null && label.startsWith("Frame ")) node(label)
+                        else
+                            nodes()
+                                .filter {
+                                    it.config.contains(SemanticsActions.OnClick) &&
+                                        it.config.getOrNull(SemanticsProperties.Role) ==
+                                            Role.Button &&
+                                        !it.config.contains(SemanticsProperties.Disabled) &&
+                                        !it.boundsInWindow.isEmpty &&
+                                        descendants(it).any { child -> matches(child, label) }
+                                }
+                                .minByOrNull { it.boundsInWindow.width * it.boundsInWindow.height }
+                                ?: node(label)
                     assertFalse(button.config.contains(SemanticsProperties.Disabled), label)
                     button.boundsInWindow.center
                 }
@@ -502,33 +641,43 @@ class AnimationWorkflowRenderingTest {
             settle()
         }
 
-        private fun view(): Size {
-            val canvas =
-                nodes()
-                    .filter {
-                        it.config.contains(SemanticsProperties.Focused) &&
-                            it.boundsInWindow.width > 1000f
-                    }
-                    .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
-            return Size(1282f, canvas.boundsInWindow.height)
+        private fun view(): Size = canvasBounds().size
+
+        suspend fun panel(label: String) {
+            if (
+                withContext(Dispatchers.Main) {
+                    visibleControl(label)?.config?.getOrNull(SemanticsProperties.Selected) == true
+                }
+            )
+                return
+            if (withContext(Dispatchers.Main) { visibleControl("Show panel") != null })
+                click("Show panel")
+            if (
+                withContext(Dispatchers.Main) {
+                    visibleControl(label)?.config?.getOrNull(SemanticsProperties.Selected) != true
+                }
+            )
+                click(label)
         }
 
         fun position(point: Offset) =
-            controller.viewport.toView(point, view(), controller.document) + Offset(0f, 64f)
+            controller.viewport.toView(point, view(), controller.document) + canvasBounds().topLeft
 
         fun sampled(point: Offset): Offset =
             controller.viewport.toDocument(
-                position(point) - Offset(0f, 64f),
+                position(point) - canvasBounds().topLeft,
                 view(),
                 controller.document,
             )
 
-        suspend fun fit() =
+        suspend fun fit() {
+            key(androidx.compose.ui.input.key.Key.Zero)
             withContext(Dispatchers.Main) {
                 controller.viewport =
                     Viewport(zoom = 4f / Viewport().scale(view(), controller.document))
-                assertEquals(4f, controller.viewport.scale(view(), controller.document))
+                assertEquals(4f, controller.viewport.scale(view(), controller.document), 0.000001f)
             }
+        }
 
         fun animation() = assertNotNull(controller.document.animation)
 
@@ -538,8 +687,7 @@ class AnimationWorkflowRenderingTest {
 
         suspend fun enable() {
             val before = controller.document
-            click("Project")
-            click("Animation timeline")
+            panel("Animation")
             waitFor { controller.document.animation != null }
             assertEquals(before.revision + 1, controller.document.revision)
             assertEquals(1, animation().frames.size)
@@ -552,6 +700,7 @@ class AnimationWorkflowRenderingTest {
             val before = controller.document
             val index = animation().frames.indexOfFirst { it.id == frameId }
             assertTrue(index >= 0)
+            panel("Animation")
             click("Frame ${index + 1}")
             waitFor { active() == frameId }
             assertEquals(before.contentId, controller.document.contentId)
@@ -564,6 +713,11 @@ class AnimationWorkflowRenderingTest {
         }
 
         suspend fun timeline(label: String): Int {
+            if (withContext(Dispatchers.Main) { visibleControl(label) == null }) {
+                panel("Animation")
+                if (withContext(Dispatchers.Main) { visibleControl(label) == null })
+                    click("Animation settings")
+            }
             val before = controller.document.revision
             click(label)
             waitFor { controller.document.revision == before + 1 }
@@ -571,6 +725,7 @@ class AnimationWorkflowRenderingTest {
         }
 
         suspend fun settings(label: String) {
+            panel("Animation")
             click("Animation settings")
             timeline(label)
         }
@@ -719,11 +874,9 @@ class AnimationWorkflowRenderingTest {
         ) =
             withContext(Dispatchers.Main) {
                 nodes()
-                    .filter {
-                        it.config.contains(SemanticsProperties.Focused) &&
-                            it.boundsInWindow.width > 1000f
+                    .single {
+                        it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace"
                     }
-                    .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
                     .config[SemanticsActions.RequestFocus]
                     .action!!
                     .invoke()
@@ -762,23 +915,20 @@ class AnimationWorkflowRenderingTest {
         val files = MemoryFiles(bytes, appearance)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         val controller = withContext(Dispatchers.Main) { StudioController(files, scope) }
+        val density = Density(1f)
         val scene =
             withContext(Dispatchers.Main) {
-                ImageComposeScene(width, height) {
+                ImageComposeScene(width, height, density = density) {
                     StudioApp(controller)
                     UnsavedChangesDialog(controller)
                 }
             }
-        val session = Session(controller, scene, files)
+        val session = Session(controller, scene, files, density, width, height)
         try {
             session.waitFor { controller.ready }
             withContext(Dispatchers.Main) { controller.file(StudioController.FileAction.Open) }
             session.waitFor { controller.hasCanvas && controller.document.width == 128 }
-            if (width >= 1000) {
-                session.click("Show panel")
-                session.click("Layers")
-                session.fit()
-            }
+            if (width >= 1000) session.fit()
             session.block()
         } finally {
             withContext(Dispatchers.Main) {
@@ -797,6 +947,82 @@ class AnimationWorkflowRenderingTest {
     }
 
     @Test
+    fun animationPageInitializesOnceAndOnlyOnEntryWithoutRevivingAnUndoneAnimation() = runBlocking {
+        val bytes = project()
+        val expected =
+            probe(bytes) { engine ->
+                command(
+                    engine,
+                    """{"type":"enable_animation","duration_ms":${StudioDefaults.animationFrameDuration}}""",
+                )
+                engine.call(EngineOperation.SAVE)
+            }
+        val frameId = probe(expected) { state(it).animation!!.frames.single().id }
+        val expectedPixels = framePixels(expected, frameId)
+        for (appearance in Appearance.entries) for (sceneWidth in listOf(400, 1600)) {
+            withSession(bytes, width = sceneWidth, appearance = appearance) {
+                val original = controller.document
+                for (tab in
+                    listOf(StudioPanel.Layers, StudioPanel.Colors, StudioPanel.Adjustments)) {
+                    panel(trValue(tab.label, Language.English))
+                    waitFor { !controller.busy }
+                    assertNull(controller.document.animation)
+                    assertEquals(original.revision, controller.document.revision)
+                    assertFalse(controller.document.canUndo)
+                    assertFalse(controller.hasUnsavedChanges)
+                }
+                if (sceneWidth < 1000) {
+                    click("Close")
+                    click("Project")
+                }
+                assertContentEquals(bytes, save())
+                panel("Animation")
+                waitFor { controller.document.animation != null }
+                settle()
+                val initialized = controller.document
+                assertEquals(original.revision + 1, initialized.revision)
+                assertEquals(1, animation().frames.size)
+                assertTrue(initialized.canUndo)
+                withContext(Dispatchers.Main) {
+                    assertNull(visibleControl("Enable animation"))
+                    assertNotNull(visibleControl("Frame 1"))
+                    assertContentEquals(expectedPixels, pixels())
+                }
+                if (sceneWidth < 1000) {
+                    click("Close")
+                    click("Project")
+                }
+                assertContentEquals(expected, save())
+                panel("Animation")
+                settle()
+                assertEquals(initialized.revision, controller.document.revision)
+                if (sceneWidth >= 1000) {
+                    withContext(Dispatchers.Main) {
+                        scene.constraints = Constraints.fixed(800, height)
+                    }
+                    settle()
+                    withContext(Dispatchers.Main) {
+                        scene.constraints = Constraints.fixed(sceneWidth, height)
+                    }
+                    settle()
+                    assertEquals(initialized.revision, controller.document.revision)
+                    click("Undo")
+                    waitFor { controller.document.animation == null }
+                    settle()
+                    assertNull(controller.document.animation)
+                    assertFalse(controller.document.canUndo)
+                    assertContentEquals(bytes, save())
+                    panel("Layers")
+                    enable()
+                    assertEquals(1, animation().frames.size)
+                    assertContentEquals(expectedPixels, withContext(Dispatchers.Main) { pixels() })
+                    assertContentEquals(expectedPixels, framePixels(save(), active()))
+                }
+            }
+        }
+    }
+
+    @Test
     fun compactSettingsStayVisibleInBothThemesAndDurationAddsOnlyOneNativeUndo() = runBlocking {
         val bytes = cornerAnimationProject()
         for (appearance in listOf(Appearance.Light, Appearance.Dark)) {
@@ -807,6 +1033,7 @@ class AnimationWorkflowRenderingTest {
                 assertEquals(100, animation().frame(frameId)!!.durationMs)
                 assertFalse(original.canUndo)
                 assertFalse(original.canRedo)
+                panel("Animation")
                 click("Animation settings")
                 withContext(Dispatchers.Main) {
                     assertTrue(node("Forward").config[SemanticsProperties.Selected])
@@ -825,6 +1052,25 @@ class AnimationWorkflowRenderingTest {
                     val input = node("Frame duration", SemanticsActions.SetText)
                     assertEquals("230", input.config[SemanticsProperties.EditableText].text)
                     val popup = popupBounds("Frame duration")
+                    val controlSize =
+                        with(density) { StudioTheme.controlSize.roundToPx().toFloat() }
+                    val settingsWidth =
+                        with(density) { StudioTheme.animationSettingsWidth.roundToPx().toFloat() }
+                    val settingsPadding =
+                        with(density) { StudioTheme.animationSettingsPadding.roundToPx().toFloat() }
+                    val inputWidth =
+                        with(density) {
+                            StudioTheme.animationDurationInputWidth.roundToPx().toFloat()
+                        }
+                    val divider = with(density) { DividerDefaults.Thickness.roundToPx().toFloat() }
+                    val rangeParents =
+                        generateSequence(node("New playback range").layoutInfo) { it.parentInfo }
+                            .toList()
+                    val ranges =
+                        generateSequence(node("All frames").layoutInfo) { it.parentInfo }
+                            .first { row -> rangeParents.any { it === row } }
+                            .coordinates
+                            .boundsInWindow()
                     assertTrue(
                         popup.left >= 0f &&
                             popup.top >= 0f &&
@@ -832,8 +1078,13 @@ class AnimationWorkflowRenderingTest {
                             popup.bottom <= 800f,
                         "Settings escaped the 400 px window: $popup",
                     )
-                    assertTrue(popup.width in 240f..280f, "Settings are too wide: $popup")
-                    assertTrue(popup.height in 200f..270f, "Settings are not compact: $popup")
+                    assertEquals(settingsWidth, popup.width, 0.5f, "Settings width: $popup")
+                    assertEquals(
+                        controlSize * 4 + ranges.height + divider * 3,
+                        popup.height,
+                        0.5f,
+                        "Settings are not compact: $popup",
+                    )
                     val controls =
                         listOf(
                                 "Apply frame duration",
@@ -847,9 +1098,7 @@ class AnimationWorkflowRenderingTest {
                                 "Move frame later",
                                 "Make frame content independent",
                                 "Clear layer in this frame",
-                                "Duplicate frame",
                                 "Duplicate linked frame",
-                                "Delete frame",
                             )
                             .map { it to node(it).boundsInWindow } +
                             ("Frame duration" to input.boundsInWindow)
@@ -864,10 +1113,27 @@ class AnimationWorkflowRenderingTest {
                                 bounds.bottom <= popup.bottom,
                             "$label escaped Settings: $bounds",
                         )
-                        assertTrue(
-                            bounds.width >= 40f && bounds.height >= 40f,
+                        val expectedWidth =
+                            when (label) {
+                                "Frame duration" -> inputWidth
+                                "All frames" -> settingsWidth - settingsPadding * 2 - controlSize
+                                else -> controlSize
+                            }
+                        assertEquals(
+                            expectedWidth,
+                            bounds.width,
+                            0.5f,
                             "$label is clipped: $bounds",
                         )
+                        if (label == "All frames")
+                            assertTrue(bounds.height >= controlSize, "$label is clipped: $bounds")
+                        else
+                            assertEquals(
+                                controlSize,
+                                bounds.height,
+                                0.5f,
+                                "$label is clipped: $bounds",
+                            )
                         val ink =
                             (bounds.top.toInt() + 4 until bounds.bottom.toInt() - 4).sumOf { y ->
                                 (bounds.left.toInt() + 4 until bounds.right.toInt() - 4).count { x
@@ -901,6 +1167,7 @@ class AnimationWorkflowRenderingTest {
                 assertEquals(230, animation().frame(frameId)!!.durationMs)
                 assertTrue(controller.document.canUndo)
                 assertFalse(controller.document.canRedo)
+                click("Close")
                 click("Project")
                 val saved = save()
                 probe(saved) { engine ->
@@ -924,6 +1191,7 @@ class AnimationWorkflowRenderingTest {
         for (appearance in listOf(Appearance.Light, Appearance.Dark)) {
             for (width in listOf(400, 600)) {
                 withSession(bytes, width = width, height = 800, appearance = appearance) {
+                    panel("Animation")
                     waitFor { controller.animationThumbnails[active()] != null }
                     settle()
                     withContext(Dispatchers.Main) {
@@ -932,20 +1200,22 @@ class AnimationWorkflowRenderingTest {
                                 "animation-timeline-${appearance.name.lowercase()}-$width.png"
                             )
                         val panel = StudioTheme.panel.toArgb()
+                        val controlSize =
+                            with(density) { StudioTheme.controlSize.roundToPx().toFloat() }
                         val required =
                             listOf(
                                 "Play animation",
                                 "Onion skin",
                                 "Add blank frame",
+                                "Duplicate frame",
+                                "Delete frame",
                                 "Animation settings",
-                                "Hide timeline",
+                                "Close",
                             )
                         val labels =
                             required +
                                 listOf(
-                                    "Duplicate frame",
                                     "Duplicate linked frame",
-                                    "Delete frame",
                                     "Export animation",
                                 )
                         required.forEach { assertNotNull(visibleControl(it), it) }
@@ -960,8 +1230,16 @@ class AnimationWorkflowRenderingTest {
                                     bounds.bottom <= 800f,
                                 "$label escaped the $width px window: $bounds",
                             )
-                            assertTrue(
-                                bounds.width >= 40f && bounds.height >= 40f,
+                            assertEquals(
+                                controlSize,
+                                bounds.width,
+                                0.5f,
+                                "$label is clipped: $bounds",
+                            )
+                            assertEquals(
+                                controlSize,
+                                bounds.height,
+                                0.5f,
                                 "$label is clipped: $bounds",
                             )
                             val ink =
@@ -995,8 +1273,57 @@ class AnimationWorkflowRenderingTest {
                                 (opaque.maxOf { it / thumbnail.width } + 1).toFloat(),
                             )
                         assertEquals(4f / 3f, nativeContent.width / nativeContent.height, 0.02f)
-                        val frame = node("Frame 1").boundsInWindow
+                        val frameNode = node("Frame 1")
+                        val frame = frameNode.boundsInWindow
+                        val viewport = thumbnailBounds(active())
                         val track = node("Source · Frame 1").boundsInWindow
+                        for (bounds in listOf(frame, viewport, track)) {
+                            assertTrue(
+                                bounds.left >= 0f &&
+                                    bounds.top >= 0f &&
+                                    bounds.right <= width &&
+                                    bounds.bottom <= 800f,
+                                "Frame escaped the $width px window: $bounds",
+                            )
+                        }
+                        val inset = with(density) { StudioTheme.animationSelectionBorder.toPx() }
+                        assertEquals(frame.width - inset * 2, viewport.width, 1f)
+                        assertEquals(
+                            frame.width / StudioTheme.animationPreviewAspectRatio - inset * 2,
+                            viewport.height,
+                            1f,
+                        )
+                        assertEquals(
+                            with(density) { StudioTheme.animationExposureWidth.toPx() },
+                            track.width,
+                            0.5f,
+                        )
+                        assertTrue(track.top >= frame.bottom)
+                        val timeline = taggedNode("animation-timeline").boundsInWindow
+                        val tracks = taggedNode("animation-tracks").boundsInWindow
+                        assertEquals(
+                            timeline.bottom,
+                            tracks.bottom,
+                            0.5f,
+                            "Exposure matrix is not pinned to the timeline bottom",
+                        )
+                        val trackName = taggedNode("animation-track-name-1").boundsInWindow
+                        val lineInset = with(density) { StudioTheme.hairline.roundToPx() }
+                        val contentInset = with(density) { StudioTheme.animationGap.roundToPx() }
+                        for (y in
+                            trackName.top.toInt() + contentInset until
+                                trackName.bottom.toInt() - contentInset) {
+                            assertEquals(
+                                StudioTheme.selection.toArgb(),
+                                picture.getRGB(trackName.left.toInt() + lineInset, y),
+                                "Active track has an extra vertical marker",
+                            )
+                        }
+                        assertTrue(
+                            frameNode.config.getOrNull(SemanticsProperties.Text)?.any {
+                                it.text == "100 ms"
+                            } == true
+                        )
                         val sourceColors =
                             setOf(
                                 0xFF145064.toInt(),
@@ -1006,8 +1333,9 @@ class AnimationWorkflowRenderingTest {
                                 0xFFE8C028.toInt(),
                             )
                         val sourcePixels =
-                            (frame.top.toInt() until track.top.toInt()).flatMap { y ->
-                                (frame.left.toInt() until frame.right.toInt()).mapNotNull { x ->
+                            (viewport.top.toInt() until viewport.bottom.toInt()).flatMap { y ->
+                                (viewport.left.toInt() until viewport.right.toInt()).mapNotNull { x
+                                    ->
                                     val color = picture.getRGB(x, y)
                                     if (color in sourceColors) Triple(x, y, color) else null
                                 }
@@ -1021,6 +1349,25 @@ class AnimationWorkflowRenderingTest {
                                 (sourcePixels.maxOf { it.second } + 1).toFloat(),
                             )
                         assertEquals(4f / 3f, content.width / content.height, 0.08f)
+                        val scale =
+                            minOf(
+                                viewport.width / controller.document.width,
+                                viewport.height / controller.document.height,
+                            )
+                        val target =
+                            Size(
+                                controller.document.width * scale,
+                                controller.document.height * scale,
+                            )
+                        val expected =
+                            Rect(
+                                viewport.center - Offset(target.width / 2, target.height / 2),
+                                target,
+                            )
+                        assertEquals(expected.left, content.left, 1.5f)
+                        assertEquals(expected.top, content.top, 1.5f)
+                        assertEquals(expected.right, content.right, 1.5f)
+                        assertEquals(expected.bottom, content.bottom, 1.5f)
                         for ((color, left, bottom) in
                             listOf(
                                 Triple(0xFFDC3038.toInt(), true, false),
@@ -1053,6 +1400,240 @@ class AnimationWorkflowRenderingTest {
     }
 
     @Test
+    fun shortTimelineScrollsToCompleteFramesAndExposureCellsAtBothInterfaceScales() = runBlocking {
+        val bytes =
+            probe(cornerAnimationProject()) { engine ->
+                val first = state(engine).animation!!.activeFrameId
+                command(
+                    engine,
+                    """{"type":"duplicate_frame","frame_id":$first,"index":1,"linked":true}""",
+                )
+                command(engine, """{"type":"select_frame","frame_id":$first}""")
+                engine.call(EngineOperation.SAVE)
+            }
+        val original = probe(bytes, ::state)
+        val originalAnimation = assertNotNull(original.animation)
+        val frames = originalAnimation.frames
+        val expected =
+            probe(bytes) { engine -> frames.associate { it.id to framePixels(engine, it.id) } }
+        for (scale in listOf(1f, 2f)) {
+            withSession(
+                bytes,
+                width = if (scale == 1f) 400 else 600,
+                height = if (scale == 1f) 400 else 1000,
+            ) {
+                withContext(Dispatchers.Main) {
+                    controller.updatePreferences(
+                        controller.preferences.copy(
+                            workspaceAppearance =
+                                WorkspaceAppearance(scale = scale, reducedMotion = true)
+                        )
+                    )
+                }
+                settle()
+                panel("Animation")
+                withContext(Dispatchers.Main) {
+                    val body = taggedNode("animation-timeline-body")
+                    assertTrue(body.config.contains(SemanticsActions.ScrollBy))
+                    assertTrue(body.config.contains(SemanticsProperties.VerticalScrollAxisRange))
+                    assertTrue(
+                        body.config[SemanticsProperties.VerticalScrollAxisRange].maxValue() > 0f,
+                        "Short timeline does not overflow at $scale: ${body.boundsInWindow}",
+                    )
+                }
+                val before = controller.document
+                for ((index, frame) in frames.withIndex().reversed()) {
+                    select(frame.id)
+                    waitFor { controller.animationThumbnails[frame.id] != null }
+                    withContext(Dispatchers.Main) {
+                        val card = node("Frame ${index + 1}")
+                        assertEquals(density.density * scale, card.layoutInfo.density.density)
+                        val viewport = thumbnailBounds(frame.id)
+                        assertTrue(viewport.width > 0f && viewport.height > 0f)
+                        assertTrue(
+                            viewport.left >= 0f &&
+                                viewport.top >= 0f &&
+                                viewport.right <= width &&
+                                viewport.bottom <= height
+                        )
+                        assertEquals(
+                            minOf(
+                                card.boundsInWindow.width / StudioTheme.animationPreviewAspectRatio,
+                                taggedNode("animation-timeline-body").boundsInWindow.height -
+                                    with(card.layoutInfo.density) {
+                                        StudioTheme.controlSize.toPx()
+                                    },
+                            ) -
+                                with(card.layoutInfo.density) {
+                                    (StudioTheme.animationSelectionBorder * 2).toPx()
+                                },
+                            viewport.height,
+                            1f,
+                        )
+                    }
+                    click("Source · Frame ${index + 1}")
+                    waitFor { active() == frame.id && controller.document.active == 1 }
+                    assertEquals(
+                        originalAnimation.exposure(frame.id, 1)?.celId,
+                        animation().activeCelId,
+                    )
+                    assertEquals(before.contentId, controller.document.contentId)
+                    assertEquals(before.canUndo, controller.document.canUndo)
+                    assertEquals(before.canRedo, controller.document.canRedo)
+                    assertFalse(controller.hasUnsavedChanges)
+                    assertContentEquals(
+                        expected.getValue(frame.id),
+                        withContext(Dispatchers.Main) { pixels() },
+                    )
+                    withContext(Dispatchers.Main) {
+                        val body = taggedNode("animation-timeline-body")
+                        assertTrue(
+                            body.config[SemanticsProperties.VerticalScrollAxisRange].value() > 0f
+                        )
+                    }
+                }
+                select(frames.first().id)
+                withContext(Dispatchers.Main) {
+                    screenshot("animation-short-${(scale * 100).toInt()}.png")
+                }
+            }
+        }
+    }
+
+    @Test
+    fun shownTailFrameGetsARealThumbnailWhenMoreThanTheRequestLimitAreVisible() = runBlocking {
+        val bytes =
+            probe(cornerAnimationProject()) { engine ->
+                val first = state(engine).animation!!.activeFrameId
+                for (index in 1 until 40) {
+                    command(
+                        engine,
+                        """{"type":"duplicate_frame","frame_id":$first,"index":$index,"linked":true}""",
+                    )
+                }
+                val tail = state(engine).animation!!.frames.last().id
+                command(engine, """{"type":"select_frame","frame_id":$tail}""")
+                engine.call(EngineOperation.SAVE)
+            }
+        val original = probe(bytes, ::state)
+        val tail = original.animation!!.frames.last().id
+        val expected = framePixels(bytes, tail)
+        withSession(bytes, width = 1100, height = 2200) {
+            withContext(Dispatchers.Main) {
+                controller.updatePreferences(
+                    controller.preferences.copy(
+                        workspaceAppearance =
+                            WorkspaceAppearance(scale = 0.75f, reducedMotion = true)
+                    )
+                )
+            }
+            settle()
+            panel("Animation")
+            val before = controller.document
+            select(tail)
+            withContext(Dispatchers.Main) {
+                val visible =
+                    animation().frames.indices.count { index ->
+                        visibleControl("Frame ${index + 1}")?.let { card ->
+                            abs(card.boundsInWindow.height - card.size.height) < 0.5f
+                        } == true
+                    }
+                assertEquals(32, controller.document.maxFrameThumbnails)
+                assertTrue(
+                    visible > controller.document.maxFrameThumbnails,
+                    "Only $visible frames are visible",
+                )
+            }
+            waitFor { controller.animationThumbnails[tail] != null }
+            withContext(Dispatchers.Main) {
+                assertTrue(
+                    controller.animationThumbnails.size <= controller.document.maxFrameThumbnails
+                )
+                assertContentEquals(expected, pixels())
+                assertEquals(before.contentId, controller.document.contentId)
+                assertEquals(tail, active())
+                assertFalse(controller.document.canUndo)
+                assertFalse(controller.document.canRedo)
+                assertFalse(controller.hasUnsavedChanges)
+                val viewport = thumbnailBounds(tail)
+                val picture = screenshot("animation-many-visible-frames.png")
+                val rendered =
+                    (viewport.top.toInt() until viewport.bottom.toInt())
+                        .flatMap { y ->
+                            (viewport.left.toInt() until viewport.right.toInt()).map { x ->
+                                picture.getRGB(x, y)
+                            }
+                        }
+                        .toSet()
+                for (corner in
+                    listOf(
+                        0xFFDC3038.toInt(),
+                        0xFF28B058.toInt(),
+                        0xFF3060E0.toInt(),
+                        0xFFE8C028.toInt(),
+                    )) {
+                    assertTrue(corner in rendered, "Shown tail thumbnail lost corner $corner")
+                }
+            }
+            select(animation().frames.first().id)
+            val dragStart = controller.document
+            val rulerY =
+                withContext(Dispatchers.Main) {
+                    rulerNode(active()).boundsInWindow.center.y
+                }
+            for (attempt in 0 until 12) {
+                val drag =
+                    withContext(Dispatchers.Main) {
+                        val strip = tracksNode()
+                        val range = strip.config[SemanticsProperties.HorizontalScrollAxisRange]
+                        if (range.value() == range.maxValue()) null
+                        else {
+                            val bounds = strip.boundsInWindow
+                            val inset =
+                                with(density) {
+                                    StudioTheme.controlSize.toPx() *
+                                        controller.preferences.workspaceAppearance.scale / 4
+                                }
+                            Triple(
+                                Offset(bounds.right - inset, rulerY),
+                                Offset(bounds.left + inset, rulerY),
+                                range.value(),
+                            )
+                        }
+                    } ?: break
+                pointer(PointerEventType.Press, drag.first)
+                for (step in 1..4) pointer(
+                    PointerEventType.Move,
+                    drag.first + (drag.second - drag.first) * (step / 4f),
+                )
+                pointer(PointerEventType.Release, drag.second)
+                waitFor {
+                    tracksNode().config[SemanticsProperties.HorizontalScrollAxisRange].value() >
+                        drag.third
+                }
+            }
+            val tailCell =
+                withContext(Dispatchers.Main) {
+                    val strip = tracksNode()
+                    val range = strip.config[SemanticsProperties.HorizontalScrollAxisRange]
+                    assertEquals(range.maxValue(), range.value())
+                    val cell = node("Source · Frame 40")
+                    assertEquals(cell.size.width.toFloat(), cell.boundsInWindow.width, 0.5f)
+                    assertEquals(dragStart, controller.document)
+                    cell.boundsInWindow.center
+                }
+            pointer(PointerEventType.Press, tailCell)
+            pointer(PointerEventType.Release, tailCell)
+            waitFor { active() == tail }
+            assertEquals(dragStart.contentId, controller.document.contentId)
+            assertEquals(dragStart.canUndo, controller.document.canUndo)
+            assertEquals(dragStart.canRedo, controller.document.canRedo)
+            assertFalse(controller.hasUnsavedChanges)
+            assertContentEquals(expected, withContext(Dispatchers.Main) { pixels() })
+        }
+    }
+
+    @Test
     fun timelineTrackPointerClicksSelectTheFrameLayerAndCelWithoutChangingPixelsOrHistory() =
         runBlocking {
             val bytes = layeredAnimationProject()
@@ -1064,6 +1645,7 @@ class AnimationWorkflowRenderingTest {
                 probe(bytes) { engine -> frames.associate { it.id to framePixels(engine, it.id) } }
             withSession(bytes) {
                 val before = controller.document
+                panel("Animation")
                 for ((label, frameId, layerId) in
                     listOf(
                         Triple("Ink track · Frame 2", frames[1].id, ink),
@@ -1089,12 +1671,40 @@ class AnimationWorkflowRenderingTest {
                         label,
                     )
                     withContext(Dispatchers.Main) {
+                        val number = frames.indexOfFirst { it.id == frameId } + 1
                         assertEquals(
                             true,
-                            node("Frame ${frames.indexOfFirst { it.id == frameId } + 1}")
-                                .config
-                                .getOrNull(SemanticsProperties.Selected),
+                            node("Frame $number").config.getOrNull(SemanticsProperties.Selected),
                         )
+                        val picture = screenshot("animation-exposure-$frameId-$layerId.png")
+                        val markerInset =
+                            with(density) {
+                                (StudioTheme.hairline + StudioTheme.animationPlayIndicatorHeight)
+                                    .roundToPx()
+                            }
+                        for ((frameIndex, frame) in frames.withIndex()) {
+                            assertEquals(
+                                frame.id == frameId,
+                                rulerNode(frame.id).config.getOrNull(SemanticsProperties.Selected),
+                            )
+                            for (layer in original.layers) {
+                                val cell = node("${layer.name} · Frame ${frameIndex + 1}")
+                                assertEquals(
+                                    frame.id == frameId && layer.id == layerId,
+                                    cell.config.getOrNull(SemanticsProperties.Selected),
+                                    "${layer.name} · Frame ${frameIndex + 1}",
+                                )
+                                val bounds = cell.boundsInWindow
+                                val marker =
+                                    picture.getRGB(
+                                        bounds.center.x.toInt(),
+                                        bounds.bottom.toInt() - markerInset,
+                                    )
+                                if (frame.id == frameId)
+                                    assertEquals(StudioTheme.accent.toArgb(), marker, label)
+                                else assertNotEquals(StudioTheme.accent.toArgb(), marker, label)
+                            }
+                        }
                     }
                 }
                 probe(save()) { engine ->
@@ -1107,11 +1717,12 @@ class AnimationWorkflowRenderingTest {
         }
 
     @Test
-    fun timelineHideButtonAndShortcutDuringAStrokePreserveCanvasBoundsAndEveryNativePixel() =
+    fun panelHideButtonAndAnimationShortcutDuringAStrokePreserveCanvasBoundsAndEveryNativePixel() =
         runBlocking {
             withSession(project()) {
                 enable()
                 if (controller.tool != Tool.Brush) click("Brush")
+                panel("Animation")
                 withContext(Dispatchers.Main) { controller.brush = hardBrush }
                 val before = controller.document
                 val frameId = active()
@@ -1131,19 +1742,19 @@ class AnimationWorkflowRenderingTest {
                 stylus(PointerEventType.Press, samples.first(), true)
                 waitFor { controller.drawingInput }
                 withContext(Dispatchers.Main) {
-                    val hide = node("Hide timeline")
+                    val hide = node("Hide panel")
                     assertTrue(hide.config.contains(SemanticsProperties.Disabled))
                     assertNotNull(hide.config[SemanticsActions.OnClick].action).invoke()
                     render().close()
                     assertTrue(controller.drawingInput)
-                    assertTrue(controller.animationTimelineVisible)
+                    assertNotNull(visibleControl("Hide panel"))
                     assertEquals(bounds, canvasBounds())
                 }
                 key(androidx.compose.ui.input.key.Key.A, command = true, shift = true)
                 settle()
                 withContext(Dispatchers.Main) {
                     assertTrue(controller.drawingInput)
-                    assertTrue(controller.animationTimelineVisible)
+                    assertNotNull(visibleControl("Hide panel"))
                     assertEquals(bounds, canvasBounds())
                     assertEquals(viewport, controller.viewport)
                     assertEquals(frameId, active())
@@ -1159,16 +1770,16 @@ class AnimationWorkflowRenderingTest {
                 assertContentEquals(expected, withContext(Dispatchers.Main) { pixels() })
                 assertContentEquals(expected, framePixels(save(), frameId))
                 val completed = controller.document
-                click("Hide timeline")
+                click("Hide panel")
                 withContext(Dispatchers.Main) {
-                    assertFalse(controller.animationTimelineVisible)
-                    assertTrue(canvasBounds().height > bounds.height)
+                    assertNotNull(visibleControl("Show panel"))
+                    assertTrue(canvasBounds().width > bounds.width)
                     assertEquals(completed, controller.document)
                 }
                 key(androidx.compose.ui.input.key.Key.A, command = true, shift = true)
                 settle()
                 withContext(Dispatchers.Main) {
-                    assertTrue(controller.animationTimelineVisible)
+                    assertNotNull(visibleControl("Hide panel"))
                     assertEquals(bounds, canvasBounds())
                     assertEquals(completed, controller.document)
                 }
@@ -1251,6 +1862,7 @@ class AnimationWorkflowRenderingTest {
             val second = timeline("Duplicate linked frame")
             assertEquals(firstCel, cel())
             assertEquals(firstMask, controller.document.layers.single().masks.single().id)
+            panel("Layers")
             click("Source · Edit mask")
             waitFor { controller.document.maskEditing }
             stroke(
@@ -1271,6 +1883,7 @@ class AnimationWorkflowRenderingTest {
             settings("Make frame content independent")
             assertNotEquals(firstCel, cel())
             assertNotEquals(firstMask, controller.document.layers.single().masks.single().id)
+            panel("Layers")
             click("Source · Edit mask")
             waitFor { controller.document.maskEditing }
             val beforeEdit = save()
@@ -1380,6 +1993,7 @@ class AnimationWorkflowRenderingTest {
             val saved = save()
             val firstPixels = framePixels(saved, first)
             val secondPixels = framePixels(saved, second)
+            panel("Animation")
             click("Onion skin")
             waitFor { controller.onionPrevious != null }
             assertContentEquals(
@@ -1440,6 +2054,7 @@ class AnimationWorkflowRenderingTest {
             assertSame(frame, controller.frame)
             assertContentEquals(saved, save())
             if (controller.tool != Tool.Brush) click("Brush")
+            panel("Animation")
             val revision = controller.document.revision
             stylus(PointerEventType.Press, Sample(Offset(70f, 60f), 1f), true)
             waitFor { controller.drawingInput }

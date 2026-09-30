@@ -127,6 +127,7 @@ data class Preferences(
     val palette: List<Long> = emptyList(),
     val asePalette: AsePalette? = null,
     val paletteFileMetadata: PaletteFileMetadata = PaletteFileMetadata(),
+    val workspaceAppearance: WorkspaceAppearance = WorkspaceAppearance(),
 ) {
     fun withAvailableBrushFavorites(): Preferences {
         val available =
@@ -188,7 +189,8 @@ data class Preferences(
     }
 
     fun valid() =
-        canvasGrid.valid() &&
+        workspaceAppearance.valid() &&
+            canvasGrid.valid() &&
             paletteFileMetadata.valid() &&
             palette.size <= StudioDefaults.maxPaletteColors &&
             palette.distinct().size == palette.size &&

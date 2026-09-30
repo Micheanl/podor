@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.asAwtTransferable
+import androidx.compose.ui.semantics.*
 import app.podor.data.ImageClipboard
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
@@ -18,6 +19,7 @@ import app.podor.domain.*
 import app.podor.engine.*
 import app.podor.presentation.StudioController
 import app.podor.ui.StudioApp
+import app.podor.ui.trValue
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
 import java.nio.file.Files
@@ -86,18 +88,85 @@ class ClipboardRenderingTest {
             }
         var frame = 0L
         fun render() = scene.render(frame++ * 16_666_667L)
-        fun click(x: Float, y: Float) {
-            scene.sendPointerEvent(PointerEventType.Press, Offset(x, y))
-            scene.sendPointerEvent(PointerEventType.Release, Offset(x, y))
+        fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+            yield(node)
+            node.children.forEach { yieldAll(descendants(it)) }
+        }
+        fun nodes() =
+            scene.semanticsOwners.asSequence().flatMap { descendants(it.unmergedRootSemanticsNode) }
+        fun node(label: String, action: SemanticsPropertyKey<*>): SemanticsNode {
+            val translated = trValue(label, controller.preferences.language)
+            return nodes()
+                .filter {
+                    it.config.contains(action) &&
+                        !it.boundsInWindow.isEmpty &&
+                        descendants(it).any { child ->
+                            child.config.getOrNull(SemanticsProperties.ContentDescription)?.any {
+                                it == translated || it.startsWith("$translated ·")
+                            } == true
+                        }
+                }
+                .minByOrNull { it.boundsInWindow.width * it.boundsInWindow.height }
+                ?: error("Missing clipboard control: $translated")
+        }
+        fun click(point: Offset) {
+            scene.sendPointerEvent(PointerEventType.Press, point)
+            scene.sendPointerEvent(PointerEventType.Release, point)
             scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
             repeat(35) { render().close() }
         }
+        fun click(label: String) {
+            repeat(35) { render().close() }
+            val target = node(label, SemanticsActions.OnClick)
+            assertFalse(target.config.contains(SemanticsProperties.Disabled), label)
+            click(target.boundsInWindow.center)
+        }
+        fun focusHex() {
+            click("颜色")
+            click(node("HEX 颜色", SemanticsActions.SetText).boundsInWindow.center)
+            assertEquals(
+                true,
+                node("HEX 颜色", SemanticsActions.SetText)
+                    .config
+                    .getOrNull(SemanticsProperties.Focused),
+            )
+        }
+        fun focusCanvas() {
+            repeat(35) { render().close() }
+            val canvas =
+                nodes().single {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace"
+                }
+            click(canvas.boundsInWindow.center)
+            assertEquals(
+                true,
+                nodes()
+                    .single {
+                        it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace"
+                    }
+                    .config
+                    .getOrNull(SemanticsProperties.Focused),
+            )
+        }
         fun key(key: Key, shift: Boolean = false) {
+            val mac = System.getProperty("os.name").startsWith("Mac")
             scene.sendKeyEvent(
-                KeyEvent(key, KeyEventType.KeyDown, isCtrlPressed = true, isShiftPressed = shift)
+                KeyEvent(
+                    key,
+                    KeyEventType.KeyDown,
+                    isCtrlPressed = !mac,
+                    isMetaPressed = mac,
+                    isShiftPressed = shift,
+                )
             )
             scene.sendKeyEvent(
-                KeyEvent(key, KeyEventType.KeyUp, isCtrlPressed = true, isShiftPressed = shift)
+                KeyEvent(
+                    key,
+                    KeyEventType.KeyUp,
+                    isCtrlPressed = !mac,
+                    isMetaPressed = mac,
+                    isShiftPressed = shift,
+                )
             )
             repeat(3) { render().close() }
         }
@@ -111,14 +180,15 @@ class ClipboardRenderingTest {
             waitFor { controller.hasCanvas && !controller.busy }
             val before = withContext(Dispatchers.Main) { controller.document }
             withContext(Dispatchers.Main) {
-                scene.openInspector { render().close() }
-                click(1158f, 194f)
-                click(1175f, 586f)
+                click("展开面板")
+                focusHex()
                 key(Key.A)
                 key(Key.C)
                 assertEquals(
                     "000000",
-                    textClipboard.entry?.asAwtTransferable?.getTransferData(DataFlavor.stringFlavor),
+                    textClipboard.entry
+                        ?.asAwtTransferable
+                        ?.getTransferData(DataFlavor.stringFlavor),
                 )
                 key(Key.X)
                 textClipboard.entry = ClipEntry(StringSelection("A17B23"))
@@ -129,7 +199,7 @@ class ClipboardRenderingTest {
                 assertEquals(0, imageClipboard.writes)
                 assertEquals(before, controller.document)
                 controller.tool = Tool.Hand
-                click(750f, 650f)
+                focusCanvas()
                 key(Key.C)
             }
             waitFor { imageClipboard.writes == 1 && !controller.busy }
@@ -146,15 +216,17 @@ class ClipboardRenderingTest {
                 controller.updatePreferences(
                     controller.preferences.assign(ShortcutAction.Eraser, Shortcut("C", true))
                 )
-                click(1175f, 586f)
+                focusHex()
                 key(Key.A)
                 key(Key.C)
                 assertEquals(Tool.Hand, controller.tool)
                 assertEquals(
                     "A17B23",
-                    textClipboard.entry?.asAwtTransferable?.getTransferData(DataFlavor.stringFlavor),
+                    textClipboard.entry
+                        ?.asAwtTransferable
+                        ?.getTransferData(DataFlavor.stringFlavor),
                 )
-                click(750f, 650f)
+                focusCanvas()
                 key(Key.C)
                 assertEquals(Tool.Eraser, controller.tool)
                 controller.tool = Tool.Hand
@@ -162,7 +234,7 @@ class ClipboardRenderingTest {
             for ((index, language) in Language.entries.withIndex()) {
                 withContext(Dispatchers.Main) {
                     controller.updatePreferences(controller.preferences.copy(language = language))
-                    click(241f, 32f)
+                    click("剪贴板")
                 }
                 delay(30)
                 withContext(Dispatchers.Main) {
@@ -179,7 +251,7 @@ class ClipboardRenderingTest {
                             )
                         }
                     }
-                    click(310f, 87f)
+                    click(ShortcutAction.Copy.label)
                 }
                 waitFor { imageClipboard.writes == index + 3 && !controller.busy }
             }

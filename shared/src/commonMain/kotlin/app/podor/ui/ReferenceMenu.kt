@@ -16,7 +16,7 @@ fun ReferenceMenu(controller: StudioController) {
             "参考图",
             controller.references.visible && controller.references.images.isNotEmpty(),
         ) {
-            expanded = true
+            expanded = !expanded
         }
         StudioDropdownMenu(
             expanded,
@@ -58,7 +58,7 @@ fun ReferenceMenuItems(controller: StudioController, close: () -> Unit) {
     if (references.images.isNotEmpty()) {
         HorizontalDivider(color = StudioTheme.border)
         references.images.forEach { reference ->
-            DropdownMenuItem(
+            StudioDropdownMenuItem(
                 { Text(tr(reference.name), maxLines = 1) },
                 {
                     references.visible = true

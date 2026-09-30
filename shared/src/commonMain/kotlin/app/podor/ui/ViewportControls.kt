@@ -3,7 +3,6 @@ package app.podor.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -14,22 +13,32 @@ import app.podor.domain.Viewport
 import kotlin.math.roundToInt
 
 @Composable
-fun ViewportControls(viewport: Viewport, fitLabel: String, onChange: (Viewport) -> Unit) {
+fun ViewportControls(
+    viewport: Viewport,
+    fitLabel: String,
+    iconsOnly: Boolean = false,
+    onChange: (Viewport) -> Unit,
+) {
     var expanded by remember { mutableStateOf(false) }
     var zoomExpanded by remember { mutableStateOf(false) }
     val rotationLabel = tr("旋转视图")
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    FlowRow {
         Box {
-            StudioTextButton(
-                { zoomExpanded = !zoomExpanded },
-                contentPadding = PaddingValues(horizontal = 7.dp),
-            ) {
-                ButtonLabel(
-                    "${(viewport.zoom * 100).roundToInt()}%",
-                    fontSize = 11.sp,
-                    color = StudioTheme.muted,
-                )
-            }
+            if (iconsOnly)
+                ToolButton(Glyph.Search, "缩放", selected = zoomExpanded) {
+                    zoomExpanded = !zoomExpanded
+                }
+            else
+                StudioTextButton(
+                    { zoomExpanded = !zoomExpanded },
+                    contentPadding = PaddingValues(horizontal = 7.dp),
+                ) {
+                    ButtonLabel(
+                        "${(viewport.zoom * 100).roundToInt()}%",
+                        fontSize = 11.sp,
+                        color = StudioTheme.muted,
+                    )
+                }
             StudioDropdownMenu(
                 zoomExpanded,
                 { zoomExpanded = false },
@@ -62,19 +71,25 @@ fun ViewportControls(viewport: Viewport, fitLabel: String, onChange: (Viewport) 
         }
 
         Box {
-            StudioTextButton(
-                { expanded = !expanded },
-                modifier = Modifier.semantics { contentDescription = rotationLabel },
-                contentPadding = PaddingValues(horizontal = 7.dp),
-            ) {
-                StudioIcon(Glyph.Rotate, StudioTheme.muted, Modifier.size(16.dp))
-                Spacer(Modifier.width(5.dp))
-                ButtonLabel(
-                    "${viewport.rotation.roundToInt()}°",
-                    fontSize = 11.sp,
-                    color = if (viewport.rotation == 0f) StudioTheme.muted else StudioTheme.accent,
-                )
-            }
+            if (iconsOnly)
+                ToolButton(Glyph.Rotate, "旋转视图", selected = expanded) {
+                    expanded = !expanded
+                }
+            else
+                StudioTextButton(
+                    { expanded = !expanded },
+                    modifier = Modifier.semantics { contentDescription = rotationLabel },
+                    contentPadding = PaddingValues(horizontal = 7.dp),
+                ) {
+                    StudioIcon(Glyph.Rotate, StudioTheme.muted, Modifier.size(16.dp))
+                    Spacer(Modifier.width(5.dp))
+                    ButtonLabel(
+                        "${viewport.rotation.roundToInt()}°",
+                        fontSize = 11.sp,
+                        color =
+                            if (viewport.rotation == 0f) StudioTheme.muted else StudioTheme.accent,
+                    )
+                }
             StudioDropdownMenu(
                 expanded,
                 { expanded = false },

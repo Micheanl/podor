@@ -263,6 +263,16 @@ class AnimationExportWorkflowRenderingTest {
             return assertNotNull(files.saved.get()).copyOf()
         }
 
+        suspend fun animationPanel() {
+            if (withContext(Dispatchers.Main) { control("Show panel") != null }) click("Show panel")
+            click("Animation")
+        }
+
+        suspend fun animationExport() {
+            animationPanel()
+            click("Export animation")
+        }
+
         suspend fun confirm(): Exported {
             val count = files.animationExports.get()
             click("Export")
@@ -332,7 +342,7 @@ class AnimationExportWorkflowRenderingTest {
                 assertTrue(expected[0].any { it != 0 })
                 assertTrue(expected[1].any { it != 0 })
                 assertTrue(expected[2].all { it == 0 })
-                click("Export animation")
+                animationExport()
                 assertNotNull(withContext(Dispatchers.Main) { control("GIF") })
                 val exported = confirm()
                 assertEquals(AnimationExportFormat.Gif, exported.format)
@@ -389,7 +399,7 @@ class AnimationExportWorkflowRenderingTest {
                 val animation = assertNotNull(before.animation)
                 val tag = animation.tags.single()
                 withContext(Dispatchers.Main) { controller.animationTagId = tag.id }
-                click("Export animation")
+                animationExport()
                 click("PNG atlas")
                 val exported = confirm()
                 assertEquals(AnimationExportFormat.Atlas, exported.format)
@@ -471,6 +481,7 @@ class AnimationExportWorkflowRenderingTest {
         runBlocking {
             withSession(project()) {
                 val before = controller.document
+                animationPanel()
                 withContext(Dispatchers.Main) {
                     val field = controller.javaClass.getDeclaredField("document\$delegate")
                     field.isAccessible = true
@@ -534,7 +545,7 @@ class AnimationExportWorkflowRenderingTest {
             val source = save()
             val before = controller.document
             val frame = controller.frame
-            click("Export animation")
+            animationExport()
             click("Advanced settings")
             click("Alpha threshold")
             click("Exact alpha")

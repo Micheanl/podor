@@ -13,6 +13,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.scene.ComposeScenePointer
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import app.podor.data.ProjectFiles
 import app.podor.desktop.engine.NativeLoader
@@ -46,6 +47,18 @@ class LayerReorderTest {
         val files: FilesInMemory,
     ) {
         var frame = 0L
+
+        private fun descendants(node: SemanticsNode): Sequence<SemanticsNode> = sequence {
+            yield(node)
+            for (child in node.children) yieldAll(descendants(child))
+        }
+
+        fun layerListBounds() =
+            scene.semanticsOwners
+                .asSequence()
+                .flatMap { descendants(it.rootSemanticsNode) }
+                .single { it.config.contains(SemanticsActions.ScrollToIndex) }
+                .boundsInWindow
 
         suspend fun render(count: Int = 1) =
             withContext(Dispatchers.Main) {
@@ -148,23 +161,24 @@ class LayerReorderTest {
     }
 
     @Test
-    fun holdLayerNameThenDragCommitsOnceAndCanUndo() = runBlocking<Unit> {
-        session(4) {
-            val revision = controller.document.revision
-            pointer(PointerEventType.Press, 750f, 84f)
-            delay(650)
-            render(12)
-            pointer(PointerEventType.Move, 750f, 160f)
-            pointer(PointerEventType.Move, 750f, 325f)
-            assertEquals(revision, controller.document.revision)
-            pointer(PointerEventType.Release, 750f, 325f)
-            awaitState { controller.document.revision > revision }
-            assertEquals(listOf(4, 1, 2, 3), controller.document.layers.map { it.id })
-            assertEquals(revision + 1, controller.document.revision)
-            command("undo")
-            awaitState { controller.document.layers.map { it.id } == listOf(1, 2, 3, 4) }
+    fun holdLayerNameThenDragCommitsOnceAndCanUndo() =
+        runBlocking<Unit> {
+            session(4) {
+                val revision = controller.document.revision
+                pointer(PointerEventType.Press, 750f, 84f)
+                delay(650)
+                render(12)
+                pointer(PointerEventType.Move, 750f, 160f)
+                pointer(PointerEventType.Move, 750f, 325f)
+                assertEquals(revision, controller.document.revision)
+                pointer(PointerEventType.Release, 750f, 325f)
+                awaitState { controller.document.revision > revision }
+                assertEquals(listOf(4, 1, 2, 3), controller.document.layers.map { it.id })
+                assertEquals(revision + 1, controller.document.revision)
+                command("undo")
+                awaitState { controller.document.layers.map { it.id } == listOf(1, 2, 3, 4) }
+            }
         }
-    }
 
     @Test
     fun returningFromLayerBlendKeepsTheScrolledLayerList() =
@@ -337,12 +351,13 @@ class LayerReorderTest {
             session(32) {
                 val revision = controller.document.revision
                 val pixels = controller.frame
+                val edge = withContext(Dispatchers.Main) { layerListBounds().bottom - 2f }
                 pointer(PointerEventType.Press, 630f, 84f)
-                pointer(PointerEventType.Move, 630f, 520f)
+                pointer(PointerEventType.Move, 630f, edge)
                 render(300)
                 assertEquals(revision, controller.document.revision)
                 assertSame(pixels, controller.frame)
-                pointer(PointerEventType.Release, 630f, 520f)
+                pointer(PointerEventType.Release, 630f, edge)
                 awaitState { controller.document.revision > revision }
                 assertEquals(listOf(32) + (1..31), controller.document.layers.map { it.id })
                 render(80)

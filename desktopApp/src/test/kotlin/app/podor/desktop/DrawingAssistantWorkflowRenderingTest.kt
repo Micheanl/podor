@@ -4,7 +4,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.*
@@ -29,7 +29,6 @@ import kotlinx.serialization.json.*
 
 @OptIn(ExperimentalComposeUiApi::class, InternalComposeUiApi::class)
 class DrawingAssistantWorkflowRenderingTest {
-    private val view = Size(1282f, 1136f)
 
     private data class Exported(val format: ExportFormat, val bytes: ByteArray)
 
@@ -487,6 +486,21 @@ class DrawingAssistantWorkflowRenderingTest {
 
         fun render() = scene.render(time++ * 16_666_667L)
 
+        val view
+            get() = canvasBounds().size
+
+        fun canvasBounds(): Rect =
+            scene.semanticsOwners
+                .asSequence()
+                .flatMap { descendants(it.rootSemanticsNode) }
+                .filter {
+                    it.config.getOrNull(SemanticsProperties.TestTag) == "canvas-workspace" &&
+                        it.boundsInWindow.width > 100f &&
+                        it.boundsInWindow.height > 100f
+                }
+                .minBy { it.boundsInWindow.width * it.boundsInWindow.height }
+                .boundsInWindow
+
         suspend fun waitFor(predicate: () -> Boolean) =
             withTimeout(15_000) {
                 while (true) {
@@ -570,22 +584,23 @@ class DrawingAssistantWorkflowRenderingTest {
             }
 
         fun position(point: Offset) =
-            controller.viewport.toView(point, view, controller.document) + Offset(0f, 64f)
+            controller.viewport.toView(point, view, controller.document) + canvasBounds().topLeft
 
         suspend fun fit() =
             withContext(Dispatchers.Main) {
                 controller.viewport =
                     Viewport(zoom = 8f / Viewport().scale(view, controller.document))
-                assertEquals(8f, controller.viewport.scale(view, controller.document))
-                for (point in
-                    listOf(Offset(8f, 12f), Offset(32f, 16f), Offset(54f, 36f))) assertEquals(
-                    point,
-                    controller.viewport.toDocument(
-                        controller.viewport.toView(point, view, controller.document),
-                        view,
-                        controller.document,
-                    ),
-                )
+                assertEquals(8f, controller.viewport.scale(view, controller.document), 0.000001f)
+                for (point in listOf(Offset(8f, 12f), Offset(32f, 16f), Offset(54f, 36f))) {
+                    val restored =
+                        controller.viewport.toDocument(
+                            controller.viewport.toView(point, view, controller.document),
+                            view,
+                            controller.document,
+                        )
+                    assertEquals(point.x, restored.x, 0.00001f)
+                    assertEquals(point.y, restored.y, 0.00001f)
+                }
             }
 
         suspend fun stylus(type: PointerEventType, sample: Sample, pressed: Boolean) =

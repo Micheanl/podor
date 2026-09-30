@@ -26,6 +26,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import app.podor.domain.CanvasAnchor
+import app.podor.domain.DocumentInfo
 import app.podor.domain.StudioDefaults
 import app.podor.domain.validCanvasSize
 import app.podor.presentation.StudioController
@@ -33,37 +34,55 @@ import kotlin.math.roundToInt
 
 @Composable
 fun CanvasSizeDialog(controller: StudioController, onDismiss: () -> Unit) {
-    val original = remember { controller.document }
-    var width by remember { mutableStateOf(original.width.toString()) }
-    var height by remember { mutableStateOf(original.height.toString()) }
-    var anchor by remember { mutableStateOf(StudioDefaults.canvasAnchor) }
-    val valid = validCanvasSize(width.toIntOrNull(), height.toIntOrNull())
+    val editor = rememberCanvasSizeEditor(controller)
     StudioAlertDialog(
         title = "画布大小",
         glyph = Glyph.Fit,
         confirmLabel = "应用",
         onDismissRequest = onDismiss,
-        enabled =
-            valid &&
-                !controller.busy &&
-                (width.toIntOrNull() != original.width || height.toIntOrNull() != original.height),
-        onConfirm = {
-            if (valid)
-                controller.resizeCanvas(width.toInt(), height.toInt(), anchor, original.revision)
-        },
-        text = {
-            CanvasSizeSettings(
-                original.width,
-                original.height,
-                controller.previews.images[0],
-                width,
-                height,
-                anchor,
-                { width = it },
-                { height = it },
-                { anchor = it },
-            )
-        },
+        enabled = editor.canApply(controller),
+        onConfirm = { editor.apply(controller) },
+        text = { CanvasSizeEditorContent(controller, editor) },
+    )
+}
+
+internal class CanvasSizeEditor(val original: DocumentInfo) {
+    var width by mutableStateOf(original.width.toString())
+    var height by mutableStateOf(original.height.toString())
+    var anchor by mutableStateOf(StudioDefaults.canvasAnchor)
+
+    fun canApply(controller: StudioController): Boolean =
+        validCanvasSize(width.toIntOrNull(), height.toIntOrNull()) &&
+            controller.ready &&
+            !controller.busy &&
+            !controller.drawingInput &&
+            !controller.animationPlaying &&
+            !controller.animationTransition &&
+            controller.adjustmentPreview == null &&
+            (width.toIntOrNull() != original.width || height.toIntOrNull() != original.height)
+
+    fun apply(controller: StudioController) {
+        if (canApply(controller))
+            controller.resizeCanvas(width.toInt(), height.toInt(), anchor, original.revision)
+    }
+}
+
+@Composable
+internal fun rememberCanvasSizeEditor(controller: StudioController): CanvasSizeEditor =
+    remember(controller, controller.document.revision) { CanvasSizeEditor(controller.document) }
+
+@Composable
+internal fun CanvasSizeEditorContent(controller: StudioController, editor: CanvasSizeEditor) {
+    CanvasSizeSettings(
+        editor.original.width,
+        editor.original.height,
+        controller.previews.images[0],
+        editor.width,
+        editor.height,
+        editor.anchor,
+        { editor.width = it },
+        { editor.height = it },
+        { editor.anchor = it },
     )
 }
 

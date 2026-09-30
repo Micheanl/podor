@@ -1,10 +1,26 @@
 package app.podor.ui
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerId
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import app.podor.resources.*
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -97,9 +113,93 @@ enum class Glyph(val resource: DrawableResource) {
     Backward(Res.drawable.ic_backward),
     SwapReverse(Res.drawable.ic_swap_reverse),
     Unlink(Res.drawable.ic_unlink),
+    Minimize(Res.drawable.ic_minimize),
+    Maximize(Res.drawable.ic_maximize),
+    Restore(Res.drawable.ic_restore),
+    Aseprite(Res.drawable.format_aseprite),
+    SvgLogo(Res.drawable.format_svg),
+}
+
+internal val LocalButtonIconEnabled = staticCompositionLocalOf { true }
+
+@Composable
+fun StudioIcon(
+    glyph: Glyph,
+    tint: Color = StudioTheme.text,
+    modifier: Modifier = Modifier,
+    interactionSource: InteractionSource? = LocalButtonInteraction.current,
+    enabled: Boolean = LocalButtonIconEnabled.current,
+    selected: Boolean = false,
+) {
+    if (glyph == Glyph.Aseprite || glyph == Glyph.SvgLogo) {
+        Image(painterResource(glyph.resource), null, modifier.size(StudioTheme.iconSize))
+        return
+    }
+    val fallback = remember { MutableInteractionSource() }
+    val source = interactionSource ?: fallback
+    val hovered = source.collectIsHoveredAsState().value
+    val pressed = source.collectIsPressedAsState().value
+    val interactionModifier =
+        if (interactionSource == null && enabled) {
+            Modifier.hoverable(fallback).observeIconPress(fallback)
+        } else Modifier
+    MorphIcon(
+        glyph,
+        tint,
+        modifier.size(StudioTheme.iconSize).then(interactionModifier),
+        StudioMotion.reducedMotion,
+        StudioTheme.iconStrokeWidth,
+        morphIconPose(enabled, StudioMotion.reducedMotion, hovered, pressed, selected),
+    )
 }
 
 @Composable
-fun StudioIcon(glyph: Glyph, tint: Color = StudioTheme.text, modifier: Modifier = Modifier) {
-    Icon(painterResource(glyph.resource), null, modifier.size(StudioTheme.iconSize), tint)
+internal fun FormatIcon(
+    label: String,
+    tint: Color = StudioTheme.text,
+    modifier: Modifier = Modifier,
+) {
+    if (label == "SVG") StudioIcon(Glyph.SvgLogo, modifier = modifier)
+    else
+        Box(modifier.size(StudioTheme.iconSize), contentAlignment = Alignment.Center) {
+            Text(
+                label,
+                color = tint,
+                fontSize = StudioTheme.canvasCaptionSize * if (label.length > 3) 0.7f else 0.9f,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
 }
+
+private fun Modifier.observeIconPress(source: MutableInteractionSource): Modifier =
+    pointerInput(source) {
+        var press: PressInteraction.Press? = null
+        var pointerId: PointerId? = null
+        try {
+            awaitPointerEventScope {
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    if (press == null) {
+                        val down = event.changes.firstOrNull { it.pressed && !it.previousPressed }
+                        if (down != null) {
+                            val started = PressInteraction.Press(down.position)
+                            pointerId = down.id
+                            press = started
+                            source.tryEmit(started)
+                        }
+                    } else {
+                        val tracked = event.changes.firstOrNull { it.id == pointerId }
+                        if (tracked != null && !tracked.pressed) {
+                            source.tryEmit(PressInteraction.Release(press!!))
+                            press = null
+                            pointerId = null
+                        }
+                    }
+                }
+            }
+        } finally {
+            press?.let { source.tryEmit(PressInteraction.Cancel(it)) }
+        }
+    }

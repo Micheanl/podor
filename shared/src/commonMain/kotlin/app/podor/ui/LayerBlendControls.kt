@@ -77,7 +77,6 @@ fun LayerBlendControls(controller: StudioController) {
             if (preview.updating || preview.committing)
                 LinearProgressIndicator(Modifier.fillMaxSize())
         }
-        AdjustmentDock(controller, Modifier.align(Alignment.CenterHorizontally))
     }
 }
 

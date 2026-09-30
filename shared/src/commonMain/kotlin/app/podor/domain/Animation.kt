@@ -77,9 +77,13 @@ private constructor(
         if (repeat != 0 && cycle >= repeat)
             return PlaybackPosition(frames.last().id, repeat.toLong() - 1, true)
         val within = elapsed % cycleNanos
-        val match = ends.binarySearch(within)
-        val index = if (match >= 0) match + 1 else -match - 1
-        return PlaybackPosition(frames[index].id, cycle, false)
+        var start = 0
+        var end = ends.size
+        while (start < end) {
+            val middle = start + (end - start) / 2
+            if (ends[middle] <= within) start = middle + 1 else end = middle
+        }
+        return PlaybackPosition(frames[start].id, cycle, false)
     }
 
     companion object {

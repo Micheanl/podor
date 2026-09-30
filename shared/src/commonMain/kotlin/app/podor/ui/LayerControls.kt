@@ -4,9 +4,9 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -181,7 +181,9 @@ private fun LayerListControls(controller: StudioController) {
                         ) {
                             controller.editAdjustmentLayer()
                         }
-                    ToolButton(Glyph.Adjustments, "图层设置", enabled = enabled) { settings = true }
+                    ToolButton(Glyph.Adjustments, "图层设置", enabled = enabled) {
+                        settings = !settings
+                    }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     ToolButton(
@@ -350,30 +352,31 @@ internal fun LayerRow(
                 state = rememberTooltipState(),
                 enableUserInput = enabled,
             ) {
-                Box(
+                ArtworkPreview(
+                    controller.previews.masks[layer.id],
+                    controller.document.width,
+                    controller.document.height,
                     Modifier.size(StudioTheme.layerMaskPreviewSize)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(StudioTheme.elevated)
-                        .border(
-                            StudioTheme.layerTargetBorder,
-                            if (editing) StudioTheme.accent else StudioTheme.controlBorder,
-                            RoundedCornerShape(8.dp),
+                        .then(
+                            if (editing)
+                                Modifier.border(
+                                    StudioTheme.layerTargetBorder,
+                                    StudioTheme.accent,
+                                )
+                            else Modifier
                         )
-                        .selectable(editing, enabled = enabled && !selecting) {
+                        .selectable(
+                            editing,
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            enabled = enabled && !selecting,
+                        ) {
                             controller.selectLayer(layer.id, mask = true)
                         }
                         .semantics { contentDescription = label }
-                ) {
-                    ArtworkPreview(
-                        controller.previews.masks[layer.id],
-                        controller.document.width,
-                        controller.document.height,
-                        Modifier.fillMaxSize()
-                            .padding(StudioTheme.layerTargetBorder)
-                            .alpha(if (mask.enabled) 1f else StudioTheme.layerMaskDisabledAlpha),
-                        transparent = false,
-                    )
-                }
+                        .alpha(if (mask.enabled) 1f else StudioTheme.layerMaskDisabledAlpha),
+                    transparent = false,
+                )
             }
         }
         Column(Modifier.weight(1f).padding(start = 10.dp)) {

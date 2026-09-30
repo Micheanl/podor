@@ -63,7 +63,6 @@ class GradientMapRenderingTest {
                 .flatMap { descendants(it.rootSemanticsNode) }
                 .filter {
                     it.config.contains(action) &&
-                        !it.boundsInWindow.isEmpty &&
                         (it.config
                             .getOrNull(SemanticsProperties.ContentDescription)
                             ?.contains(label) == true ||
@@ -71,13 +70,58 @@ class GradientMapRenderingTest {
                                 value.text == label
                             } == true)
                 }
-                .minByOrNull { it.boundsInWindow.width * it.boundsInWindow.height }
+                .minByOrNull { it.size.width * it.size.height }
                 ?: error("Missing rendered control: $label")
+
+        private suspend fun reveal(label: String, action: SemanticsPropertyKey<*>): SemanticsNode {
+            repeat(24) {
+                val visible =
+                    withContext(Dispatchers.Main) {
+                        val target = node(label, action)
+                        val nodes =
+                            scene.semanticsOwners.asSequence().flatMap {
+                                descendants(it.rootSemanticsNode)
+                            }
+                        val containers =
+                            nodes
+                                .filter {
+                                    it.config.contains(
+                                        SemanticsProperties.VerticalScrollAxisRange
+                                    ) && descendants(it).any { child -> child.id == target.id }
+                                }
+                                .toList()
+                        if (containers.isEmpty()) {
+                            assertFalse(target.boundsInWindow.isEmpty, label)
+                            return@withContext target
+                        }
+                        assertEquals(1, containers.size, "Adjustment control has nested scrolling")
+                        val viewport = containers.single().boundsInWindow
+                        val top = target.positionInWindow.y
+                        val bottom = top + target.size.height
+                        if (
+                            !target.boundsInWindow.isEmpty &&
+                                top >= viewport.top - 1f &&
+                                bottom <= viewport.bottom + 1f
+                        )
+                            return@withContext target
+                        scene.sendPointerEvent(
+                            PointerEventType.Scroll,
+                            viewport.center,
+                            scrollDelta = Offset(0f, if (top < viewport.top) -4f else 4f),
+                        )
+                        null
+                    }
+                if (visible != null) return visible
+                settle()
+            }
+            error("Adjustment control did not scroll fully into view: $label")
+        }
 
         suspend fun click(label: String) {
             settle()
+            val control = reveal(label, SemanticsActions.OnClick)
             withContext(Dispatchers.Main) {
-                val point = node(label, SemanticsActions.OnClick).boundsInWindow.center
+                val point = control.boundsInWindow.center
                 scene.sendPointerEvent(PointerEventType.Press, point)
                 scene.sendPointerEvent(PointerEventType.Release, point)
                 scene.sendPointerEvent(PointerEventType.Move, Offset.Zero)
@@ -86,13 +130,10 @@ class GradientMapRenderingTest {
         }
 
         suspend fun slider(label: String, value: Float) {
+            val control = reveal(label, SemanticsActions.SetProgress)
             withContext(Dispatchers.Main) {
                 assertTrue(
-                    assertNotNull(
-                        node(label, SemanticsActions.SetProgress)
-                            .config[SemanticsActions.SetProgress]
-                            .action
-                    )(value)
+                    assertNotNull(control.config[SemanticsActions.SetProgress].action)(value)
                 )
             }
             settle()

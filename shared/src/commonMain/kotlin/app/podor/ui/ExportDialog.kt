@@ -109,6 +109,8 @@ fun ExportSettings(
                             Modifier.weight(1f),
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
+                                FormatIcon(format.extension.uppercase())
+                                Spacer(Modifier.width(StudioTheme.headerGap))
                                 Text(
                                     format.label,
                                     Modifier.weight(1f),
@@ -175,7 +177,7 @@ fun ExportSettings(
                         if (!options.format.supportsTransparency)
                             Text(tr("JPEG 使用白色背景"), fontSize = 11.sp, color = StudioTheme.muted)
                     }
-                    Switch(
+                    StudioSwitch(
                         options.transparent,
                         { onChange(options.copy(transparent = it)) },
                         enabled =
@@ -190,7 +192,7 @@ fun ExportSettings(
                     Text(tr("导出合成副本"), fontSize = 13.sp)
                     Text(tr("合并副本中的所有图层"), fontSize = 11.sp, color = StudioTheme.muted)
                 }
-                Switch(options.bakeLayers, { onChange(options.copy(bakeLayers = it)) })
+                StudioSwitch(options.bakeLayers, { onChange(options.copy(bakeLayers = it)) })
             }
         AnimatedVisibility(
             options.format == ExportFormat.Jpeg,
@@ -213,7 +215,7 @@ fun ExportSettings(
                     Modifier.weight(1f),
                     fontSize = StudioTheme.colorSelectionLabelSize,
                 )
-                Switch(
+                StudioSwitch(
                     options.indexedPolicy == IndexedExportPolicy.Quantize,
                     {
                         onChange(

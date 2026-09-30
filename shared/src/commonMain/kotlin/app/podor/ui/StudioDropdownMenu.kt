@@ -20,6 +20,7 @@ fun StudioDropdownMenu(
         shape = StudioTheme.menuShape,
         containerColor = StudioTheme.panel,
         tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
         border = BorderStroke(StudioTheme.hairline, StudioTheme.controlBorder),
         content = content,
     )
