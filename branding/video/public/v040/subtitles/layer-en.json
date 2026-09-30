@@ -1,0 +1,72 @@
+[
+  {
+    "text": "Separate the background and flowers into named layers, then gradually add local detail.",
+    "startMs": 238533,
+    "endMs": 244633,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Reorder thumbnails and use groups to organize a more complex piece.",
+    "startMs": 244813,
+    "endMs": 252513,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Preview and compare layer opacity and eight blending modes on the original canvas.",
+    "startMs": 252733,
+    "endMs": 259453,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Alpha lock recolors existing shapes; content lock protects the layer.",
+    "startMs": 259633,
+    "endMs": 264713,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Masks control layer visibility in black and white, preserving the original artwork.",
+    "startMs": 264933,
+    "endMs": 271773,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Clipping confines new color to a base layer and helps preserve petal edges.",
+    "startMs": 271953,
+    "endMs": 277673,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Preview a layer's position and size, then commit the transform as one complete edit.",
+    "startMs": 277900,
+    "endMs": 283700,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Curves and gradient maps can be adjustment layers, leaving room to revise.",
+    "startMs": 283880,
+    "endMs": 289360,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Basic vectors offer node editing; perspective assistants and comic lines can be previewed.",
+    "startMs": 289567,
+    "endMs": 295247,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Before exporting complex layers, check which effects need baking.",
+    "startMs": 295427,
+    "endMs": 300367,
+    "timestampMs": null,
+    "confidence": null
+  }
+]

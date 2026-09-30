@@ -1,0 +1,372 @@
+{
+  "appVersion": "0.4.0",
+  "sourceCommit": "36aae339b1d5933a1e987eb2fc4ea46d3fe533ed",
+  "shots": 26,
+  "frames": 32547,
+  "seconds": 1084.8999999999999,
+  "exportedFormats": {
+    "gif": {
+      "frames": 5,
+      "width": 960,
+      "height": 720,
+      "bytes": 1875954
+    },
+    "atlas": [
+      {
+        "name": "atlas.png",
+        "bytes": 4195401,
+        "width": 1920,
+        "height": 2160
+      },
+      {
+        "name": "atlas.json",
+        "bytes": 606,
+        "json": {
+          "columns": 2,
+          "format": "podor_atlas",
+          "frames": [
+            {
+              "durationMs": 100,
+              "id": 1,
+              "rect": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 0
+              }
+            },
+            {
+              "durationMs": 100,
+              "id": 2,
+              "rect": {
+                "height": 720,
+                "width": 960,
+                "x": 960,
+                "y": 0
+              }
+            },
+            {
+              "durationMs": 100,
+              "id": 3,
+              "rect": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 720
+              }
+            },
+            {
+              "durationMs": 100,
+              "id": 4,
+              "rect": {
+                "height": 720,
+                "width": 960,
+                "x": 960,
+                "y": 720
+              }
+            },
+            {
+              "durationMs": 100,
+              "id": 5,
+              "rect": {
+                "height": 720,
+                "width": 960,
+                "x": 0,
+                "y": 1440
+              }
+            }
+          ],
+          "height": 2160,
+          "image": "atlas.png",
+          "padding": 0,
+          "playback": {
+            "direction": "forward",
+            "frameIds": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "repeat": 0
+          },
+          "sourceHeight": 720,
+          "sourceWidth": 960,
+          "tag": null,
+          "version": 1,
+          "width": 1920
+        }
+      }
+    ],
+    "aseprite": {
+      "frames": 1,
+      "bytes": 1280073
+    },
+    "palette": {
+      "blocks": 5,
+      "bytes": 236
+    }
+  },
+  "videos": [
+    {
+      "id": "bouquet-stage-01",
+      "frames": 574,
+      "seconds": 19.133333333333333,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 1478844,
+      "sha256": "7bcdd24ac623aa1727ca0971437ee79f4137bd928577f52fff9a152748b21662"
+    },
+    {
+      "id": "bouquet-stage-02",
+      "frames": 1606,
+      "seconds": 53.53333333333333,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 2178050,
+      "sha256": "d9fb39c220b9958fec07d80a528bc35834a8c81203cafbf0fa0e6a260668b3d0"
+    },
+    {
+      "id": "bouquet-stage-03",
+      "frames": 4311,
+      "seconds": 143.7,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 4313950,
+      "sha256": "d858cdb1d913a68d3180dda056d4f17f2fe33cbe85e74dc268e730a817e812d9"
+    },
+    {
+      "id": "bouquet-stage-04",
+      "frames": 4641,
+      "seconds": 154.7,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 4583963,
+      "sha256": "22ed21ebcd5d17ebdd80d9b0f08b25795aefcfec1bca226ce649aca979f66f16"
+    },
+    {
+      "id": "bouquet-stage-05",
+      "frames": 5379,
+      "seconds": 179.3,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 5654802,
+      "sha256": "1fcb2e9b8246a549db0eddfda0316d3fbde15aec45a47b4611770487faaea400"
+    },
+    {
+      "id": "workspace",
+      "frames": 623,
+      "seconds": 20.766666666666666,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 577431,
+      "sha256": "dfc19ab4f9906236551aabe287ce6371868157eed332d791b9ff9c6b504dadaf"
+    },
+    {
+      "id": "brush-willow",
+      "frames": 450,
+      "seconds": 15,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 127532,
+      "sha256": "ea9f47ccd1c8aabcaff2c61307eca54dd38544399b4673ad812d63ad6092bd4a"
+    },
+    {
+      "id": "brush-types",
+      "frames": 2194,
+      "seconds": 73.13333333333334,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 1083750,
+      "sha256": "2e072a1ec310581d9e233b7af142a46b748667b00e9b8086ef3a94be2801ae18"
+    },
+    {
+      "id": "brush-settings",
+      "frames": 600,
+      "seconds": 20,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 0,
+      "bytes": 914013,
+      "sha256": "2c5a265785c41144f5c8aa6fca2a10e207c17007269dce09f5c402a849757106"
+    },
+    {
+      "id": "fill-palette",
+      "frames": 450,
+      "seconds": 15,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 147685,
+      "sha256": "2df43e231ef7ef4866906e4755fad87cf4077638f9cea98713becf9f6363d0b0"
+    },
+    {
+      "id": "colors-selection",
+      "frames": 707,
+      "seconds": 23.566666666666666,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 2,
+      "bytes": 432229,
+      "sha256": "455c8e7bf1a4f358e2cf5660cba1aa4cac1eec750384552a2ae277c7e6528b67"
+    },
+    {
+      "id": "layers-mask",
+      "frames": 486,
+      "seconds": 16.2,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 1078446,
+      "sha256": "10df640d0a172b25b44e55e1071045b7e9e2a4aa574446b9b521d4b3e0c2a8f9"
+    },
+    {
+      "id": "adjustments",
+      "frames": 983,
+      "seconds": 32.766666666666666,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 1910608,
+      "sha256": "5b650507f5c602c2e54ab24e4d7da79ab3619c36bc90e7e918620e6862acb34e"
+    },
+    {
+      "id": "comic-lines",
+      "frames": 675,
+      "seconds": 22.5,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 990581,
+      "sha256": "ad30c276c64b586b4d2f1f766a1855114ce0480f1b38d50ac83407539b720cd2"
+    },
+    {
+      "id": "animation",
+      "frames": 1247,
+      "seconds": 41.56666666666667,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 2245560,
+      "sha256": "0af8228c2a83757e0036a94c3ff704c8ed9f40214f1249b175aec2c8ee5c7994"
+    },
+    {
+      "id": "references-clipboard",
+      "frames": 458,
+      "seconds": 15.266666666666667,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 843638,
+      "sha256": "ca270b51f9a82da4cf1346caea7e2126336247fbccc80ec4a7939dd48260f0a1"
+    },
+    {
+      "id": "export-settings",
+      "frames": 739,
+      "seconds": 24.633333333333333,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 1314193,
+      "sha256": "fe5fc7f6f3335507502377010f1e91edd0a6513e15e1f3c35bae408d7ad98bfa"
+    },
+    {
+      "id": "home",
+      "frames": 450,
+      "seconds": 15,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 280865,
+      "sha256": "06fd3b3442aca852e96938ded00a8637c0ac305b5fff57ae8f3a1e04a8b64597"
+    },
+    {
+      "id": "advanced-editing",
+      "frames": 955,
+      "seconds": 31.833333333333332,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 1760523,
+      "sha256": "9121c4b027a2c3d75450edd4d7d89c22ced2bd9a7d59443e4510c2b94751f581"
+    },
+    {
+      "id": "vector-assistants",
+      "frames": 766,
+      "seconds": 25.533333333333335,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 1363897,
+      "sha256": "67f514e9f79de6e0a6b1a2f60fbbce7917a2c359edee7fddfa67f79487ce5c60"
+    },
+    {
+      "id": "indexed-palette",
+      "frames": 729,
+      "seconds": 24.3,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 496679,
+      "sha256": "39ed577e6c284b6ed5a13836f05a6e1d4e4e0a8a7e7c703fe108ac7d8d78bca8"
+    },
+    {
+      "id": "view-symmetry-transform",
+      "frames": 855,
+      "seconds": 28.5,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 304188,
+      "sha256": "ca59facba70fd1c76161414e5a8381118307a6c056cf0c71eb143c29f7113799"
+    },
+    {
+      "id": "formats",
+      "frames": 490,
+      "seconds": 16.333333333333332,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 917751,
+      "sha256": "fd1745fb5a0d6c1a85ba25b38a5d2acf62afa47b9dbfd5befc6bb76146d6a231"
+    },
+    {
+      "id": "smudge-layer-blend",
+      "frames": 577,
+      "seconds": 19.233333333333334,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 1,
+      "bytes": 1029546,
+      "sha256": "32d634d4e565ab45c662e75f1d76a1e53d616b68293ba82a8323ddf26269d2a4"
+    },
+    {
+      "id": "resize-crop-view",
+      "frames": 1150,
+      "seconds": 38.333333333333336,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 3,
+      "bytes": 2084564,
+      "sha256": "7524d56302451ce9e0d8bf223fec394723c88bf65c7ac856c3405ec8a715688b"
+    },
+    {
+      "id": "brush-library",
+      "frames": 452,
+      "seconds": 15.066666666666666,
+      "width": 1800,
+      "height": 900,
+      "nativeProofs": 0,
+      "bytes": 311938,
+      "sha256": "080212c9c326841100c31c2d5c6841d5c718fb00f9133b7d6809769baa79d97d"
+    }
+  ]
+}

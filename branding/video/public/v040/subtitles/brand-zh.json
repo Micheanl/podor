@@ -1,0 +1,30 @@
+[
+  {
+    "text": "先把一束玫瑰看成有分量的色块，再逐步建立光色和形体。",
+    "startMs": 0,
+    "endMs": 6100,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "今天用十分钟认识新工作台，也练习从剪影到花瓣的过程。",
+    "startMs": 6280,
+    "endMs": 11220,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "这里是新的绘画与图像编辑工作台，从简单形状开始一段练习。",
+    "startMs": 12000,
+    "endMs": 18500,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "花束是生成的观察参考，接下来的笔触演示来自真实绘画引擎。",
+    "startMs": 18680,
+    "endMs": 24820,
+    "timestampMs": null,
+    "confidence": null
+  }
+]

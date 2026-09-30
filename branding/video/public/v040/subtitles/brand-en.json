@@ -1,0 +1,30 @@
+[
+  {
+    "text": "First read a bouquet as bold masses, then build its light, color, and volume.",
+    "startMs": 0,
+    "endMs": 6100,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "In ten minutes, explore the new workspace and work from silhouettes toward petals.",
+    "startMs": 6280,
+    "endMs": 11220,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "This is the updated painting workspace. Begin a study with simple shapes.",
+    "startMs": 12000,
+    "endMs": 18500,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "The bouquet is a generated reference; the stroke demonstrations use the real painting engine.",
+    "startMs": 18680,
+    "endMs": 24820,
+    "timestampMs": null,
+    "confidence": null
+  }
+]

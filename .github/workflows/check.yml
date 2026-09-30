@@ -1,0 +1,169 @@
+name: 检查与多平台构建
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 构建平台
+        type: choice
+        default: all
+        options: [all, desktop, android, ios]
+permissions:
+  contents: read
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  RUSTUP_TOOLCHAIN: 1.98.1
+  CARGO_TERM_COLOR: always
+jobs:
+  desktop:
+    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == 'desktop'
+    name: Desktop ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-x64
+            os: windows-2025
+            package: packageMsi
+            extension: msi
+          - platform: macos-arm64
+            os: macos-26
+            package: packageDmg
+            extension: dmg
+          - platform: linux-x64
+            os: ubuntu-24.04
+            package: packageDeb
+            extension: deb
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: '27'
+      - uses: gradle/actions/setup-gradle@v6.4.0
+      - name: Install Rust
+        shell: bash
+        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy
+      - name: Configure Unix build tools
+        if: runner.os != 'Windows'
+        run: chmod +x gradlew
+      - name: Install Linux display and packaging tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb xauth fakeroot libgl1 libfontconfig1
+      - name: Rust format, lint and regression
+        shell: bash
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --all-targets --locked -- -D warnings
+          cargo test --locked
+      - name: Windows JVM tests and desktop package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          PACKAGE_TASK: ${{ matrix.package }}
+        run: ./gradlew.bat :shared:jvmTest :desktopApp:test ":desktopApp:$env:PACKAGE_TASK" --console plain
+      - name: Unix JVM tests and desktop package
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          PACKAGE_TASK: ${{ matrix.package }}
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            xvfb-run -a ./gradlew :shared:jvmTest :desktopApp:test ":desktopApp:$PACKAGE_TASK" --console plain
+          else
+            ./gradlew :shared:jvmTest :desktopApp:test ":desktopApp:$PACKAGE_TASK" --console plain
+          fi
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: podor-${{ matrix.platform }}
+          path: desktopApp/build/release/**/main/${{ matrix.extension }}/*.${{ matrix.extension }}
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: tests-${{ matrix.platform }}
+          path: |
+            shared/build/reports/tests/
+            desktopApp/build/reports/tests/
+            desktopApp/build/reports/screenshots/
+            shared/build/test-results/
+            desktopApp/build/test-results/
+          if-no-files-found: ignore
+  android:
+    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == 'android'
+    name: Android arm64 and x64 APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      NDK_VERSION: 30.0.16248370
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: '27'
+      - uses: gradle/actions/setup-gradle@v6.4.0
+      - name: Install Rust and Android targets
+        run: rustup toolchain install 1.98.1 --profile minimal --target aarch64-linux-android --target x86_64-linux-android
+      - name: Install Android native tools
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;37.0.0" "ndk;$NDK_VERSION"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+          cargo install cargo-ndk --version 4.1.2 --locked
+      - name: Build native ABIs and APK
+        run: |
+          chmod +x gradlew
+          bash scripts/build-android.sh
+          python3 scripts/verify-android-package.py androidApp/build/outputs/apk/debug/androidApp-debug.apk
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: podor-android-debug
+          path: androidApp/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+  ios:
+    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == 'ios'
+    name: iOS frameworks, simulator app and unsigned archive
+    runs-on: xcode-27
+    timeout-minutes: 90
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: '27'
+      - uses: gradle/actions/setup-gradle@v6.4.0
+      - name: Install Rust and iOS targets
+        run: rustup toolchain install 1.98.1 --profile minimal --target aarch64-apple-ios --target aarch64-apple-ios-sim
+      - name: Install XcodeGen
+        run: |
+          curl --fail --location --retry 3 https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip --output "$RUNNER_TEMP/xcodegen.zip"
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen"
+          XCODEGEN_BIN=$(find "$RUNNER_TEMP/xcodegen" -type f -name xcodegen -print -quit)
+          test -n "$XCODEGEN_BIN"
+          chmod +x "$XCODEGEN_BIN"
+          echo "$(dirname "$XCODEGEN_BIN")" >> "$GITHUB_PATH"
+      - name: Build iOS application and frameworks
+        run: |
+          chmod +x gradlew
+          xcodebuild -version
+          xcodegen --version
+          bash scripts/build-ios.sh
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: podor-ios-unsigned
+          path: iosApp/build/artifacts/*.zip
+          if-no-files-found: error
+

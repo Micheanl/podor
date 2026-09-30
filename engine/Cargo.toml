@@ -1,0 +1,91 @@
+[package]
+name = "podor-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "podor_engine"
+crate-type = ["rlib", "cdylib", "staticlib"]
+
+[dependencies]
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = "1"
+bincode = "1.3"
+flate2 = "1"
+png = "0.17"
+image = { version = "0.25.10", default-features = false, features = ["jpeg", "webp", "tiff", "bmp"] }
+tiff = "0.11.3"
+zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2"] }
+roxmltree = "0.21.1"
+tiny-skia = { version = "0.12.0", default-features = false, features = ["std", "simd"] }
+kurbo = "0.13.1"
+gif = { version = "0.14.2", default-features = false, features = ["std", "raii_no_panic"] }
+color_quant = "2.0.0"
+weezl = "0.1.12"
+
+[dev-dependencies]
+image = { version = "0.25.10", default-features = false, features = ["gif"] }
+
+[target.'cfg(not(target_os = "ios"))'.dependencies]
+jni = "0.21"
+
+[[bench]]
+name = "painting"
+harness = false
+
+[[bench]]
+name = "brush_materials"
+harness = false
+
+[[bench]]
+name = "editing"
+harness = false
+
+[[bench]]
+name = "previews"
+harness = false
+
+[[bench]]
+name = "blending"
+harness = false
+
+[[bench]]
+name = "imports"
+harness = false
+
+[[bench]]
+name = "exports"
+harness = false
+
+[[bench]]
+name = "layers"
+harness = false
+
+[[bench]]
+name = "ora_import"
+harness = false
+
+[[bench]]
+name = "canvas_size"
+harness = false
+
+[[bench]]
+name = "canvas_frames"
+harness = false
+
+[[bench]]
+name = "image_size"
+harness = false
+
+[[bench]]
+name = "selection"
+harness = false
+
+[[bench]]
+name = "transform"
+harness = false
+
+[[bench]]
+name = "psd_import"
+harness = false

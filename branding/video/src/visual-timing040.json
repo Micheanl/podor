@@ -1,0 +1,256 @@
+[
+  {
+    "id": "brand",
+    "duration": 750,
+    "cues": [
+      {
+        "id": "brand-00",
+        "from": 0
+      },
+      {
+        "id": "brand-01",
+        "from": 360
+      }
+    ]
+  },
+  {
+    "id": "ui",
+    "duration": 1800,
+    "cues": [
+      {
+        "id": "ui-00",
+        "from": 0
+      },
+      {
+        "id": "ui-01",
+        "from": 360
+      },
+      {
+        "id": "ui-02",
+        "from": 720
+      },
+      {
+        "id": "ui-03",
+        "from": 1080
+      },
+      {
+        "id": "ui-04",
+        "from": 1440
+      }
+    ]
+  },
+  {
+    "id": "brush",
+    "duration": 2250,
+    "cues": [
+      {
+        "id": "brush-00",
+        "from": 0
+      },
+      {
+        "id": "brush-01",
+        "from": 360
+      },
+      {
+        "id": "brush-02",
+        "from": 750
+      },
+      {
+        "id": "brush-03",
+        "from": 1110
+      },
+      {
+        "id": "brush-04",
+        "from": 1500
+      },
+      {
+        "id": "brush-05",
+        "from": 1860
+      }
+    ]
+  },
+  {
+    "id": "color",
+    "duration": 2100,
+    "cues": [
+      {
+        "id": "color-00",
+        "from": 0
+      },
+      {
+        "id": "color-01",
+        "from": 349
+      },
+      {
+        "id": "color-02",
+        "from": 690
+      },
+      {
+        "id": "color-03",
+        "from": 1054
+      },
+      {
+        "id": "color-04",
+        "from": 1395
+      },
+      {
+        "id": "color-05",
+        "from": 1750
+      }
+    ]
+  },
+  {
+    "id": "layer",
+    "duration": 1800,
+    "cues": [
+      {
+        "id": "layer-00",
+        "from": 0
+      },
+      {
+        "id": "layer-01",
+        "from": 361
+      },
+      {
+        "id": "layer-02",
+        "from": 720
+      },
+      {
+        "id": "layer-03",
+        "from": 1080
+      },
+      {
+        "id": "layer-04",
+        "from": 1443
+      }
+    ]
+  },
+  {
+    "id": "animation",
+    "duration": 1800,
+    "cues": [
+      {
+        "id": "animation-00",
+        "from": 0
+      },
+      {
+        "id": "animation-01",
+        "from": 377
+      },
+      {
+        "id": "animation-02",
+        "from": 707
+      },
+      {
+        "id": "animation-03",
+        "from": 1053
+      },
+      {
+        "id": "animation-04",
+        "from": 1419
+      }
+    ]
+  },
+  {
+    "id": "impasto",
+    "duration": 3300,
+    "cues": [
+      {
+        "id": "impasto-00",
+        "from": 0
+      },
+      {
+        "id": "impasto-01",
+        "from": 360
+      },
+      {
+        "id": "impasto-02",
+        "from": 720
+      },
+      {
+        "id": "impasto-03",
+        "from": 1080
+      },
+      {
+        "id": "impasto-04",
+        "from": 1440
+      },
+      {
+        "id": "impasto-05",
+        "from": 1800
+      },
+      {
+        "id": "impasto-06",
+        "from": 2160
+      },
+      {
+        "id": "impasto-07",
+        "from": 2520
+      },
+      {
+        "id": "impasto-08",
+        "from": 2880
+      }
+    ]
+  },
+  {
+    "id": "code",
+    "duration": 3000,
+    "cues": [
+      {
+        "id": "code-00",
+        "from": 0
+      },
+      {
+        "id": "code-01",
+        "from": 363
+      },
+      {
+        "id": "code-02",
+        "from": 750
+      },
+      {
+        "id": "code-03",
+        "from": 1110
+      },
+      {
+        "id": "code-04",
+        "from": 1500
+      },
+      {
+        "id": "code-05",
+        "from": 1860
+      },
+      {
+        "id": "code-06",
+        "from": 2250
+      },
+      {
+        "id": "code-07",
+        "from": 2610
+      }
+    ]
+  },
+  {
+    "id": "platform",
+    "duration": 1200,
+    "cues": [
+      {
+        "id": "platform-00",
+        "from": 0
+      },
+      {
+        "id": "platform-01",
+        "from": 300
+      },
+      {
+        "id": "platform-02",
+        "from": 600
+      },
+      {
+        "id": "platform-03",
+        "from": 908
+      }
+    ]
+  }
+]

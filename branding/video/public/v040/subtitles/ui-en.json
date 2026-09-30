@@ -1,0 +1,72 @@
+[
+  {
+    "text": "This film uses the light English interface, keeping the canvas and active marks central.",
+    "startMs": 25000,
+    "endMs": 30880,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Keep the sidebar tucked away until you need its full controls.",
+    "startMs": 31060,
+    "endMs": 36480,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Dock the toolbar on any edge and reorder familiar tools to suit your habits.",
+    "startMs": 36700,
+    "endMs": 43320,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Put actions within reach so painting takes less searching.",
+    "startMs": 43500,
+    "endMs": 50040,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Switch tools and the capsule shows the quick controls that matter at that moment.",
+    "startMs": 50267,
+    "endMs": 56827,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Adjust size and opacity nearby while the full sidebar remains available.",
+    "startMs": 57007,
+    "endMs": 61927,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "The system mouse pointer is now a pen, whose tip marks the drawing position.",
+    "startMs": 62133,
+    "endMs": 68553,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Zoom and rotation change the view without changing the artwork's pixels.",
+    "startMs": 68733,
+    "endMs": 73913,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Start directly in the project library or on a blank canvas, following your preference.",
+    "startMs": 74133,
+    "endMs": 80953,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Find and sort projects here. A dark theme is also available in settings.",
+    "startMs": 81133,
+    "endMs": 88013,
+    "timestampMs": null,
+    "confidence": null
+  }
+]

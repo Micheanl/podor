@@ -1,0 +1,18 @@
+{
+  "mode": "background-music-only",
+  "title": "Cooler Than Me (Radio Edit)",
+  "artist": "Lucky Luke",
+  "userProvided": true,
+  "seconds": 600,
+  "sampleRate": 48000,
+  "channels": 2,
+  "sourceMusicSeconds": 179.800816,
+  "loopCopies": 4,
+  "crossfadeSeconds": 4,
+  "fadeInSeconds": 3,
+  "fadeOutSeconds": 6,
+  "targetLufs": -18,
+  "targetTruePeakDb": -1.5,
+  "pcmSha256": "0700e60432ccacd8c6eeb5104adf80485961bdff33b4eebe09f39f326281cb13",
+  "playbackSha256": "4cd56f65600e0d3fddcb9431aed418f17668cf14850db39828f8af5329149d7e"
+}

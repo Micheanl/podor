@@ -1,0 +1,12 @@
+Morphicons - Copyright (c) 2026 Guillermo
+https://github.com/guillermolg00/morphicons
+Revision: 38d2a7221633a453eeafebd872ee3649b9274b22
+MIT License
+
+MorphIconGeometry.kt adapts the core Procrustes alignment, subpath matching,
+polar interpolation and interruptible spring to portable Kotlin.
+Compose uses its own finite frame clock and canonical vector resources at rest.
+XML icon geometry remains the project's existing Lucide and custom outline data.
+Operation glyphs use outlines; brand artwork is preserved. No JavaScript runtime is included.
+Hover, pressed and selected poses are authored for Podor's operation glyphs.
+They use the same finite morph driver and do not animate while settled.

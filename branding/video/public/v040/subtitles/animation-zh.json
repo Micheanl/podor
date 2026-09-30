@@ -1,0 +1,72 @@
+[
+  {
+    "text": "逐帧动画从打开时间轴开始，原画布仍然保留你熟悉的绘画方式。",
+    "startMs": 300467,
+    "endMs": 306167,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "先加几帧简单变化，观察轮廓怎样从上一帧走到下一帧。",
+    "startMs": 306347,
+    "endMs": 311567,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "先复制一帧再画变化，适合保留已经建立好的轮廓和基础色块。",
+    "startMs": 311767,
+    "endMs": 317787,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "洋葱皮让前后位置更容易比较，但不会成为输出画面。",
+    "startMs": 317967,
+    "endMs": 324107,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "时间轴的图层轨道对应画面结构，关键帧指出哪里出现新的内容。",
+    "startMs": 324333,
+    "endMs": 331133,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "连续单元可以共享画面，拖动标尺就能查看更长的片段。",
+    "startMs": 331313,
+    "endMs": 336993,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "每一帧的时长决定动作节奏，先在实际播放里检查轻重和停顿。",
+    "startMs": 337200,
+    "endMs": 343520,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "范围和播放方向可以调整，小动画也值得把节奏做清楚。",
+    "startMs": 343700,
+    "endMs": 348700,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "完成之后导出动图或图片图集，按照展示与使用方式选择输出。",
+    "startMs": 348900,
+    "endMs": 355340,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "动图有颜色和透明度限制，格式交换也不是所有功能都通用。",
+    "startMs": 355520,
+    "endMs": 361380,
+    "timestampMs": null,
+    "confidence": null
+  }
+]

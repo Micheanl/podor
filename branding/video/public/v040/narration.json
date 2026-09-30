@@ -1,0 +1,869 @@
+{
+  "engine": "Qwen3-TTS",
+  "model": "Qwen3-TTS-12Hz-0.6B-Base",
+  "revision": "5d83992436eae1d760afd27aff78a71d676296fc",
+  "referenceOrigin": "user-authorized recording",
+  "synthesized": true,
+  "sentences": 100,
+  "segments": 50,
+  "sampleRate": 24000,
+  "durationFrames": 18000,
+  "sentenceGapSeconds": 0.18,
+  "edgeSilence": {
+    "windowSeconds": 0.02,
+    "thresholdDb": -50,
+    "retainedLeadingSeconds": 0.12,
+    "retainedTrailingSeconds": 0.22
+  },
+  "trims": [
+    {
+      "cueId": "brand-00",
+      "pairIndex": 0,
+      "originalFrames": 163200,
+      "trimStartFrame": 15360,
+      "trimEndFrame": 161760,
+      "frames": 146400
+    },
+    {
+      "cueId": "brand-00",
+      "pairIndex": 1,
+      "originalFrames": 144000,
+      "trimStartFrame": 6240,
+      "trimEndFrame": 124800,
+      "frames": 118560
+    },
+    {
+      "cueId": "brand-01",
+      "pairIndex": 0,
+      "originalFrames": 167040,
+      "trimStartFrame": 11040,
+      "trimEndFrame": 167040,
+      "frames": 156000
+    },
+    {
+      "cueId": "brand-01",
+      "pairIndex": 1,
+      "originalFrames": 161280,
+      "trimStartFrame": 3840,
+      "trimEndFrame": 151200,
+      "frames": 147360
+    },
+    {
+      "cueId": "ui-00",
+      "pairIndex": 0,
+      "originalFrames": 151680,
+      "trimStartFrame": 10560,
+      "trimEndFrame": 151680,
+      "frames": 141120
+    },
+    {
+      "cueId": "ui-00",
+      "pairIndex": 1,
+      "originalFrames": 134400,
+      "trimStartFrame": 0,
+      "trimEndFrame": 130080,
+      "frames": 130080
+    },
+    {
+      "cueId": "ui-01",
+      "pairIndex": 0,
+      "originalFrames": 207360,
+      "trimStartFrame": 43200,
+      "trimEndFrame": 202080,
+      "frames": 158880
+    },
+    {
+      "cueId": "ui-01",
+      "pairIndex": 1,
+      "originalFrames": 168960,
+      "trimStartFrame": 12000,
+      "trimEndFrame": 168960,
+      "frames": 156960
+    },
+    {
+      "cueId": "ui-02",
+      "pairIndex": 0,
+      "originalFrames": 174720,
+      "trimStartFrame": 11040,
+      "trimEndFrame": 168480,
+      "frames": 157440
+    },
+    {
+      "cueId": "ui-02",
+      "pairIndex": 1,
+      "originalFrames": 140160,
+      "trimStartFrame": 17280,
+      "trimEndFrame": 135360,
+      "frames": 118080
+    },
+    {
+      "cueId": "ui-03",
+      "pairIndex": 0,
+      "originalFrames": 182400,
+      "trimStartFrame": 15840,
+      "trimEndFrame": 169920,
+      "frames": 154080
+    },
+    {
+      "cueId": "ui-03",
+      "pairIndex": 1,
+      "originalFrames": 136320,
+      "trimStartFrame": 7680,
+      "trimEndFrame": 132000,
+      "frames": 124320
+    },
+    {
+      "cueId": "ui-04",
+      "pairIndex": 0,
+      "originalFrames": 167040,
+      "trimStartFrame": 0,
+      "trimEndFrame": 163680,
+      "frames": 163680
+    },
+    {
+      "cueId": "ui-04",
+      "pairIndex": 1,
+      "originalFrames": 174720,
+      "trimStartFrame": 7680,
+      "trimEndFrame": 172800,
+      "frames": 165120
+    },
+    {
+      "cueId": "brush-00",
+      "pairIndex": 0,
+      "originalFrames": 167040,
+      "trimStartFrame": 0,
+      "trimEndFrame": 162240,
+      "frames": 162240
+    },
+    {
+      "cueId": "brush-00",
+      "pairIndex": 1,
+      "originalFrames": 113280,
+      "trimStartFrame": 10080,
+      "trimEndFrame": 108000,
+      "frames": 97920
+    },
+    {
+      "cueId": "brush-01",
+      "pairIndex": 0,
+      "originalFrames": 149760,
+      "trimStartFrame": 11040,
+      "trimEndFrame": 140160,
+      "frames": 129120
+    },
+    {
+      "cueId": "brush-01",
+      "pairIndex": 1,
+      "originalFrames": 144000,
+      "trimStartFrame": 7200,
+      "trimEndFrame": 127680,
+      "frames": 120480
+    },
+    {
+      "cueId": "brush-02",
+      "pairIndex": 0,
+      "originalFrames": 149760,
+      "trimStartFrame": 0,
+      "trimEndFrame": 142080,
+      "frames": 142080
+    },
+    {
+      "cueId": "brush-02",
+      "pairIndex": 1,
+      "originalFrames": 188160,
+      "trimStartFrame": 46080,
+      "trimEndFrame": 182400,
+      "frames": 136320
+    },
+    {
+      "cueId": "brush-03",
+      "pairIndex": 0,
+      "originalFrames": 172800,
+      "trimStartFrame": 9120,
+      "trimEndFrame": 162720,
+      "frames": 153600
+    },
+    {
+      "cueId": "brush-03",
+      "pairIndex": 1,
+      "originalFrames": 132480,
+      "trimStartFrame": 3360,
+      "trimEndFrame": 126240,
+      "frames": 122880
+    },
+    {
+      "cueId": "brush-04",
+      "pairIndex": 0,
+      "originalFrames": 159360,
+      "trimStartFrame": 7200,
+      "trimEndFrame": 159360,
+      "frames": 152160
+    },
+    {
+      "cueId": "brush-04",
+      "pairIndex": 1,
+      "originalFrames": 144000,
+      "trimStartFrame": 14880,
+      "trimEndFrame": 138720,
+      "frames": 123840
+    },
+    {
+      "cueId": "brush-05",
+      "pairIndex": 0,
+      "originalFrames": 165120,
+      "trimStartFrame": 4320,
+      "trimEndFrame": 159360,
+      "frames": 155040
+    },
+    {
+      "cueId": "brush-05",
+      "pairIndex": 1,
+      "originalFrames": 151680,
+      "trimStartFrame": 0,
+      "trimEndFrame": 151680,
+      "frames": 151680
+    },
+    {
+      "cueId": "color-00",
+      "pairIndex": 0,
+      "originalFrames": 151680,
+      "trimStartFrame": 10560,
+      "trimEndFrame": 151680,
+      "frames": 141120
+    },
+    {
+      "cueId": "color-00",
+      "pairIndex": 1,
+      "originalFrames": 136320,
+      "trimStartFrame": 6240,
+      "trimEndFrame": 136320,
+      "frames": 130080
+    },
+    {
+      "cueId": "color-01",
+      "pairIndex": 0,
+      "originalFrames": 201600,
+      "trimStartFrame": 36960,
+      "trimEndFrame": 201600,
+      "frames": 164640
+    },
+    {
+      "cueId": "color-01",
+      "pairIndex": 1,
+      "originalFrames": 136320,
+      "trimStartFrame": 4320,
+      "trimEndFrame": 132000,
+      "frames": 127680
+    },
+    {
+      "cueId": "color-02",
+      "pairIndex": 0,
+      "originalFrames": 174720,
+      "trimStartFrame": 8160,
+      "trimEndFrame": 169920,
+      "frames": 161760
+    },
+    {
+      "cueId": "color-02",
+      "pairIndex": 1,
+      "originalFrames": 203520,
+      "trimStartFrame": 13440,
+      "trimEndFrame": 196320,
+      "frames": 182880
+    },
+    {
+      "cueId": "color-03",
+      "pairIndex": 0,
+      "originalFrames": 168960,
+      "trimStartFrame": 9120,
+      "trimEndFrame": 161760,
+      "frames": 152640
+    },
+    {
+      "cueId": "color-03",
+      "pairIndex": 1,
+      "originalFrames": 144000,
+      "trimStartFrame": 14880,
+      "trimEndFrame": 140640,
+      "frames": 125760
+    },
+    {
+      "cueId": "color-04",
+      "pairIndex": 0,
+      "originalFrames": 168960,
+      "trimStartFrame": 19200,
+      "trimEndFrame": 165600,
+      "frames": 146400
+    },
+    {
+      "cueId": "color-04",
+      "pairIndex": 1,
+      "originalFrames": 138240,
+      "trimStartFrame": 0,
+      "trimEndFrame": 138240,
+      "frames": 138240
+    },
+    {
+      "cueId": "color-05",
+      "pairIndex": 0,
+      "originalFrames": 163200,
+      "trimStartFrame": 0,
+      "trimEndFrame": 163200,
+      "frames": 163200
+    },
+    {
+      "cueId": "color-05",
+      "pairIndex": 1,
+      "originalFrames": 136320,
+      "trimStartFrame": 0,
+      "trimEndFrame": 120000,
+      "frames": 120000
+    },
+    {
+      "cueId": "layer-00",
+      "pairIndex": 0,
+      "originalFrames": 168960,
+      "trimStartFrame": 22560,
+      "trimEndFrame": 168960,
+      "frames": 146400
+    },
+    {
+      "cueId": "layer-00",
+      "pairIndex": 1,
+      "originalFrames": 201600,
+      "trimStartFrame": 0,
+      "trimEndFrame": 184800,
+      "frames": 184800
+    },
+    {
+      "cueId": "layer-01",
+      "pairIndex": 0,
+      "originalFrames": 172800,
+      "trimStartFrame": 7680,
+      "trimEndFrame": 168960,
+      "frames": 161280
+    },
+    {
+      "cueId": "layer-01",
+      "pairIndex": 1,
+      "originalFrames": 140160,
+      "trimStartFrame": 11520,
+      "trimEndFrame": 133440,
+      "frames": 121920
+    },
+    {
+      "cueId": "layer-02",
+      "pairIndex": 0,
+      "originalFrames": 168960,
+      "trimStartFrame": 0,
+      "trimEndFrame": 164160,
+      "frames": 164160
+    },
+    {
+      "cueId": "layer-02",
+      "pairIndex": 1,
+      "originalFrames": 163200,
+      "trimStartFrame": 21600,
+      "trimEndFrame": 158880,
+      "frames": 137280
+    },
+    {
+      "cueId": "layer-03",
+      "pairIndex": 0,
+      "originalFrames": 151680,
+      "trimStartFrame": 9120,
+      "trimEndFrame": 148320,
+      "frames": 139200
+    },
+    {
+      "cueId": "layer-03",
+      "pairIndex": 1,
+      "originalFrames": 155520,
+      "trimStartFrame": 18240,
+      "trimEndFrame": 149760,
+      "frames": 131520
+    },
+    {
+      "cueId": "layer-04",
+      "pairIndex": 0,
+      "originalFrames": 178560,
+      "trimStartFrame": 24000,
+      "trimEndFrame": 160320,
+      "frames": 136320
+    },
+    {
+      "cueId": "layer-04",
+      "pairIndex": 1,
+      "originalFrames": 149760,
+      "trimStartFrame": 19680,
+      "trimEndFrame": 138240,
+      "frames": 118560
+    },
+    {
+      "cueId": "animation-00",
+      "pairIndex": 0,
+      "originalFrames": 153600,
+      "trimStartFrame": 11520,
+      "trimEndFrame": 148320,
+      "frames": 136800
+    },
+    {
+      "cueId": "animation-00",
+      "pairIndex": 1,
+      "originalFrames": 126720,
+      "trimStartFrame": 0,
+      "trimEndFrame": 125280,
+      "frames": 125280
+    },
+    {
+      "cueId": "animation-01",
+      "pairIndex": 0,
+      "originalFrames": 167040,
+      "trimStartFrame": 15360,
+      "trimEndFrame": 159840,
+      "frames": 144480
+    },
+    {
+      "cueId": "animation-01",
+      "pairIndex": 1,
+      "originalFrames": 180480,
+      "trimStartFrame": 21120,
+      "trimEndFrame": 168480,
+      "frames": 147360
+    },
+    {
+      "cueId": "animation-02",
+      "pairIndex": 0,
+      "originalFrames": 172800,
+      "trimStartFrame": 7680,
+      "trimEndFrame": 170880,
+      "frames": 163200
+    },
+    {
+      "cueId": "animation-02",
+      "pairIndex": 1,
+      "originalFrames": 182400,
+      "trimStartFrame": 35520,
+      "trimEndFrame": 171840,
+      "frames": 136320
+    },
+    {
+      "cueId": "animation-03",
+      "pairIndex": 0,
+      "originalFrames": 167040,
+      "trimStartFrame": 15360,
+      "trimEndFrame": 167040,
+      "frames": 151680
+    },
+    {
+      "cueId": "animation-03",
+      "pairIndex": 1,
+      "originalFrames": 132480,
+      "trimStartFrame": 6720,
+      "trimEndFrame": 126720,
+      "frames": 120000
+    },
+    {
+      "cueId": "animation-04",
+      "pairIndex": 0,
+      "originalFrames": 182400,
+      "trimStartFrame": 24960,
+      "trimEndFrame": 179520,
+      "frames": 154560
+    },
+    {
+      "cueId": "animation-04",
+      "pairIndex": 1,
+      "originalFrames": 155520,
+      "trimStartFrame": 11040,
+      "trimEndFrame": 151680,
+      "frames": 140640
+    },
+    {
+      "cueId": "impasto-00",
+      "pairIndex": 0,
+      "originalFrames": 115200,
+      "trimStartFrame": 10560,
+      "trimEndFrame": 106080,
+      "frames": 95520
+    },
+    {
+      "cueId": "impasto-00",
+      "pairIndex": 1,
+      "originalFrames": 165120,
+      "trimStartFrame": 23040,
+      "trimEndFrame": 160320,
+      "frames": 137280
+    },
+    {
+      "cueId": "impasto-01",
+      "pairIndex": 0,
+      "originalFrames": 101760,
+      "trimStartFrame": 14880,
+      "trimEndFrame": 96480,
+      "frames": 81600
+    },
+    {
+      "cueId": "impasto-01",
+      "pairIndex": 1,
+      "originalFrames": 126720,
+      "trimStartFrame": 21120,
+      "trimEndFrame": 121440,
+      "frames": 100320
+    },
+    {
+      "cueId": "impasto-02",
+      "pairIndex": 0,
+      "originalFrames": 111360,
+      "trimStartFrame": 11520,
+      "trimEndFrame": 103680,
+      "frames": 92160
+    },
+    {
+      "cueId": "impasto-02",
+      "pairIndex": 1,
+      "originalFrames": 130560,
+      "trimStartFrame": 13920,
+      "trimEndFrame": 125280,
+      "frames": 111360
+    },
+    {
+      "cueId": "impasto-03",
+      "pairIndex": 0,
+      "originalFrames": 147840,
+      "trimStartFrame": 15360,
+      "trimEndFrame": 143040,
+      "frames": 127680
+    },
+    {
+      "cueId": "impasto-03",
+      "pairIndex": 1,
+      "originalFrames": 142080,
+      "trimStartFrame": 16320,
+      "trimEndFrame": 135840,
+      "frames": 119520
+    },
+    {
+      "cueId": "impasto-04",
+      "pairIndex": 0,
+      "originalFrames": 124800,
+      "trimStartFrame": 11040,
+      "trimEndFrame": 118080,
+      "frames": 107040
+    },
+    {
+      "cueId": "impasto-04",
+      "pairIndex": 1,
+      "originalFrames": 128640,
+      "trimStartFrame": 11040,
+      "trimEndFrame": 128640,
+      "frames": 117600
+    },
+    {
+      "cueId": "impasto-05",
+      "pairIndex": 0,
+      "originalFrames": 111360,
+      "trimStartFrame": 0,
+      "trimEndFrame": 107040,
+      "frames": 107040
+    },
+    {
+      "cueId": "impasto-05",
+      "pairIndex": 1,
+      "originalFrames": 157440,
+      "trimStartFrame": 7200,
+      "trimEndFrame": 153120,
+      "frames": 145920
+    },
+    {
+      "cueId": "impasto-06",
+      "pairIndex": 0,
+      "originalFrames": 128640,
+      "trimStartFrame": 17760,
+      "trimEndFrame": 123840,
+      "frames": 106080
+    },
+    {
+      "cueId": "impasto-06",
+      "pairIndex": 1,
+      "originalFrames": 111360,
+      "trimStartFrame": 0,
+      "trimEndFrame": 102720,
+      "frames": 102720
+    },
+    {
+      "cueId": "impasto-07",
+      "pairIndex": 0,
+      "originalFrames": 126720,
+      "trimStartFrame": 8640,
+      "trimEndFrame": 120480,
+      "frames": 111840
+    },
+    {
+      "cueId": "impasto-07",
+      "pairIndex": 1,
+      "originalFrames": 157440,
+      "trimStartFrame": 13920,
+      "trimEndFrame": 125760,
+      "frames": 111840
+    },
+    {
+      "cueId": "impasto-08",
+      "pairIndex": 0,
+      "originalFrames": 122880,
+      "trimStartFrame": 7680,
+      "trimEndFrame": 118560,
+      "frames": 110880
+    },
+    {
+      "cueId": "impasto-08",
+      "pairIndex": 1,
+      "originalFrames": 138240,
+      "trimStartFrame": 7200,
+      "trimEndFrame": 138240,
+      "frames": 131040
+    },
+    {
+      "cueId": "code-00",
+      "pairIndex": 0,
+      "originalFrames": 153600,
+      "trimStartFrame": 14880,
+      "trimEndFrame": 149280,
+      "frames": 134400
+    },
+    {
+      "cueId": "code-00",
+      "pairIndex": 1,
+      "originalFrames": 182400,
+      "trimStartFrame": 22560,
+      "trimEndFrame": 171360,
+      "frames": 148800
+    },
+    {
+      "cueId": "code-01",
+      "pairIndex": 0,
+      "originalFrames": 178560,
+      "trimStartFrame": 22560,
+      "trimEndFrame": 155040,
+      "frames": 132480
+    },
+    {
+      "cueId": "code-01",
+      "pairIndex": 1,
+      "originalFrames": 149760,
+      "trimStartFrame": 19200,
+      "trimEndFrame": 143040,
+      "frames": 123840
+    },
+    {
+      "cueId": "code-02",
+      "pairIndex": 0,
+      "originalFrames": 159360,
+      "trimStartFrame": 4800,
+      "trimEndFrame": 151200,
+      "frames": 146400
+    },
+    {
+      "cueId": "code-02",
+      "pairIndex": 1,
+      "originalFrames": 147840,
+      "trimStartFrame": 8640,
+      "trimEndFrame": 144000,
+      "frames": 135360
+    },
+    {
+      "cueId": "code-03",
+      "pairIndex": 0,
+      "originalFrames": 188160,
+      "trimStartFrame": 0,
+      "trimEndFrame": 188160,
+      "frames": 188160
+    },
+    {
+      "cueId": "code-03",
+      "pairIndex": 1,
+      "originalFrames": 134400,
+      "trimStartFrame": 6240,
+      "trimEndFrame": 123840,
+      "frames": 117600
+    },
+    {
+      "cueId": "code-04",
+      "pairIndex": 0,
+      "originalFrames": 228480,
+      "trimStartFrame": 0,
+      "trimEndFrame": 219360,
+      "frames": 219360
+    },
+    {
+      "cueId": "code-04",
+      "pairIndex": 1,
+      "originalFrames": 165120,
+      "trimStartFrame": 9120,
+      "trimEndFrame": 147360,
+      "frames": 138240
+    },
+    {
+      "cueId": "code-05",
+      "pairIndex": 0,
+      "originalFrames": 140160,
+      "trimStartFrame": 9120,
+      "trimEndFrame": 133440,
+      "frames": 124320
+    },
+    {
+      "cueId": "code-05",
+      "pairIndex": 1,
+      "originalFrames": 199680,
+      "trimStartFrame": 37440,
+      "trimEndFrame": 192480,
+      "frames": 155040
+    },
+    {
+      "cueId": "code-06",
+      "pairIndex": 0,
+      "originalFrames": 159360,
+      "trimStartFrame": 20640,
+      "trimEndFrame": 154560,
+      "frames": 133920
+    },
+    {
+      "cueId": "code-06",
+      "pairIndex": 1,
+      "originalFrames": 153600,
+      "trimStartFrame": 12960,
+      "trimEndFrame": 148320,
+      "frames": 135360
+    },
+    {
+      "cueId": "code-07",
+      "pairIndex": 0,
+      "originalFrames": 216960,
+      "trimStartFrame": 0,
+      "trimEndFrame": 207360,
+      "frames": 207360
+    },
+    {
+      "cueId": "code-07",
+      "pairIndex": 1,
+      "originalFrames": 138240,
+      "trimStartFrame": 9120,
+      "trimEndFrame": 133920,
+      "frames": 124800
+    },
+    {
+      "cueId": "platform-00",
+      "pairIndex": 0,
+      "originalFrames": 99840,
+      "trimStartFrame": 11520,
+      "trimEndFrame": 93600,
+      "frames": 82080
+    },
+    {
+      "cueId": "platform-00",
+      "pairIndex": 1,
+      "originalFrames": 178560,
+      "trimStartFrame": 23040,
+      "trimEndFrame": 177600,
+      "frames": 154560
+    },
+    {
+      "cueId": "platform-01",
+      "pairIndex": 0,
+      "originalFrames": 111360,
+      "trimStartFrame": 20160,
+      "trimEndFrame": 108000,
+      "frames": 87840
+    },
+    {
+      "cueId": "platform-01",
+      "pairIndex": 1,
+      "originalFrames": 130560,
+      "trimStartFrame": 11520,
+      "trimEndFrame": 126240,
+      "frames": 114720
+    },
+    {
+      "cueId": "platform-02",
+      "pairIndex": 0,
+      "originalFrames": 134400,
+      "trimStartFrame": 0,
+      "trimEndFrame": 134400,
+      "frames": 134400
+    },
+    {
+      "cueId": "platform-02",
+      "pairIndex": 1,
+      "originalFrames": 90240,
+      "trimStartFrame": 31200,
+      "trimEndFrame": 84960,
+      "frames": 53760
+    },
+    {
+      "cueId": "platform-03",
+      "pairIndex": 0,
+      "originalFrames": 117120,
+      "trimStartFrame": 9120,
+      "trimEndFrame": 111360,
+      "frames": 102240
+    },
+    {
+      "cueId": "platform-03",
+      "pairIndex": 1,
+      "originalFrames": 145920,
+      "trimStartFrame": 42240,
+      "trimEndFrame": 145920,
+      "frames": 103680
+    }
+  ],
+  "chapters": [
+    {
+      "id": "brand",
+      "seconds": 25.0,
+      "voiceSeconds": 24.066666666666666
+    },
+    {
+      "id": "ui",
+      "seconds": 63.13333333333333,
+      "voiceSeconds": 62.233333333333334
+    },
+    {
+      "id": "brush",
+      "seconds": 75.0,
+      "voiceSeconds": 69.8
+    },
+    {
+      "id": "color",
+      "seconds": 75.4,
+      "voiceSeconds": 74.3
+    },
+    {
+      "id": "layer",
+      "seconds": 61.93333333333333,
+      "voiceSeconds": 61.03333333333333
+    },
+    {
+      "id": "animation",
+      "seconds": 61.03333333333333,
+      "voiceSeconds": 60.13333333333333
+    },
+    {
+      "id": "impasto",
+      "seconds": 96.9,
+      "voiceSeconds": 85.8
+    },
+    {
+      "id": "code",
+      "seconds": 101.6,
+      "voiceSeconds": 100.1
+    },
+    {
+      "id": "platform",
+      "seconds": 40.0,
+      "voiceSeconds": 35.5
+    }
+  ],
+  "operationsSha256": "a78893de6244595ebb57a69e09246a7ef4f559c7f4730b6a369c659eb5298beb",
+  "manifestSha256": "618b03dcb73ec638c4d09e276c814815c669a78a4c9c054f2ccf3e99709c379a"
+}

@@ -1,0 +1,86 @@
+[
+  {
+    "text": "There are twenty-four built-in presets; a first painting still starts with Ink.",
+    "startMs": 88133,
+    "endMs": 94893,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Test a few strokes, then favorite the presets you reach for.",
+    "startMs": 95073,
+    "endMs": 99153,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "The Chinese Liuye tool is Lasso fill in English, building color masses from closed shapes.",
+    "startMs": 100133,
+    "endMs": 105513,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Draw a closed outline and release to fill it—ideal for petals and silhouettes.",
+    "startMs": 105693,
+    "endMs": 110713,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "The leaf-shaped tip follows the stroke, changing its width and pose as it turns.",
+    "startMs": 113133,
+    "endMs": 119053,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Willow helps taper strokes and form leaves; it is separate from Lasso fill.",
+    "startMs": 119233,
+    "endMs": 124913,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Change size and hardness to move from local edges to broad areas of color.",
+    "startMs": 125133,
+    "endMs": 131533,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Then adjust spacing and paper texture to see how the marks settle.",
+    "startMs": 131713,
+    "endMs": 136833,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Pressure affects size and opacity separately, with curves adjusted to your touch.",
+    "startMs": 138133,
+    "endMs": 144473,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "For repeating forms, enable symmetry and place the axis before painting.",
+    "startMs": 144653,
+    "endMs": 149813,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Short smudge strokes push existing color; gentle mixing joins neighboring masses.",
+    "startMs": 150067,
+    "endMs": 156527,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Pixel presets keep a distinct raster mode. Custom brushes can be saved and imported.",
+    "startMs": 156707,
+    "endMs": 163027,
+    "timestampMs": null,
+    "confidence": null
+  }
+]

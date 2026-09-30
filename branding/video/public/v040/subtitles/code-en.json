@@ -1,0 +1,114 @@
+[
+  {
+    "text": "These are actual project-source excerpts explaining the work behind the interface.",
+    "startMs": 458400,
+    "endMs": 464000,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "A light editor-style layout makes the key code and responsibilities easier to read.",
+    "startMs": 464180,
+    "endMs": 470380,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Compose Multiplatform is a declarative UI framework for Kotlin.",
+    "startMs": 470600,
+    "endMs": 476120,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "State defines the UI, buttons receive input, and the Rust engine handles pixels.",
+    "startMs": 476300,
+    "endMs": 481460,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "The pen pointer loads an image resource and sizes it from the base display density.",
+    "startMs": 481667,
+    "endMs": 487767,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "It connects to the system pointer service without adding a ring to the artwork.",
+    "startMs": 487947,
+    "endMs": 493587,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Canvas input enters the coordination layer, with pen and touch sharing editing boundaries.",
+    "startMs": 493800,
+    "endMs": 501640,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "The input queue is bounded, and background work returns results to the display layer.",
+    "startMs": 501820,
+    "endMs": 506720,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "The Rust engine processes strokes and pixels, including closed-shape fills.",
+    "startMs": 506933,
+    "endMs": 516073,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "These canvas results come from the real engine, not a prerecorded effect animation.",
+    "startMs": 516253,
+    "endMs": 522013,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "The canvas is organized into tiles, so changed areas can be sent to the interface.",
+    "startMs": 522233,
+    "endMs": 527413,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Shared unchanged pixels avoid repeated copying and retain earlier content for every undo.",
+    "startMs": 527593,
+    "endMs": 534053,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "History and project files also belong to the engine; the UI coordinates user actions.",
+    "startMs": 534267,
+    "endMs": 539847,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Rust handles that work in the background; it is not all GPU computation.",
+    "startMs": 540027,
+    "endMs": 545667,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Basic vectors and drawing assistants use the same path from parameters to previews.",
+    "startMs": 545867,
+    "endMs": 554507,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Separating state from pixel work makes edits easier to preview and commit.",
+    "startMs": 554687,
+    "endMs": 559887,
+    "timestampMs": null,
+    "confidence": null
+  }
+]

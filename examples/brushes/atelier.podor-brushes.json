@@ -1,0 +1,10 @@
+{
+  "id": "podor.atelier",
+  "name": "Atelier",
+  "version": 1,
+  "brushes": [
+    {"id":"dry-ink","label":"Dry ink","size":18,"opacity":0.8,"hardness":0.85,"grain":0.85,"spacing":0.05},
+    {"id":"ribbon","label":"Ribbon","size":46,"opacity":0.6,"hardness":0.9,"tip":"Flat","aspect":0.18,"angle":-40,"spacing":0.06},
+    {"id":"dust","label":"Dust","size":120,"opacity":0.045,"hardness":0.1,"grain":0.9,"spacing":0.12}
+  ]
+}

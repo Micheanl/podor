@@ -1,0 +1,781 @@
+{
+  "schema_version": 1,
+  "target_release": "0.4.0",
+  "source_version_observed": "0.4.0",
+  "source_commit_observed": "36aae339b1d5933a1e987eb2fc4ea46d3fe533ed",
+  "audit_zh": "只读源码审查。没有运行构建或应用。实现存在不等于平台实机验证。",
+  "video": {
+    "seconds": 600,
+    "fps": 30,
+    "frames": 18000,
+    "width": 1920,
+    "height": 1080,
+    "ui_theme": "Light",
+    "ui_language": "English",
+    "dark_policy_zh": "仅文字说明",
+    "burned_caption_language": "zh",
+    "external_caption_languages": [
+      "zh",
+      "en"
+    ]
+  },
+  "observations_zh": [
+    "真实 24 个预设。默认 Ink 保持。",
+    "柳叶笔对应 Lasso fill。Willow 对应柳条笔。Leaf 是笔尖形状。",
+    "厚涂参考图是生成素材。软件演示必须使用真实 Native 引擎笔触。"
+  ],
+  "features": [
+    {
+      "id": "startup_direct",
+      "title_zh": "直接启动",
+      "details_zh": "偏好和引擎就绪后直接显示首页或画布。已移除启动动画和遮罩定时器。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/PodorApp.kt",
+          "line": 15,
+          "anchor": "fun studioStartupReady"
+        }
+      ]
+    },
+    {
+      "id": "workspace_ui",
+      "title_zh": "重整工作台",
+      "details_zh": "工具栏四边停靠。侧栏可收起并切换左右。当前工具参数位于画布下方胶囊。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/ContextToolDock.kt",
+          "line": 12,
+          "anchor": "internal fun ContextToolDock("
+        }
+      ]
+    },
+    {
+      "id": "appearance_language",
+      "title_zh": "主题和语言",
+      "details_zh": "浅色和深色主题。中文和英文界面。本片仅录制浅色英文。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/PodorApp.kt",
+          "line": 37,
+          "anchor": "controller.preferences.language"
+        }
+      ]
+    },
+    {
+      "id": "home_library",
+      "title_zh": "作品首页",
+      "details_zh": "缩略图列表支持搜索和排序。作品需手动保存。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/WorkspaceHome.kt",
+          "line": 34,
+          "anchor": "fun WorkspaceHome("
+        }
+      ]
+    },
+    {
+      "id": "brand_pointer",
+      "title_zh": "新品牌与原生笔形指针",
+      "details_zh": "桌面系统鼠标指针使用品牌图标中的笔。热点位于笔尖。鼠标黑圈已移除。",
+      "status": "implemented_scoped",
+      "limits_zh": "iOS actual 返回 null。不能宣传 iOS 系统自定义指针。",
+      "evidence": [
+        {
+          "file": "shared/src/jvmMain/kotlin/app/podor/ui/input/PlatformCanvasPointer.jvm.kt",
+          "line": 15,
+          "anchor": "internal actual fun createCanvasPointerIcon"
+        }
+      ]
+    },
+    {
+      "id": "brush_presets",
+      "title_zh": "24 个内置笔刷",
+      "details_zh": "传统绘画预设 22 项之外还有 Pixel Pencil 和 Pixel Perfect。默认预设保持 Ink。",
+      "status": "implemented_scoped",
+      "limits_zh": "传统绘画 22 项加上 2 个像素预设，共 24 项。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/domain/Models.kt",
+          "line": 216,
+          "anchor": "val entries ="
+        }
+      ]
+    },
+    {
+      "id": "leaf_brush",
+      "title_zh": "Willow 叶形笔尖",
+      "details_zh": "Willow 和 Lance 使用 Leaf 笔尖。跟随方向并表现起收笔变化。",
+      "status": "implemented_scoped",
+      "limits_zh": "Willow 对应柳条笔。不是 Lasso fill。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/domain/Models.kt",
+          "line": 362,
+          "anchor": "\"willow\""
+        }
+      ]
+    },
+    {
+      "id": "lasso_fill",
+      "title_zh": "柳叶圈选填色",
+      "details_zh": "中文柳叶笔对应 Lasso fill。闭合轮廓后填色或擦除。支持不透明度。",
+      "status": "implemented_scoped",
+      "limits_zh": "教程重点闭合花瓣与剪影。不能称默认笔刷已切换为柳叶。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/LassoFillControls.kt",
+          "line": 13,
+          "anchor": "fun LassoFillModes"
+        }
+      ]
+    },
+    {
+      "id": "brush_parameters",
+      "title_zh": "笔刷参数",
+      "details_zh": "笔尖形状与角度和硬度可调。可调间距及稳笔。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/BrushControls.kt",
+          "line": 38,
+          "anchor": "fun BrushControls("
+        }
+      ]
+    },
+    {
+      "id": "pressure",
+      "title_zh": "压感控制",
+      "details_zh": "可调大小与不透明度压感和曲线。Windows 驱动支持笔尾擦除和侧键取色。",
+      "status": "implemented_scoped",
+      "limits_zh": "倾斜和触控环暂未接入。各型号需要实机验证。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/BrushPressureControls.kt",
+          "line": 21,
+          "anchor": "fun BrushPressureControls("
+        }
+      ]
+    },
+    {
+      "id": "brush_texture",
+      "title_zh": "笔纹纸纹",
+      "details_zh": "石墨和刷毛及颜料等二维材质。纸纹按画布平铺。",
+      "status": "implemented_scoped",
+      "limits_zh": "厚涂是画法效果。不是三维颜料物理模拟。",
+      "evidence": [
+        {
+          "file": "engine/src/brush_texture.rs",
+          "line": 7,
+          "anchor": "paper"
+        }
+      ]
+    },
+    {
+      "id": "brush_library",
+      "title_zh": "笔刷管理",
+      "details_zh": "搜索和收藏及来源筛选。自定义笔刷可更新或另存。支持导入笔刷包。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/BrushControls.kt",
+          "line": 170,
+          "anchor": "搜索笔刷"
+        }
+      ]
+    },
+    {
+      "id": "smudge_mix",
+      "title_zh": "涂抹混色",
+      "details_zh": "沿笔触推动已有颜色。混合参数可以带入笔刷颜色。",
+      "status": "implemented_scoped",
+      "limits_zh": "涂抹不参与对称绘画。不是物理湿油彩模拟。",
+      "evidence": [
+        {
+          "file": "engine/src/smudge.rs",
+          "line": 112,
+          "anchor": "pub fn stamp("
+        }
+      ]
+    },
+    {
+      "id": "symmetry",
+      "title_zh": "对称绘画",
+      "details_zh": "画笔和橡皮支持左右或上下或双轴对称。轴线可移动。一笔一次撤销。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/SymmetryControls.kt",
+          "line": 14,
+          "anchor": "SymmetryControls"
+        }
+      ]
+    },
+    {
+      "id": "pixel_brush",
+      "title_zh": "像素笔刷",
+      "details_zh": "Pixel Pencil 与 Pixel Perfect 提供像素模式。",
+      "status": "implemented_scoped",
+      "limits_zh": "索引模式对平滑和渐变等工具有限制。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/domain/Models.kt",
+          "line": 210,
+          "anchor": "val PixelPerfect ="
+        }
+      ]
+    },
+    {
+      "id": "color_picker_palette",
+      "title_zh": "颜色色卡",
+      "details_zh": "取色与色轮及滑块。个人色卡可存色并提取画布颜色。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/ColorWheel.kt",
+          "line": 28,
+          "anchor": "fun ColorWheel("
+        }
+      ]
+    },
+    {
+      "id": "palette_formats",
+      "title_zh": "色卡文件",
+      "details_zh": "Adobe ASE 与 GPL 和 JASC PAL 色卡导入导出。",
+      "status": "implemented_scoped",
+      "limits_zh": "某些输出会丢失分组或名称元数据。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/domain/PaletteFileFormat.kt",
+          "line": 5,
+          "anchor": "enum class PaletteFileFormat"
+        }
+      ]
+    },
+    {
+      "id": "gradient_fill",
+      "title_zh": "渐变填充",
+      "details_zh": "支持线性与径向渐变及颜色反转。填充工具支持区域操作。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "engine/src/gradient.rs",
+          "line": 25,
+          "anchor": "pub fn prepare("
+        }
+      ]
+    },
+    {
+      "id": "selection_shapes",
+      "title_zh": "选区",
+      "details_zh": "矩形与椭圆及套索和魔棒。新建或添加或减去或相交。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/domain/Selection.kt",
+          "line": 11,
+          "anchor": "enum class SelectionKind"
+        }
+      ]
+    },
+    {
+      "id": "selection_refine",
+      "title_zh": "选区细化",
+      "details_zh": "反选与扩展和收缩及平滑和羽化。魔棒可选连续或全图区域。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "engine/src/selection_refinement.rs",
+          "line": 14,
+          "anchor": "pub fn"
+        }
+      ]
+    },
+    {
+      "id": "clipboard",
+      "title_zh": "复制剪切粘贴",
+      "details_zh": "选区可复制和剪切。剪贴板图片可粘贴为图层。",
+      "status": "implemented_scoped",
+      "limits_zh": "系统剪贴板画面以 Windows 演示。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/ClipboardMenu.kt",
+          "line": 12,
+          "anchor": "ClipboardMenu"
+        }
+      ]
+    },
+    {
+      "id": "layer_basic",
+      "title_zh": "图层编辑",
+      "details_zh": "新建和命名及显示切换。支持复制与合并和拖动排序。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/LayerControls.kt",
+          "line": 32,
+          "anchor": "fun LayerControls("
+        }
+      ]
+    },
+    {
+      "id": "layer_blend",
+      "title_zh": "混合与透明度",
+      "details_zh": "八种混合模式。画布预览可对比和重置。确认后一次撤销。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/domain/LayerBlendMode.kt",
+          "line": 7,
+          "anchor": "enum class LayerBlendMode"
+        }
+      ]
+    },
+    {
+      "id": "layer_lock_clip",
+      "title_zh": "锁定和剪贴",
+      "details_zh": "支持内容锁定与透明度锁定。剪贴图层限制在底层范围。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/presentation/StudioController.kt",
+          "line": 3189,
+          "anchor": "fun setLayerClipping("
+        }
+      ]
+    },
+    {
+      "id": "layer_groups",
+      "title_zh": "图层组",
+      "details_zh": "支持嵌套分组。提供独立合成和穿透模式。",
+      "status": "implemented_scoped",
+      "limits_zh": "外部文件格式不能无条件保留全部结构。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/LayerGroupControls.kt",
+          "line": 17,
+          "anchor": "internal fun LayerGroupControls("
+        }
+      ]
+    },
+    {
+      "id": "layer_masks",
+      "title_zh": "蒙版堆栈",
+      "details_zh": "新增白色或黑色或选区蒙版。蒙版可启停及链接和排序。",
+      "status": "implemented_scoped",
+      "limits_zh": "索引颜色和不同层类型有功能限制。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/LayerMaskControls.kt",
+          "line": 20,
+          "anchor": "internal fun LayerMaskControls("
+        }
+      ]
+    },
+    {
+      "id": "layer_transform",
+      "title_zh": "移动变换",
+      "details_zh": "图层可移动及缩放旋转和翻转。先预览后确认。支持撤销。",
+      "status": "implemented_scoped",
+      "limits_zh": "画布外内容可能裁切。锁定和选区状态会限制操作。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/LayerTransformControls.kt",
+          "line": 68,
+          "anchor": "fun LayerTransformDock("
+        }
+      ]
+    },
+    {
+      "id": "adjustments",
+      "title_zh": "图像调整",
+      "details_zh": "明暗和对比及饱和度。曲线和模糊及渐变映射支持预览和对比。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/domain/Adjustment.kt",
+          "line": 7,
+          "anchor": "enum class AdjustmentKind"
+        }
+      ]
+    },
+    {
+      "id": "adjustment_layers",
+      "title_zh": "调整图层",
+      "details_zh": "明暗色彩与曲线和渐变映射可作为调整图层。",
+      "status": "implemented_scoped",
+      "limits_zh": "模糊不是当前调整图层类型。部分输出需烘焙。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/LayerGroupControls.kt",
+          "line": 63,
+          "anchor": "新建调整图层"
+        }
+      ]
+    },
+    {
+      "id": "vector",
+      "title_zh": "矢量编辑",
+      "details_zh": "基本矩形和椭圆及直线与路径。支持节点预览编辑和 SVG 输出。",
+      "status": "implemented_scoped",
+      "limits_zh": "基础子集。不能宣传完整 SVG 标准支持。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/VectorControls.kt",
+          "line": 29,
+          "anchor": "internal fun VectorDock("
+        }
+      ]
+    },
+    {
+      "id": "assistants_lines",
+      "title_zh": "辅助与漫画线",
+      "details_zh": "平行和径向及一二三点透视助手。集中线和速度线可预览生成。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/domain/DrawingAssistant.kt",
+          "line": 117,
+          "anchor": "enum class AssistantPreset"
+        }
+      ]
+    },
+    {
+      "id": "view_canvas",
+      "title_zh": "视图与尺寸",
+      "details_zh": "视图缩放和平移及旋转镜像不改像素。画布可扩边裁切。图像可重采样。",
+      "status": "implemented_scoped",
+      "limits_zh": "像素尺寸调整与视图缩放需要明确区分。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/CanvasSizeDialog.kt",
+          "line": 36,
+          "anchor": "fun CanvasSizeDialog("
+        }
+      ]
+    },
+    {
+      "id": "references",
+      "title_zh": "参考图",
+      "details_zh": "导入或粘贴参考图。可移动缩放镜像和隐藏。不会进入作品导出。",
+      "status": "implemented_scoped",
+      "limits_zh": "切换作品和退出后清除。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/presentation/ReferenceController.kt",
+          "line": 21,
+          "anchor": "class ReferenceController"
+        }
+      ]
+    },
+    {
+      "id": "indexed",
+      "title_zh": "索引色",
+      "details_zh": "索引文档与调色板编辑以及 indexed PNG 输出。",
+      "status": "implemented_scoped",
+      "limits_zh": "索引模式不是全部 RGBA 功能都可用。",
+      "evidence": [
+        {
+          "file": "engine/src/indexed.rs",
+          "line": 123,
+          "anchor": "pub fn create("
+        }
+      ]
+    },
+    {
+      "id": "animation_frames",
+      "title_zh": "逐帧动画",
+      "details_zh": "打开面板初始化时间轴。支持增删复制帧及顺序和时长。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/presentation/StudioController.kt",
+          "line": 2423,
+          "anchor": "fun toggleAnimationTimeline("
+        }
+      ]
+    },
+    {
+      "id": "animation_timeline",
+      "title_zh": "时间轴单元",
+      "details_zh": "帧标尺可拖动浏览。图层轨道显示关键帧和连续共享单元。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/ui/AnimationTimeline.kt",
+          "line": 51,
+          "anchor": "fun AnimationTimeline("
+        }
+      ]
+    },
+    {
+      "id": "animation_playback",
+      "title_zh": "播放洋葱皮",
+      "details_zh": "支持播放和洋葱皮。可设置范围及方向和帧标签。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/domain/Animation.kt",
+          "line": 50,
+          "anchor": "enum class AnimationDirection"
+        }
+      ]
+    },
+    {
+      "id": "animation_export",
+      "title_zh": "动画输出",
+      "details_zh": "GIF 与 PNG 图集 ZIP。支持范围和颜色及透明度策略。",
+      "status": "implemented_scoped",
+      "limits_zh": "GIF 有透明度与色数及 10 ms 时长精度限制。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/domain/AnimationExport.kt",
+          "line": 40,
+          "anchor": "enum class AnimationExportFormat"
+        }
+      ]
+    },
+    {
+      "id": "formats_raster",
+      "title_zh": "位图文件",
+      "details_zh": "PNG 与 JPEG 和静态 WebP 可导入导出。TIFF 与 BMP 可输出。",
+      "status": "implemented_scoped",
+      "limits_zh": "JPEG 无透明度。无 ICC 色彩管理。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/domain/ExportOptions.kt",
+          "line": 7,
+          "anchor": "enum class ExportFormat"
+        }
+      ]
+    },
+    {
+      "id": "formats_layers",
+      "title_zh": "分层交换",
+      "details_zh": "PSD 与 ORA 有受限分层导入导出。复杂内容可显式烘焙。",
+      "status": "implemented_scoped",
+      "limits_zh": "不是完整 Photoshop 兼容。部分效果需要烘焙。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/domain/ExportOptions.kt",
+          "line": 41,
+          "anchor": "fun DocumentInfo.requiresBakedExport"
+        }
+      ]
+    },
+    {
+      "id": "aseprite",
+      "title_zh": "Aseprite 交换",
+      "details_zh": "实现了受能力限制的 Aseprite 导入导出和烘焙选项。",
+      "status": "implemented_scoped",
+      "limits_zh": "不能宣传完整 Aseprite 格式兼容。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/domain/AsepriteProject.kt",
+          "line": 39,
+          "anchor": "val fullFormatSupport:"
+        }
+      ]
+    },
+    {
+      "id": "project_history",
+      "title_zh": "工程历史",
+      "details_zh": "手动保存 .pod。可读旧 .podor。支持撤销重做。未改像素块共享。",
+      "status": "implemented_scoped",
+      "limits_zh": "",
+      "evidence": [
+        {
+          "file": "engine/src/history.rs",
+          "line": 5,
+          "anchor": "pub struct History"
+        }
+      ]
+    },
+    {
+      "id": "architecture",
+      "title_zh": "Kotlin Compose 与 Rust",
+      "details_zh": "Kotlin 管理状态与任务协调。Compose 是 Kotlin UI 框架。Rust 管理笔触像素及图层历史和文件。",
+      "status": "implemented_scoped",
+      "limits_zh": "CPU 后台引擎工作不能被说成全部 GPU 计算。",
+      "evidence": [
+        {
+          "file": "shared/src/commonMain/kotlin/app/podor/presentation/StudioController.kt",
+          "line": 50,
+          "anchor": "class StudioController("
+        }
+      ]
+    },
+    {
+      "id": "platforms",
+      "title_zh": "平台范围",
+      "details_zh": "仓库有 Windows 和 macOS 和 Linux 及 Android 和 iOS 构建入口。下载产物以发行页为准。",
+      "status": "implemented_scoped",
+      "limits_zh": "构建通过不代表设备与输入驱动已实机验收。",
+      "evidence": [
+        {
+          "file": "shared/build.gradle.kts",
+          "line": 38,
+          "anchor": "kotlin"
+        }
+      ]
+    },
+    {
+      "id": "native_pen_touch",
+      "title_zh": "Windows 原生输入",
+      "details_zh": "WinTab 和 Windows Ink 支持压感与笔尾和侧键。双指操作用于视图。",
+      "status": "implemented_scoped",
+      "limits_zh": "各型号需实机验证。",
+      "evidence": [
+        {
+          "file": "README.md",
+          "line": 69,
+          "anchor": "WinTab / Windows Ink"
+        }
+      ]
+    },
+    {
+      "id": "license_credits",
+      "title_zh": "许可署名",
+      "details_zh": "代码 MIT。字体和第三方图标保留各自许可。",
+      "status": "implemented_scoped",
+      "limits_zh": "不能将所有素材和依赖称为 MIT。",
+      "evidence": [
+        {
+          "file": "LICENSE",
+          "line": 1,
+          "anchor": "MIT License"
+        }
+      ]
+    }
+  ],
+  "code_clips": [
+    {
+      "file": "shared/src/commonMain/kotlin/app/podor/ui/PodorApp.kt",
+      "start_line": 22,
+      "end_line": 29,
+      "source": "fun PodorApp(\n    controller: StudioController,\n    updates: UpdateController? = null,\n    titleBarHeight: Dp = 0.dp,\n    onTitleDragRegion: (Rect) -> Unit = {},\n    titleBar: @Composable () -> Unit = {},\n) {\n    if (!studioStartupReady(controller)) return",
+      "shot_policy": "真实 Kotlin 与 Rust 源码摘录。浅色代码讲解。每屏最多六行，中文职责标题。不称作实际 IDE 录屏。"
+    },
+    {
+      "file": "shared/src/commonMain/kotlin/app/podor/ui/input/PlatformCanvasPointer.kt",
+      "start_line": 20,
+      "end_line": 31,
+      "source": "fun Modifier.platformCanvasPointer(): Modifier {\n    val density = LocalStudioBaseDensity.current ?: LocalDensity.current\n    val sizePx = with(density) { StudioTheme.canvasPointerSize.roundToPx() }.coerceAtLeast(1)\n    val icon by\n        produceState<PointerIcon?>(null, sizePx) {\n            value =\n                withContext(Dispatchers.Default) {\n                    createCanvasPointerIcon(Res.readBytes(\"files/stylus-cursor.png\"), sizePx)\n                }\n        }\n    return pointerHoverIcon(icon ?: PointerIcon.Default)\n}",
+      "shot_policy": "真实 Kotlin 与 Rust 源码摘录。浅色代码讲解。每屏最多六行，中文职责标题。不称作实际 IDE 录屏。"
+    },
+    {
+      "file": "shared/src/commonMain/kotlin/app/podor/ui/CanvasWorkspace.kt",
+      "start_line": 170,
+      "end_line": 174,
+      "source": "            .platformCanvasPointer()\n            .onSizeChanged { fullSize = Size(it.width.toFloat(), it.height.toFloat()) }\n            .pointerInput(controller) {\n                var drawing = false\n                var activePointer: PointerId? = null",
+      "shot_policy": "真实 Kotlin 与 Rust 源码摘录。浅色代码讲解。每屏最多六行，中文职责标题。不称作实际 IDE 录屏。"
+    },
+    {
+      "file": "shared/src/commonMain/kotlin/app/podor/presentation/StudioController.kt",
+      "start_line": 62,
+      "end_line": 62,
+      "source": "    private val actions = Channel<Action>(StudioDefaults.inputQueueCapacity)",
+      "shot_policy": "真实 Kotlin 与 Rust 源码摘录。浅色代码讲解。每屏最多六行，中文职责标题。不称作实际 IDE 录屏。"
+    },
+    {
+      "file": "engine/src/model.rs",
+      "start_line": 4,
+      "end_line": 6,
+      "source": "pub const TILE_SIZE: u32 = 128;\npub const TILE_BYTES: usize = (TILE_SIZE * TILE_SIZE * 4) as usize;\npub const MASK_TILE_BYTES: usize = (TILE_SIZE * TILE_SIZE) as usize;",
+      "shot_policy": "真实 Kotlin 与 Rust 源码摘录。浅色代码讲解。每屏最多六行，中文职责标题。不称作实际 IDE 录屏。"
+    },
+    {
+      "file": "engine/src/model.rs",
+      "start_line": 90,
+      "end_line": 90,
+      "source": "pub type Tile = Arc<Vec<u8>>;",
+      "shot_policy": "真实 Kotlin 与 Rust 源码摘录。浅色代码讲解。每屏最多六行，中文职责标题。不称作实际 IDE 录屏。"
+    },
+    {
+      "file": "engine/src/history.rs",
+      "start_line": 5,
+      "end_line": 12,
+      "source": "pub struct History {\n    pub undo: VecDeque<Snapshot>,\n    pub redo: Vec<Snapshot>,\n}\n\npub struct Snapshot {\n    pub document: Document,\n    pub content_id: u64,",
+      "shot_policy": "真实 Kotlin 与 Rust 源码摘录。浅色代码讲解。每屏最多六行，中文职责标题。不称作实际 IDE 录屏。"
+    },
+    {
+      "file": "engine/src/lasso_fill.rs",
+      "start_line": 11,
+      "end_line": 18,
+      "source": "pub fn prepare(\n    document: &Document,\n    selection: Option<&Selection>,\n    points: Vec<SelectionPoint>,\n    color: [u8; 3],\n    opacity: f32,\n    eraser: bool,\n) -> Result<(BTreeMap<TileKey, Tile>, Vec<TileKey>), String> {",
+      "shot_policy": "真实 Kotlin 与 Rust 源码摘录。浅色代码讲解。每屏最多六行，中文职责标题。不称作实际 IDE 录屏。"
+    }
+  ],
+  "credits": [
+    {
+      "name": "Podor",
+      "license": "MIT",
+      "source": "LICENSE"
+    },
+    {
+      "name": "Inter",
+      "copyright": "The Inter Project Authors",
+      "license": "SIL OFL 1.1",
+      "source": "branding/video/public/fonts/Inter-LICENSE.txt"
+    },
+    {
+      "name": "Cormorant Garamond",
+      "copyright": "The Cormorant Project Authors",
+      "license": "SIL OFL 1.1",
+      "source": "branding/video/public/fonts/CormorantGaramond-LICENSE.txt"
+    },
+    {
+      "name": "Morphicons",
+      "copyright": "Guillermo",
+      "license": "MIT",
+      "source": "licenses/morphicons/NOTICE"
+    },
+    {
+      "name": "W3C SVG Logo",
+      "license": "CC BY-SA 4.0",
+      "source": "licenses/export-icons/svg/NOTICE"
+    },
+    {
+      "name": "Aseprite v1.1.6 icon",
+      "copyright": "David Capello and Aseprite contributors",
+      "license": "GPLv2 for unmodified icon",
+      "source": "licenses/export-icons/aseprite/NOTICE"
+    }
+  ],
+  "reference_art": {
+    "path": "branding/video/public/v040/artwork/rose-reference.png",
+    "readme_path": "branding/rose-study-reference.png",
+    "origin": "Built-in image_gen generated study reference",
+    "claim_limit_zh": "生成的练习参考。不是 Podor 内完成的手绘成品。",
+    "sha256": "431180F3BF8736A8D0FAFD16E8E23B0BA521F782966D5B94FE9FF04DBC86DE75",
+    "size": [
+      1448,
+      1086
+    ],
+    "generator_prompt": "Use case: stylized-concept.\nAsset type: original oil-painting study reference for a flower-bouquet impasto tutorial and product-video artwork. This is artwork only, no software UI.\nInput image role: the attached bouquet photograph is a subject and palette reference only. Keep wine-red roses, dark foliage, black wrapping and sparse ivory baby's breath. Do not copy its arrangement, branded ribbon, crown or photographic lighting.\nCreate a 4:3 horizontal original still life, ideally 1536 by 1152 pixels. An asymmetrical compact bouquet of seven to nine substantial wine-red roses rests in black silk and matte black wrapping against a quiet warm gray background. Dark olive and forest green leaves support the roses; a few loose ivory baby's-breath clusters provide scale and rhythm. Keep generous breathing room around the whole bouquet and a grounded shadow.\nMedium: convincing traditional oil painting with restrained impasto. Build believable flower volumes from broad warm and cool masses. Use varied opaque brush marks, thin shadow passages, a few thick lit strokes, uneven natural paint ridges, selected lost edges and a small number of crisp focal edges. One or two central roses have only a few carefully resolved petal turns. Elsewhere simplify petal groups into broad shapes. Restrained depth and subdued studio light; richly dark burgundy shadows, muted crimson mids, dusty warm-red lights, almost black silk with soft cool-gray folds. A painterly study an experienced artist would use to teach massing, edge control and selective detail.\nAvoid photographic realism, plastic gloss, digital airbrushing, photographic sharpening, identical repetitive petals, outlining every petal, excessive tiny detail, uniform texture/noise, decorative sparkle, luxury ornament, crown, logos including Dior, signature, lettering, watermarks, any UI or screenshot. Do not imitate any named artist.",
+    "generator": "built-in image_gen",
+    "quality_review": "一次候选。4:3。温灰背景。酒红玫瑰与暗绿叶和黑色包装及米白小花。宽笔触和局部厚涂。没有 UI 和文字及 Logo。"
+  }
+}

@@ -1,0 +1,1079 @@
+[
+  {
+    "id": "brand",
+    "title_zh": "从色块开始",
+    "title_en": "A place to paint",
+    "seconds": 25,
+    "segments": [
+      {
+        "at": 0,
+        "zh": "先把一束玫瑰看成有分量的色块，再逐步建立光色和形体。今天用十分钟认识新工作台，也练习从剪影到花瓣的过程。",
+        "en": "First read a bouquet as bold masses, then build its light, color, and volume. In ten minutes, explore the new workspace and work from silhouettes toward petals.",
+        "pairs": [
+          {
+            "zh": "先把一束玫瑰看成有分量的色块，再逐步建立光色和形体。",
+            "en": "First read a bouquet as bold masses, then build its light, color, and volume."
+          },
+          {
+            "zh": "今天用十分钟认识新工作台，也练习从剪影到花瓣的过程。",
+            "en": "In ten minutes, explore the new workspace and work from silhouettes toward petals."
+          }
+        ],
+        "features": [
+          "brand_pointer",
+          "startup_direct"
+        ],
+        "shot": "新图标进入浅色工作台。短暂展示生成花束参考并标注来源。"
+      },
+      {
+        "at": 12,
+        "zh": "这里是新的绘画与图像编辑工作台，从简单形状开始一段练习。花束是生成的观察参考，接下来的笔触演示来自真实绘画引擎。",
+        "en": "This is the updated painting workspace. Begin a study with simple shapes. The bouquet is a generated reference; the stroke demonstrations use the real painting engine.",
+        "pairs": [
+          {
+            "zh": "这里是新的绘画与图像编辑工作台，从简单形状开始一段练习。",
+            "en": "This is the updated painting workspace. Begin a study with simple shapes."
+          },
+          {
+            "zh": "花束是生成的观察参考，接下来的笔触演示来自真实绘画引擎。",
+            "en": "The bouquet is a generated reference; the stroke demonstrations use the real painting engine."
+          }
+        ],
+        "features": [
+          "startup_direct",
+          "architecture",
+          "references"
+        ],
+        "shot": "首页进入画布。参考图独立展示并标注 Generated study reference。"
+      }
+    ]
+  },
+  {
+    "id": "ui",
+    "title_zh": "让画布成为中心",
+    "title_en": "A calmer workspace",
+    "seconds": 60,
+    "segments": [
+      {
+        "at": 0,
+        "zh": "这一片只展示浅色英文界面，让画布和正在进行的笔触留在中心。侧栏平时保持收起，需要完整设置时再打开。",
+        "en": "This film uses the light English interface, keeping the canvas and active marks central. Keep the sidebar tucked away until you need its full controls.",
+        "pairs": [
+          {
+            "zh": "这一片只展示浅色英文界面，让画布和正在进行的笔触留在中心。",
+            "en": "This film uses the light English interface, keeping the canvas and active marks central."
+          },
+          {
+            "zh": "侧栏平时保持收起，需要完整设置时再打开。",
+            "en": "Keep the sidebar tucked away until you need its full controls."
+          }
+        ],
+        "features": [
+          "workspace_ui",
+          "appearance_language"
+        ],
+        "shot": "浅色英文UI全景。打开并关闭侧面板。"
+      },
+      {
+        "at": 12,
+        "zh": "工具栏可以放在四边，常用工具的顺序也能按习惯重新安排。把动作放到顺手的位置，画画时就少一些来回寻找。",
+        "en": "Dock the toolbar on any edge and reorder familiar tools to suit your habits. Put actions within reach so painting takes less searching.",
+        "pairs": [
+          {
+            "zh": "工具栏可以放在四边，常用工具的顺序也能按习惯重新安排。",
+            "en": "Dock the toolbar on any edge and reorder familiar tools to suit your habits."
+          },
+          {
+            "zh": "把动作放到顺手的位置，画画时就少一些来回寻找。",
+            "en": "Put actions within reach so painting takes less searching."
+          }
+        ],
+        "features": [
+          "workspace_ui"
+        ],
+        "shot": "工具栏位置控制和工具菜单。只用真实截图。"
+      },
+      {
+        "at": 24,
+        "zh": "换一个工具，画布下方的胶囊就换成它此刻最需要的快捷参数。大小和透明度就近调整，完整侧栏仍然保留。",
+        "en": "Switch tools and the capsule shows the quick controls that matter at that moment. Adjust size and opacity nearby while the full sidebar remains available.",
+        "pairs": [
+          {
+            "zh": "换一个工具，画布下方的胶囊就换成它此刻最需要的快捷参数。",
+            "en": "Switch tools and the capsule shows the quick controls that matter at that moment."
+          },
+          {
+            "zh": "大小和透明度就近调整，完整侧栏仍然保留。",
+            "en": "Adjust size and opacity nearby while the full sidebar remains available."
+          }
+        ],
+        "features": [
+          "workspace_ui",
+          "brush_parameters"
+        ],
+        "shot": "实际Brush上下文胶囊。打开大小/透明度popup。"
+      },
+      {
+        "at": 36,
+        "zh": "鼠标现在是一支系统笔形指针，笔尖就是画布上准确的落笔位置。缩放和旋转只是改变观看方式，不会改动作品像素。",
+        "en": "The system mouse pointer is now a pen, whose tip marks the drawing position. Zoom and rotation change the view without changing the artwork's pixels.",
+        "pairs": [
+          {
+            "zh": "鼠标现在是一支系统笔形指针，笔尖就是画布上准确的落笔位置。",
+            "en": "The system mouse pointer is now a pen, whose tip marks the drawing position."
+          },
+          {
+            "zh": "缩放和旋转只是改变观看方式，不会改动作品像素。",
+            "en": "Zoom and rotation change the view without changing the artwork's pixels."
+          }
+        ],
+        "features": [
+          "view_canvas",
+          "brand_pointer"
+        ],
+        "shot": "真实笔形系统cursor capture。画布缩放/旋转和背景切换。"
+      },
+      {
+        "at": 48,
+        "zh": "启动按偏好直接进入作品首页，或者进入准备好的空白绘画画布。这里能查找和排序作品，深色主题同样可以在设置中选择。",
+        "en": "Start directly in the project library or on a blank canvas, following your preference. Find and sort projects here. A dark theme is also available in settings.",
+        "pairs": [
+          {
+            "zh": "启动按偏好直接进入作品首页，或者进入准备好的空白绘画画布。",
+            "en": "Start directly in the project library or on a blank canvas, following your preference."
+          },
+          {
+            "zh": "这里能查找和排序作品，深色主题同样可以在设置中选择。",
+            "en": "Find and sort projects here. A dark theme is also available in settings."
+          }
+        ],
+        "features": [
+          "home_library",
+          "appearance_language",
+          "startup_direct"
+        ],
+        "shot": "首页搜索和回到画布。字幕文字说明Dark optional不展示Dark。"
+      }
+    ]
+  },
+  {
+    "id": "brush",
+    "title_zh": "笔尖决定笔触",
+    "title_en": "From tip to stroke",
+    "seconds": 75,
+    "segments": [
+      {
+        "at": 0,
+        "zh": "内置笔刷现在有二十四个预设，初次绘画仍从默认墨水笔开始。先试几种笔触，再把常用预设收藏起来。",
+        "en": "There are twenty-four built-in presets; a first painting still starts with Ink. Test a few strokes, then favorite the presets you reach for.",
+        "pairs": [
+          {
+            "zh": "内置笔刷现在有二十四个预设，初次绘画仍从默认墨水笔开始。",
+            "en": "There are twenty-four built-in presets; a first painting still starts with Ink."
+          },
+          {
+            "zh": "先试几种笔触，再把常用预设收藏起来。",
+            "en": "Test a few strokes, then favorite the presets you reach for."
+          }
+        ],
+        "features": [
+          "brush_presets",
+          "brush_library"
+        ],
+        "shot": "笔刷库滚动展示24项。搜索及favorite。"
+      },
+      {
+        "at": 12,
+        "zh": "中文柳叶笔是英文圈选填色工具，用闭合形状建立清楚的色块。画一圈闭合轮廓，松手填色，适合花瓣和整块剪影。",
+        "en": "The Chinese Liuye tool is Lasso fill in English, building color masses from closed shapes. Draw a closed outline and release to fill it—ideal for petals and silhouettes.",
+        "pairs": [
+          {
+            "zh": "中文柳叶笔是英文圈选填色工具，用闭合形状建立清楚的色块。",
+            "en": "The Chinese Liuye tool is Lasso fill in English, building color masses from closed shapes."
+          },
+          {
+            "zh": "画一圈闭合轮廓，松手填色，适合花瓣和整块剪影。",
+            "en": "Draw a closed outline and release to fill it—ideal for petals and silhouettes."
+          }
+        ],
+        "features": [
+          "lasso_fill",
+          "selection_shapes"
+        ],
+        "shot": "Lasso fill闭合一片花瓣并松手填色。"
+      },
+      {
+        "at": 25,
+        "zh": "叶形笔尖跟随整段笔画的方向，转弯时宽窄和姿态也一起改变。它叫柳条笔，适合收锋和拉出叶片，别与圈选填色混淆。",
+        "en": "The leaf-shaped tip follows the stroke, changing its width and pose as it turns. Willow helps taper strokes and form leaves; it is separate from Lasso fill.",
+        "pairs": [
+          {
+            "zh": "叶形笔尖跟随整段笔画的方向，转弯时宽窄和姿态也一起改变。",
+            "en": "The leaf-shaped tip follows the stroke, changing its width and pose as it turns."
+          },
+          {
+            "zh": "它叫柳条笔，适合收锋和拉出叶片，别与圈选填色混淆。",
+            "en": "Willow helps taper strokes and form leaves; it is separate from Lasso fill."
+          }
+        ],
+        "features": [
+          "leaf_brush",
+          "pressure"
+        ],
+        "shot": "Willow与Lance真实曲线笔触并放大起收锋。"
+      },
+      {
+        "at": 37,
+        "zh": "同一支笔改变大小和硬度，就能从局部边缘描画转向大面积铺色。再调间距和纸纹，看看笔触怎样与画布纹理相处。",
+        "en": "Change size and hardness to move from local edges to broad areas of color. Then adjust spacing and paper texture to see how the marks settle.",
+        "pairs": [
+          {
+            "zh": "同一支笔改变大小和硬度，就能从局部边缘描画转向大面积铺色。",
+            "en": "Change size and hardness to move from local edges to broad areas of color."
+          },
+          {
+            "zh": "再调间距和纸纹，看看笔触怎样与画布纹理相处。",
+            "en": "Then adjust spacing and paper texture to see how the marks settle."
+          }
+        ],
+        "features": [
+          "brush_parameters",
+          "brush_texture"
+        ],
+        "shot": "大小硬度间距纸纹对比色条。"
+      },
+      {
+        "at": 50,
+        "zh": "压感分别影响大小和透明度，响应曲线也能按你的手感重新调整。需要规则图案时打开对称，先看轴线位置再落笔。",
+        "en": "Pressure affects size and opacity separately, with curves adjusted to your touch. For repeating forms, enable symmetry and place the axis before painting.",
+        "pairs": [
+          {
+            "zh": "压感分别影响大小和透明度，响应曲线也能按你的手感重新调整。",
+            "en": "Pressure affects size and opacity separately, with curves adjusted to your touch."
+          },
+          {
+            "zh": "需要规则图案时打开对称，先看轴线位置再落笔。",
+            "en": "For repeating forms, enable symmetry and place the axis before painting."
+          }
+        ],
+        "features": [
+          "pressure",
+          "symmetry",
+          "native_pen_touch"
+        ],
+        "shot": "真实native笔触pressure sample。轴线对称绘画。"
+      },
+      {
+        "at": 62,
+        "zh": "涂抹把已有颜色沿短笔触推开，少量混色可以连接相邻的大色块。像素笔另有清晰的像素模式，自定义笔刷也能保存和导入。",
+        "en": "Short smudge strokes push existing color; gentle mixing joins neighboring masses. Pixel presets keep a distinct raster mode. Custom brushes can be saved and imported.",
+        "pairs": [
+          {
+            "zh": "涂抹把已有颜色沿短笔触推开，少量混色可以连接相邻的大色块。",
+            "en": "Short smudge strokes push existing color; gentle mixing joins neighboring masses."
+          },
+          {
+            "zh": "像素笔另有清晰的像素模式，自定义笔刷也能保存和导入。",
+            "en": "Pixel presets keep a distinct raster mode. Custom brushes can be saved and imported."
+          }
+        ],
+        "features": [
+          "smudge_mix",
+          "pixel_brush",
+          "brush_library"
+        ],
+        "shot": "Smudge短推色。PixelPencil/Perfect样例。导入brushmenu。"
+      }
+    ]
+  },
+  {
+    "id": "color",
+    "title_zh": "颜色与选区",
+    "title_en": "Color and control",
+    "seconds": 70,
+    "segments": [
+      {
+        "at": 0,
+        "zh": "先把花束看成暗红与深绿的大块，再用色轮仔细寻找冷暖关系。把选好的颜色存进个人色卡，回到画布时少一些犹豫。",
+        "en": "Read the bouquet as broad dark reds and greens, then find their warm and cool shifts. Save chosen colors to a personal palette so painting stays decisive.",
+        "pairs": [
+          {
+            "zh": "先把花束看成暗红与深绿的大块，再用色轮仔细寻找冷暖关系。",
+            "en": "Read the bouquet as broad dark reds and greens, then find their warm and cool shifts."
+          },
+          {
+            "zh": "把选好的颜色存进个人色卡，回到画布时少一些犹豫。",
+            "en": "Save chosen colors to a personal palette so painting stays decisive."
+          }
+        ],
+        "features": [
+          "color_picker_palette"
+        ],
+        "shot": "色轮slider真实panel。保存wine-redpalette swatch。"
+      },
+      {
+        "at": 12,
+        "zh": "取色从画布寻找已经用过的颜色，也能提取一组互相联系的主要色。色卡支持几种常见交换格式，输出前留意名称是否保留。",
+        "en": "Pick colors already used on the canvas, or extract a related set of dominant hues. Palettes support common exchange formats; check whether names survive export.",
+        "pairs": [
+          {
+            "zh": "取色从画布寻找已经用过的颜色，也能提取一组互相联系的主要色。",
+            "en": "Pick colors already used on the canvas, or extract a related set of dominant hues."
+          },
+          {
+            "zh": "色卡支持几种常见交换格式，输出前留意名称是否保留。",
+            "en": "Palettes support common exchange formats; check whether names survive export."
+          }
+        ],
+        "features": [
+          "color_picker_palette",
+          "palette_formats"
+        ],
+        "shot": "画布pick。extractpalette以及ASE/GPL/PAL菜单。"
+      },
+      {
+        "at": 24,
+        "zh": "渐变从两个颜色端点开始，线性与径向能建立不同的空间方向。填充用于铺区域色，渐变反转前先看预览，再决定是否确认。",
+        "en": "Gradients start with two color endpoints; linear and radial shapes suggest different space. Fill lays regional color. Preview a gradient's reversal before committing.",
+        "pairs": [
+          {
+            "zh": "渐变从两个颜色端点开始，线性与径向能建立不同的空间方向。",
+            "en": "Gradients start with two color endpoints; linear and radial shapes suggest different space."
+          },
+          {
+            "zh": "填充用于铺区域色，渐变反转前先看预览，再决定是否确认。",
+            "en": "Fill lays regional color. Preview a gradient's reversal before committing."
+          }
+        ],
+        "features": [
+          "gradient_fill"
+        ],
+        "shot": "线性渐变拖拽。反转。径向渐变小演示。"
+      },
+      {
+        "at": 36,
+        "zh": "选区先把需要修改的范围说清楚，自由套索尤其适合不规则形状。矩形和椭圆更规则，魔棒则按颜色寻找相近区域。",
+        "en": "A selection defines the editing area; a freehand lasso suits irregular shapes. Rectangles and ellipses are regular; the wand finds areas by color.",
+        "pairs": [
+          {
+            "zh": "选区先把需要修改的范围说清楚，自由套索尤其适合不规则形状。",
+            "en": "A selection defines the editing area; a freehand lasso suits irregular shapes."
+          },
+          {
+            "zh": "矩形和椭圆更规则，魔棒则按颜色寻找相近区域。",
+            "en": "Rectangles and ellipses are regular; the wand finds areas by color."
+          }
+        ],
+        "features": [
+          "selection_shapes",
+          "selection_refine"
+        ],
+        "shot": "矩形/椭圆/Lasso/Wand以及add/subtract比对。"
+      },
+      {
+        "at": 48,
+        "zh": "选区可以叠加或相减，反选和边缘调整也能把修改范围整理准确。复制和剪切把局部带到新图层，让修改更容易回头。",
+        "en": "Add or subtract selections, invert them, and refine edges to define the edit accurately. Copy and cut move a region into a new layer, making revisions easier.",
+        "pairs": [
+          {
+            "zh": "选区可以叠加或相减，反选和边缘调整也能把修改范围整理准确。",
+            "en": "Add or subtract selections, invert them, and refine edges to define the edit accurately."
+          },
+          {
+            "zh": "复制和剪切把局部带到新图层，让修改更容易回头。",
+            "en": "Copy and cut move a region into a new layer, making revisions easier."
+          }
+        ],
+        "features": [
+          "selection_refine",
+          "clipboard"
+        ],
+        "shot": "选区羽化与复制粘贴成layer。"
+      },
+      {
+        "at": 60,
+        "zh": "像素作品可以进入索引颜色模式，把整幅作品约束在同一张色卡内。它有自己的工具限制，选择之前先想清楚作品需要什么。",
+        "en": "An indexed-color document keeps the whole pixel artwork within one palette. It has its own tool limits; choose it to suit the artwork.",
+        "pairs": [
+          {
+            "zh": "像素作品可以进入索引颜色模式，把整幅作品约束在同一张色卡内。",
+            "en": "An indexed-color document keeps the whole pixel artwork within one palette."
+          },
+          {
+            "zh": "它有自己的工具限制，选择之前先想清楚作品需要什么。",
+            "en": "It has its own tool limits; choose it to suit the artwork."
+          }
+        ],
+        "features": [
+          "indexed",
+          "gradient_fill"
+        ],
+        "shot": "IndexedPalette caption和unsupported controls disabled截图。"
+      }
+    ]
+  },
+  {
+    "id": "layer",
+    "title_zh": "分层与调整",
+    "title_en": "Layers that stay editable",
+    "seconds": 60,
+    "segments": [
+      {
+        "at": 0,
+        "zh": "背景与花朵先放进不同图层，把名字写清楚，再逐步加入局部细节。拖动缩略图调整顺序，用图层组整理较复杂的作品。",
+        "en": "Separate the background and flowers into named layers, then gradually add local detail. Reorder thumbnails and use groups to organize a more complex piece.",
+        "pairs": [
+          {
+            "zh": "背景与花朵先放进不同图层，把名字写清楚，再逐步加入局部细节。",
+            "en": "Separate the background and flowers into named layers, then gradually add local detail."
+          },
+          {
+            "zh": "拖动缩略图调整顺序，用图层组整理较复杂的作品。",
+            "en": "Reorder thumbnails and use groups to organize a more complex piece."
+          }
+        ],
+        "features": [
+          "layer_basic",
+          "layer_groups"
+        ],
+        "shot": "新layer重命名排序group。"
+      },
+      {
+        "at": 12,
+        "zh": "图层的不透明度和八种混合模式，都能先在原画布上预览和比较。透明度锁定适合改已有色块，内容锁定则保护整层。",
+        "en": "Preview and compare layer opacity and eight blending modes on the original canvas. Alpha lock recolors existing shapes; content lock protects the layer.",
+        "pairs": [
+          {
+            "zh": "图层的不透明度和八种混合模式，都能先在原画布上预览和比较。",
+            "en": "Preview and compare layer opacity and eight blending modes on the original canvas."
+          },
+          {
+            "zh": "透明度锁定适合改已有色块，内容锁定则保护整层。",
+            "en": "Alpha lock recolors existing shapes; content lock protects the layer."
+          }
+        ],
+        "features": [
+          "layer_blend",
+          "layer_lock_clip"
+        ],
+        "shot": "Opacity/blendpreview compare，alpha lock开关。"
+      },
+      {
+        "at": 24,
+        "zh": "蒙版用黑白控制图层显示范围，让遮挡和恢复都保留原来的画面。剪贴图层把新颜色限制在底层，花瓣边缘就更容易保持。",
+        "en": "Masks control layer visibility in black and white, preserving the original artwork. Clipping confines new color to a base layer and helps preserve petal edges.",
+        "pairs": [
+          {
+            "zh": "蒙版用黑白控制图层显示范围，让遮挡和恢复都保留原来的画面。",
+            "en": "Masks control layer visibility in black and white, preserving the original artwork."
+          },
+          {
+            "zh": "剪贴图层把新颜色限制在底层，花瓣边缘就更容易保持。",
+            "en": "Clipping confines new color to a base layer and helps preserve petal edges."
+          }
+        ],
+        "features": [
+          "layer_masks",
+          "layer_lock_clip"
+        ],
+        "shot": "white/selectionmask绘制及clippinglayer。"
+      },
+      {
+        "at": 36,
+        "zh": "变换先预览图层的位置和尺寸，满意以后再提交为一笔完整编辑。曲线和渐变映射也能用于调整图层，继续保留修改空间。",
+        "en": "Preview a layer's position and size, then commit the transform as one complete edit. Curves and gradient maps can be adjustment layers, leaving room to revise.",
+        "pairs": [
+          {
+            "zh": "变换先预览图层的位置和尺寸，满意以后再提交为一笔完整编辑。",
+            "en": "Preview a layer's position and size, then commit the transform as one complete edit."
+          },
+          {
+            "zh": "曲线和渐变映射也能用于调整图层，继续保留修改空间。",
+            "en": "Curves and gradient maps can be adjustment layers, leaving room to revise."
+          }
+        ],
+        "features": [
+          "layer_transform",
+          "adjustments",
+          "adjustment_layers"
+        ],
+        "shot": "transformpreview，以及曲线/gradientmapadjustmentlayer。"
+      },
+      {
+        "at": 48,
+        "zh": "基础矢量能编辑节点，透视助手和漫画线都可预览。复杂层导出前，先检查哪些效果需要烘焙。",
+        "en": "Basic vectors offer node editing; perspective assistants and comic lines can be previewed. Before exporting complex layers, check which effects need baking.",
+        "pairs": [
+          {
+            "zh": "基础矢量能编辑节点，透视助手和漫画线都可预览。",
+            "en": "Basic vectors offer node editing; perspective assistants and comic lines can be previewed."
+          },
+          {
+            "zh": "复杂层导出前，先检查哪些效果需要烘焙。",
+            "en": "Before exporting complex layers, check which effects need baking."
+          }
+        ],
+        "features": [
+          "vector",
+          "assistants_lines",
+          "formats_layers"
+        ],
+        "shot": "basicvectorellipse与perspectiveguide，exportbakeUI。"
+      }
+    ]
+  },
+  {
+    "id": "animation",
+    "title_zh": "让画面动起来",
+    "title_en": "Frame by frame",
+    "seconds": 60,
+    "segments": [
+      {
+        "at": 0,
+        "zh": "逐帧动画从打开时间轴开始，原画布仍然保留你熟悉的绘画方式。先加几帧简单变化，观察轮廓怎样从上一帧走到下一帧。",
+        "en": "Open the timeline to begin frame animation while keeping the familiar painting canvas. Add a few simple changes and watch a form move from one frame to the next.",
+        "pairs": [
+          {
+            "zh": "逐帧动画从打开时间轴开始，原画布仍然保留你熟悉的绘画方式。",
+            "en": "Open the timeline to begin frame animation while keeping the familiar painting canvas."
+          },
+          {
+            "zh": "先加几帧简单变化，观察轮廓怎样从上一帧走到下一帧。",
+            "en": "Add a few simple changes and watch a form move from one frame to the next."
+          }
+        ],
+        "features": [
+          "animation_frames",
+          "animation_timeline"
+        ],
+        "shot": "打开Animationtimeline一次初始化。"
+      },
+      {
+        "at": 12,
+        "zh": "先复制一帧再画变化，适合保留已经建立好的轮廓和基础色块。洋葱皮让前后位置更容易比较，但不会成为输出画面。",
+        "en": "Duplicate a frame before changing it to preserve the established outline and color masses. Onion skin helps compare neighboring positions without appearing in the output.",
+        "pairs": [
+          {
+            "zh": "先复制一帧再画变化，适合保留已经建立好的轮廓和基础色块。",
+            "en": "Duplicate a frame before changing it to preserve the established outline and color masses."
+          },
+          {
+            "zh": "洋葱皮让前后位置更容易比较，但不会成为输出画面。",
+            "en": "Onion skin helps compare neighboring positions without appearing in the output."
+          }
+        ],
+        "features": [
+          "animation_frames",
+          "animation_playback"
+        ],
+        "shot": "复制帧洋葱皮真实thumbnail。"
+      },
+      {
+        "at": 24,
+        "zh": "时间轴的图层轨道对应画面结构，关键帧指出哪里出现新的内容。连续单元可以共享画面，拖动标尺就能查看更长的片段。",
+        "en": "Timeline layer tracks reflect the artwork's structure; keyframes mark new content. Held cells can share artwork; drag the ruler to browse a longer sequence.",
+        "pairs": [
+          {
+            "zh": "时间轴的图层轨道对应画面结构，关键帧指出哪里出现新的内容。",
+            "en": "Timeline layer tracks reflect the artwork's structure; keyframes mark new content."
+          },
+          {
+            "zh": "连续单元可以共享画面，拖动标尺就能查看更长的片段。",
+            "en": "Held cells can share artwork; drag the ruler to browse a longer sequence."
+          }
+        ],
+        "features": [
+          "animation_timeline",
+          "animation_frames"
+        ],
+        "shot": "标尺拖动view，轨道关键帧holdcells。"
+      },
+      {
+        "at": 36,
+        "zh": "每一帧的时长决定动作节奏，先在实际播放里检查轻重和停顿。范围和播放方向可以调整，小动画也值得把节奏做清楚。",
+        "en": "Each frame's duration shapes the rhythm; check its emphasis and pauses in actual playback. Adjust the range and direction; even a small animation benefits from clear timing.",
+        "pairs": [
+          {
+            "zh": "每一帧的时长决定动作节奏，先在实际播放里检查轻重和停顿。",
+            "en": "Each frame's duration shapes the rhythm; check its emphasis and pauses in actual playback."
+          },
+          {
+            "zh": "范围和播放方向可以调整，小动画也值得把节奏做清楚。",
+            "en": "Adjust the range and direction; even a small animation benefits from clear timing."
+          }
+        ],
+        "features": [
+          "animation_playback",
+          "animation_frames"
+        ],
+        "shot": "durationdialog forward/pingpong。"
+      },
+      {
+        "at": 48,
+        "zh": "完成之后导出动图或图片图集，按照展示与使用方式选择输出。动图有颜色和透明度限制，格式交换也不是所有功能都通用。",
+        "en": "Export a GIF or image atlas according to how the sequence will be shown and used. GIF has color and alpha limits, and interchange formats do not preserve every feature.",
+        "pairs": [
+          {
+            "zh": "完成之后导出动图或图片图集，按照展示与使用方式选择输出。",
+            "en": "Export a GIF or image atlas according to how the sequence will be shown and used."
+          },
+          {
+            "zh": "动图有颜色和透明度限制，格式交换也不是所有功能都通用。",
+            "en": "GIF has color and alpha limits, and interchange formats do not preserve every feature."
+          }
+        ],
+        "features": [
+          "animation_export",
+          "aseprite"
+        ],
+        "shot": "GIF/spritesheetoptions真实dialog，Aseprite capability提示。"
+      }
+    ]
+  },
+  {
+    "id": "impasto",
+    "title_zh": "花束厚涂练习",
+    "title_en": "A rose study in broad marks",
+    "seconds": 110,
+    "segments": [
+      {
+        "at": 0,
+        "zh": "这是一段基于参考取色的加速笔触练习。图像没有导入为作品，五个阶段由原生笔刷重新铺出。",
+        "en": "This is an accelerated brush study, with colors sampled from the reference. The reference is not imported as artwork; native brush marks build five stages.",
+        "pairs": [
+          {
+            "zh": "这是一段基于参考取色的加速笔触练习。",
+            "en": "This is an accelerated brush study, with colors sampled from the reference."
+          },
+          {
+            "zh": "图像没有导入为作品，五个阶段由原生笔刷重新铺出。",
+            "en": "The reference is not imported as artwork; native brush marks build five stages."
+          }
+        ],
+        "features": [
+          "references",
+          "view_canvas"
+        ],
+        "shot": "Reference-sampled accelerated native brush study: five real Oily/DryFlat stages; generated reference shown separately."
+      },
+      {
+        "at": 12,
+        "zh": "第一阶段用大号油画笔建立宽阔色块。先分开背景和花束，让黑色包装承托红色花团。",
+        "en": "Stage one lays in broad masses with a large Oils preset. Separate bouquet and background, using black wrapping to support the red blooms.",
+        "pairs": [
+          {
+            "zh": "第一阶段用大号油画笔建立宽阔色块。",
+            "en": "Stage one lays in broad masses with a large Oils preset."
+          },
+          {
+            "zh": "先分开背景和花束，让黑色包装承托红色花团。",
+            "en": "Separate bouquet and background, using black wrapping to support the red blooms."
+          }
+        ],
+        "features": [
+          "brush_presets",
+          "color_picker_palette",
+          "brush_parameters"
+        ],
+        "shot": "Reference-sampled accelerated native brush study: five real Oily/DryFlat stages; generated reference shown separately."
+      },
+      {
+        "at": 24,
+        "zh": "第二阶段重新建立主要暗部和受光面。先看大面积的明暗关系，不急着描画每一片花瓣。",
+        "en": "Stage two establishes the main shadows and lit planes. Read the large value relationships before describing individual petals.",
+        "pairs": [
+          {
+            "zh": "第二阶段重新建立主要暗部和受光面。",
+            "en": "Stage two establishes the main shadows and lit planes."
+          },
+          {
+            "zh": "先看大面积的明暗关系，不急着描画每一片花瓣。",
+            "en": "Read the large value relationships before describing individual petals."
+          }
+        ],
+        "features": [
+          "brush_texture",
+          "color_picker_palette"
+        ],
+        "shot": "Reference-sampled accelerated native brush study: five real Oily/DryFlat stages; generated reference shown separately."
+      },
+      {
+        "at": 36,
+        "zh": "观察冷红与暖红的交替，让花团形成前后层次。这段取色练习展示笔触的累积，不是原速手工录像。",
+        "en": "Observe alternating cool and warm reds to separate the flower masses. This sampled-color study shows marks accumulating, not real-time manual footage.",
+        "pairs": [
+          {
+            "zh": "观察冷红与暖红的交替，让花团形成前后层次。",
+            "en": "Observe alternating cool and warm reds to separate the flower masses."
+          },
+          {
+            "zh": "这段取色练习展示笔触的累积，不是原速手工录像。",
+            "en": "This sampled-color study shows marks accumulating, not real-time manual footage."
+          }
+        ],
+        "features": [
+          "brush_texture"
+        ],
+        "shot": "Reference-sampled accelerated native brush study: five real Oily/DryFlat stages; generated reference shown separately."
+      },
+      {
+        "at": 48,
+        "zh": "第三阶段缩小笔触，逐步找回叶片和包装的转折。油画笔与干平刷留下不同边缘，帮助区分形体。",
+        "en": "Stage three uses smaller marks to recover turns in foliage and wrapping. Oil and Dry brush brushes leave different edges to distinguish the forms.",
+        "pairs": [
+          {
+            "zh": "第三阶段缩小笔触，逐步找回叶片和包装的转折。",
+            "en": "Stage three uses smaller marks to recover turns in foliage and wrapping."
+          },
+          {
+            "zh": "油画笔与干平刷留下不同边缘，帮助区分形体。",
+            "en": "Oil and Dry brush brushes leave different edges to distinguish the forms."
+          }
+        ],
+        "features": [
+          "brush_texture",
+          "brush_parameters"
+        ],
+        "shot": "Reference-sampled accelerated native brush study: five real Oily/DryFlat stages; generated reference shown separately."
+      },
+      {
+        "at": 60,
+        "zh": "厚涂感来自色块的安排，以及有方向的笔触。这里没有模拟三维颜料，重点是明暗和边缘的控制。",
+        "en": "The impasto impression comes from arranged masses and directional marks. This is not a three-dimensional paint simulation; values and edges do the work.",
+        "pairs": [
+          {
+            "zh": "厚涂感来自色块的安排，以及有方向的笔触。",
+            "en": "The impasto impression comes from arranged masses and directional marks."
+          },
+          {
+            "zh": "这里没有模拟三维颜料，重点是明暗和边缘的控制。",
+            "en": "This is not a three-dimensional paint simulation; values and edges do the work."
+          }
+        ],
+        "features": [
+          "brush_texture",
+          "color_picker_palette"
+        ],
+        "shot": "Reference-sampled accelerated native brush study: five real Oily/DryFlat stages; generated reference shown separately."
+      },
+      {
+        "at": 72,
+        "zh": "第四阶段继续细化花瓣，把细节留给主要花朵。暗部保持简洁，少量明确的亮面就能塑造花瓣。",
+        "en": "Stage four refines petals, reserving detail for the main roses. Keep shadows simple; a few clear lit planes can describe the petals.",
+        "pairs": [
+          {
+            "zh": "第四阶段继续细化花瓣，把细节留给主要花朵。",
+            "en": "Stage four refines petals, reserving detail for the main roses."
+          },
+          {
+            "zh": "暗部保持简洁，少量明确的亮面就能塑造花瓣。",
+            "en": "Keep shadows simple; a few clear lit planes can describe the petals."
+          }
+        ],
+        "features": [
+          "brush_texture"
+        ],
+        "shot": "Reference-sampled accelerated native brush study: five real Oily/DryFlat stages; generated reference shown separately."
+      },
+      {
+        "at": 84,
+        "zh": "先把这一阶段与前面的铺色比较，再决定细化多少。有些边缘保持模糊，画面才会留下安静的空间。",
+        "en": "Compare this stage with the block-in before deciding how much to resolve. Leave some edges unresolved so the painting retains quiet passages.",
+        "pairs": [
+          {
+            "zh": "先把这一阶段与前面的铺色比较，再决定细化多少。",
+            "en": "Compare this stage with the block-in before deciding how much to resolve."
+          },
+          {
+            "zh": "有些边缘保持模糊，画面才会留下安静的空间。",
+            "en": "Leave some edges unresolved so the painting retains quiet passages."
+          }
+        ],
+        "features": [
+          "brush_texture"
+        ],
+        "shot": "Reference-sampled accelerated native brush study: five real Oily/DryFlat stages; generated reference shown separately."
+      },
+      {
+        "at": 96,
+        "zh": "最后阶段补充浅色小花与高光，再检查整体层次。练习画布由真实笔触组成，与生成参考分开展示。",
+        "en": "The last stage adds pale flowers and highlights, then checks the overall hierarchy. The study canvas consists of real brush marks and is shown separately from the reference.",
+        "pairs": [
+          {
+            "zh": "最后阶段补充浅色小花与高光，再检查整体层次。",
+            "en": "The last stage adds pale flowers and highlights, then checks the overall hierarchy."
+          },
+          {
+            "zh": "练习画布由真实笔触组成，与生成参考分开展示。",
+            "en": "The study canvas consists of real brush marks and is shown separately from the reference."
+          }
+        ],
+        "features": [
+          "project_history",
+          "formats_raster",
+          "references"
+        ],
+        "shot": "Reference-sampled accelerated native brush study: five real Oily/DryFlat stages; generated reference shown separately."
+      }
+    ]
+  },
+  {
+    "id": "code",
+    "title_zh": "真实源码中的职责",
+    "title_en": "Inside the actual source",
+    "seconds": 100,
+    "segments": [
+      {
+        "at": 0,
+        "zh": "下面这些都是项目真实源码摘录，用来解释画面背后的分工。用浅色编辑器式排版帮助阅读，让关键代码和职责能逐行对应。",
+        "en": "These are actual project-source excerpts explaining the work behind the interface. A light editor-style layout makes the key code and responsibilities easier to read.",
+        "pairs": [
+          {
+            "zh": "下面这些都是项目真实源码摘录，用来解释画面背后的分工。",
+            "en": "These are actual project-source excerpts explaining the work behind the interface."
+          },
+          {
+            "zh": "用浅色编辑器式排版帮助阅读，让关键代码和职责能逐行对应。",
+            "en": "A light editor-style layout makes the key code and responsibilities easier to read."
+          }
+        ],
+        "features": [
+          "architecture",
+          "startup_direct"
+        ],
+        "shot": "Source excerpt。PodorApp真实22-40，浅色IDEA式非IDE录屏。"
+      },
+      {
+        "at": 12,
+        "zh": "Compose Multiplatform 是 Kotlin 声明式界面框架。状态决定界面，按钮接收输入，像素交给 Rust 引擎。",
+        "en": "Compose Multiplatform is a declarative UI framework for Kotlin. State defines the UI, buttons receive input, and the Rust engine handles pixels.",
+        "pairs": [
+          {
+            "zh": "Compose Multiplatform 是 Kotlin 声明式界面框架。",
+            "en": "Compose Multiplatform is a declarative UI framework for Kotlin."
+          },
+          {
+            "zh": "状态决定界面，按钮接收输入，像素交给 Rust 引擎。",
+            "en": "State defines the UI, buttons receive input, and the Rust engine handles pixels."
+          }
+        ],
+        "features": [
+          "architecture",
+          "workspace_ui"
+        ],
+        "shot": "Kotlin PodorApp Compose layout真实excerpt，captionKotlin + Compose。"
+      },
+      {
+        "at": 25,
+        "zh": "笔形指针这一段从资源读取开始，大小来自界面的基础密度。它连接系统指针服务，画布上的作品不需要为鼠标再加一圈。",
+        "en": "The pen pointer loads an image resource and sizes it from the base display density. It connects to the system pointer service without adding a ring to the artwork.",
+        "pairs": [
+          {
+            "zh": "笔形指针这一段从资源读取开始，大小来自界面的基础密度。",
+            "en": "The pen pointer loads an image resource and sizes it from the base display density."
+          },
+          {
+            "zh": "它连接系统指针服务，画布上的作品不需要为鼠标再加一圈。",
+            "en": "It connects to the system pointer service without adding a ring to the artwork."
+          }
+        ],
+        "features": [
+          "brand_pointer",
+          "architecture"
+        ],
+        "shot": "PlatformCanvasPointer19-32 source实际resource/produceState。"
+      },
+      {
+        "at": 37,
+        "zh": "画布输入先进入协调层，笔和触摸都要遵守同一套编辑边界。输入队列是有界的，后台任务再把结果带回显示层。",
+        "en": "Canvas input enters the coordination layer, with pen and touch sharing editing boundaries. The input queue is bounded, and background work returns results to the display layer.",
+        "pairs": [
+          {
+            "zh": "画布输入先进入协调层，笔和触摸都要遵守同一套编辑边界。",
+            "en": "Canvas input enters the coordination layer, with pen and touch sharing editing boundaries."
+          },
+          {
+            "zh": "输入队列是有界的，后台任务再把结果带回显示层。",
+            "en": "The input queue is bounded, and background work returns results to the display layer."
+          }
+        ],
+        "features": [
+          "architecture",
+          "native_pen_touch"
+        ],
+        "shot": "CanvasWorkspace164-180及controller输入队列实际excerpt。"
+      },
+      {
+        "at": 50,
+        "zh": "Rust 引擎处理笔触和像素，也负责闭合填色等实际绘画操作。这不是一段播放好的效果动画，画布结果来自真实引擎。",
+        "en": "The Rust engine processes strokes and pixels, including closed-shape fills. These canvas results come from the real engine, not a prerecorded effect animation.",
+        "pairs": [
+          {
+            "zh": "Rust 引擎处理笔触和像素，也负责闭合填色等实际绘画操作。",
+            "en": "The Rust engine processes strokes and pixels, including closed-shape fills."
+          },
+          {
+            "zh": "这不是一段播放好的效果动画，画布结果来自真实引擎。",
+            "en": "These canvas results come from the real engine, not a prerecorded effect animation."
+          }
+        ],
+        "features": [
+          "architecture",
+          "brush_parameters",
+          "lasso_fill"
+        ],
+        "shot": "engine/lib.rs真实sample逻辑与lasso_fillprepareexcerpt。"
+      },
+      {
+        "at": 62,
+        "zh": "画布按像素块组织，发生修改的区域才需要更新到界面。未改像素共享能减少重复复制，也为每一次撤销保留原来内容。",
+        "en": "The canvas is organized into tiles, so changed areas can be sent to the interface. Shared unchanged pixels avoid repeated copying and retain earlier content for every undo.",
+        "pairs": [
+          {
+            "zh": "画布按像素块组织，发生修改的区域才需要更新到界面。",
+            "en": "The canvas is organized into tiles, so changed areas can be sent to the interface."
+          },
+          {
+            "zh": "未改像素共享能减少重复复制，也为每一次撤销保留原来内容。",
+            "en": "Shared unchanged pixels avoid repeated copying and retain earlier content for every undo."
+          }
+        ],
+        "features": [
+          "architecture",
+          "project_history"
+        ],
+        "shot": "engine/model.rs Tile128及Arc<Vec>源码。"
+      },
+      {
+        "at": 75,
+        "zh": "历史和工程文件同样属于引擎职责，界面主要协调用户的操作。Rust 在后台处理这些工作，不能把它们都称作显卡计算。",
+        "en": "History and project files also belong to the engine; the UI coordinates user actions. Rust handles that work in the background; it is not all GPU computation.",
+        "pairs": [
+          {
+            "zh": "历史和工程文件同样属于引擎职责，界面主要协调用户的操作。",
+            "en": "History and project files also belong to the engine; the UI coordinates user actions."
+          },
+          {
+            "zh": "Rust 在后台处理这些工作，不能把它们都称作显卡计算。",
+            "en": "Rust handles that work in the background; it is not all GPU computation."
+          }
+        ],
+        "features": [
+          "project_history",
+          "architecture"
+        ],
+        "shot": "history.rs17-35及storage.save真实sourceexcerpt。"
+      },
+      {
+        "at": 87,
+        "zh": "基础矢量和绘画助手也沿着这条路径，把参数变成可预览的结果。把状态与像素职责分清楚，修改就更容易预览和确认。",
+        "en": "Basic vectors and drawing assistants use the same path from parameters to previews. Separating state from pixel work makes edits easier to preview and commit.",
+        "pairs": [
+          {
+            "zh": "基础矢量和绘画助手也沿着这条路径，把参数变成可预览的结果。",
+            "en": "Basic vectors and drawing assistants use the same path from parameters to previews."
+          },
+          {
+            "zh": "把状态与像素职责分清楚，修改就更容易预览和确认。",
+            "en": "Separating state from pixel work makes edits easier to preview and commit."
+          }
+        ],
+        "features": [
+          "vector",
+          "assistants_lines",
+          "adjustments"
+        ],
+        "shot": "实际vector/line_generator/adjustmentsourceoverview卡三tabs。"
+      }
+    ]
+  },
+  {
+    "id": "platform",
+    "title_zh": "输出与署名",
+    "title_en": "Formats and credits",
+    "seconds": 40,
+    "segments": [
+      {
+        "at": 0,
+        "zh": "桌面与移动平台都有独立构建入口。下载文件以发行页为准，设备和驱动仍需实机验证。",
+        "en": "Desktop and mobile platforms have dedicated build targets. Check the release page for downloads; devices and drivers still need validation.",
+        "pairs": [
+          {
+            "zh": "桌面与移动平台都有独立构建入口。",
+            "en": "Desktop and mobile platforms have dedicated build targets."
+          },
+          {
+            "zh": "下载文件以发行页为准，设备和驱动仍需实机验证。",
+            "en": "Check the release page for downloads; devices and drivers still need validation."
+          }
+        ],
+        "features": [
+          "platforms",
+          "native_pen_touch"
+        ],
+        "shot": "真实构建目标文字说明。发行页指向实际产物，不宣称设备验收。"
+      },
+      {
+        "at": 10,
+        "zh": "工程留给继续编辑，图片用于分享。分层效果和文件交换，请先检查各格式的支持范围。",
+        "en": "Keep a project for editing and an image for sharing. For layered effects and file exchange, check each format’s supported scope first.",
+        "pairs": [
+          {
+            "zh": "工程留给继续编辑，图片用于分享。",
+            "en": "Keep a project for editing and an image for sharing."
+          },
+          {
+            "zh": "分层效果和文件交换，请先检查各格式的支持范围。",
+            "en": "For layered effects and file exchange, check each format’s supported scope first."
+          }
+        ],
+        "features": [
+          "formats_raster",
+          "formats_layers",
+          "indexed",
+          "aseprite"
+        ],
+        "shot": "Export真实menuPNG等列出scoped烘焙提示。"
+      },
+      {
+        "at": 20,
+        "zh": "代码采用 MIT 许可，字体和图标保留各自署名。参考图为生成素材。",
+        "en": "The code uses MIT; fonts and icons retain their respective attributions. The reference is generated artwork.",
+        "pairs": [
+          {
+            "zh": "代码采用 MIT 许可，字体和图标保留各自署名。",
+            "en": "The code uses MIT; fonts and icons retain their respective attributions."
+          },
+          {
+            "zh": "参考图为生成素材。",
+            "en": "The reference is generated artwork."
+          }
+        ],
+        "features": [
+          "license_credits"
+        ],
+        "shot": "MIT+fontsOFL+MorphiconsMIT，真实credit用全部署名。"
+      },
+      {
+        "at": 30,
+        "zh": "从一块颜色开始，逐步建立形体和笔触。保存工程，为明天继续修改留下空间。",
+        "en": "Start with a color mass and gradually build form and marks. Save the project and leave room to continue tomorrow.",
+        "pairs": [
+          {
+            "zh": "从一块颜色开始，逐步建立形体和笔触。",
+            "en": "Start with a color mass and gradually build form and marks."
+          },
+          {
+            "zh": "保存工程，为明天继续修改留下空间。",
+            "en": "Save the project and leave room to continue tomorrow."
+          }
+        ],
+        "features": [
+          "license_credits",
+          "project_history"
+        ],
+        "shot": "实际Native练习画布收尾。新icon。creditsfull可读。"
+      }
+    ]
+  }
+]

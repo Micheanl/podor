@@ -1,0 +1,72 @@
+[
+  {
+    "text": "这一片只展示浅色英文界面，让画布和正在进行的笔触留在中心。",
+    "startMs": 25000,
+    "endMs": 30880,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "侧栏平时保持收起，需要完整设置时再打开。",
+    "startMs": 31060,
+    "endMs": 36480,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "工具栏可以放在四边，常用工具的顺序也能按习惯重新安排。",
+    "startMs": 36700,
+    "endMs": 43320,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "把动作放到顺手的位置，画画时就少一些来回寻找。",
+    "startMs": 43500,
+    "endMs": 50040,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "换一个工具，画布下方的胶囊就换成它此刻最需要的快捷参数。",
+    "startMs": 50267,
+    "endMs": 56827,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "大小和透明度就近调整，完整侧栏仍然保留。",
+    "startMs": 57007,
+    "endMs": 61927,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "鼠标现在是一支系统笔形指针，笔尖就是画布上准确的落笔位置。",
+    "startMs": 62133,
+    "endMs": 68553,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "缩放和旋转只是改变观看方式，不会改动作品像素。",
+    "startMs": 68733,
+    "endMs": 73913,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "启动按偏好直接进入作品首页，或者进入准备好的空白绘画画布。",
+    "startMs": 74133,
+    "endMs": 80953,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "这里能查找和排序作品，深色主题同样可以在设置中选择。",
+    "startMs": 81133,
+    "endMs": 88013,
+    "timestampMs": null,
+    "confidence": null
+  }
+]

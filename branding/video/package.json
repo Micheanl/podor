@@ -1,0 +1,41 @@
+{
+  "name": "podor-film",
+  "version": "1.0.0",
+  "description": "Podor product film",
+  "repository": {},
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "@remotion/captions": "4.0.529",
+    "@remotion/cli": "4.0.529",
+    "@remotion/fonts": "4.0.529",
+    "@remotion/media": "4.0.529",
+    "@remotion/transitions": "4.0.529",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.529"
+  },
+  "devDependencies": {
+    "@remotion/eslint-config-flat": "4.0.529",
+    "@types/react": "19.2.7",
+    "@types/web": "0.0.166",
+    "eslint": "9.19.0",
+    "prettier": "3.8.1",
+    "typescript": "5.9.3"
+  },
+  "scripts": {
+    "dev": "remotion studio --no-open",
+    "build": "remotion bundle",
+    "upgrade": "remotion upgrade",
+    "lint": "eslint src && tsc",
+    "voice": "python scripts/voice.py",
+    "captions": "python scripts/captions.py",
+    "test:voice": "python scripts/test_voice.py",
+    "validate": "node scripts/validate.mjs",
+    "render": "node scripts/validate.mjs --final && remotion render Podor040 out/v040/podor-0.4.0-tour-zh-render.mp4 --codec=h264 --crf=18 --concurrency=4 && node scripts/finalize.mjs out/v040/podor-0.4.0-tour-zh-render.mp4 out/v040/podor-0.4.0-tour-zh.mp4 600 out/v040/podor-040-music.wav && node scripts/validate.mjs out/v040/podor-0.4.0-tour-zh.mp4"
+  },
+  "sideEffects": [
+    "*.css",
+    "./src/fonts.ts"
+  ]
+}

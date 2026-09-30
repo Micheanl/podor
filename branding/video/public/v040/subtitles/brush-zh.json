@@ -1,0 +1,86 @@
+[
+  {
+    "text": "内置笔刷现在有二十四个预设，初次绘画仍从默认墨水笔开始。",
+    "startMs": 88133,
+    "endMs": 94893,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "先试几种笔触，再把常用预设收藏起来。",
+    "startMs": 95073,
+    "endMs": 99153,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "中文柳叶笔是英文圈选填色工具，用闭合形状建立清楚的色块。",
+    "startMs": 100133,
+    "endMs": 105513,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "画一圈闭合轮廓，松手填色，适合花瓣和整块剪影。",
+    "startMs": 105693,
+    "endMs": 110713,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "叶形笔尖跟随整段笔画的方向，转弯时宽窄和姿态也一起改变。",
+    "startMs": 113133,
+    "endMs": 119053,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "它叫柳条笔，适合收锋和拉出叶片，别与圈选填色混淆。",
+    "startMs": 119233,
+    "endMs": 124913,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "同一支笔改变大小和硬度，就能从局部边缘描画转向大面积铺色。",
+    "startMs": 125133,
+    "endMs": 131533,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "再调间距和纸纹，看看笔触怎样与画布纹理相处。",
+    "startMs": 131713,
+    "endMs": 136833,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "压感分别影响大小和透明度，响应曲线也能按你的手感重新调整。",
+    "startMs": 138133,
+    "endMs": 144473,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "需要规则图案时打开对称，先看轴线位置再落笔。",
+    "startMs": 144653,
+    "endMs": 149813,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "涂抹把已有颜色沿短笔触推开，少量混色可以连接相邻的大色块。",
+    "startMs": 150067,
+    "endMs": 156527,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "像素笔另有清晰的像素模式，自定义笔刷也能保存和导入。",
+    "startMs": 156707,
+    "endMs": 163027,
+    "timestampMs": null,
+    "confidence": null
+  }
+]

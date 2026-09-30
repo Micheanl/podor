@@ -1,0 +1,702 @@
+[
+  {
+    "text": "先把一束玫瑰看成有分量的色块，再逐步建立光色和形体。",
+    "startMs": 0,
+    "endMs": 6100,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "今天用十分钟认识新工作台，也练习从剪影到花瓣的过程。",
+    "startMs": 6280,
+    "endMs": 11220,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "这里是新的绘画与图像编辑工作台，从简单形状开始一段练习。",
+    "startMs": 12000,
+    "endMs": 18500,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "花束是生成的观察参考，接下来的笔触演示来自真实绘画引擎。",
+    "startMs": 18680,
+    "endMs": 24820,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "这一片只展示浅色英文界面，让画布和正在进行的笔触留在中心。",
+    "startMs": 25000,
+    "endMs": 30880,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "侧栏平时保持收起，需要完整设置时再打开。",
+    "startMs": 31060,
+    "endMs": 36480,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "工具栏可以放在四边，常用工具的顺序也能按习惯重新安排。",
+    "startMs": 36700,
+    "endMs": 43320,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "把动作放到顺手的位置，画画时就少一些来回寻找。",
+    "startMs": 43500,
+    "endMs": 50040,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "换一个工具，画布下方的胶囊就换成它此刻最需要的快捷参数。",
+    "startMs": 50267,
+    "endMs": 56827,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "大小和透明度就近调整，完整侧栏仍然保留。",
+    "startMs": 57007,
+    "endMs": 61927,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "鼠标现在是一支系统笔形指针，笔尖就是画布上准确的落笔位置。",
+    "startMs": 62133,
+    "endMs": 68553,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "缩放和旋转只是改变观看方式，不会改动作品像素。",
+    "startMs": 68733,
+    "endMs": 73913,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "启动按偏好直接进入作品首页，或者进入准备好的空白绘画画布。",
+    "startMs": 74133,
+    "endMs": 80953,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "这里能查找和排序作品，深色主题同样可以在设置中选择。",
+    "startMs": 81133,
+    "endMs": 88013,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "内置笔刷现在有二十四个预设，初次绘画仍从默认墨水笔开始。",
+    "startMs": 88133,
+    "endMs": 94893,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "先试几种笔触，再把常用预设收藏起来。",
+    "startMs": 95073,
+    "endMs": 99153,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "中文柳叶笔是英文圈选填色工具，用闭合形状建立清楚的色块。",
+    "startMs": 100133,
+    "endMs": 105513,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "画一圈闭合轮廓，松手填色，适合花瓣和整块剪影。",
+    "startMs": 105693,
+    "endMs": 110713,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "叶形笔尖跟随整段笔画的方向，转弯时宽窄和姿态也一起改变。",
+    "startMs": 113133,
+    "endMs": 119053,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "它叫柳条笔，适合收锋和拉出叶片，别与圈选填色混淆。",
+    "startMs": 119233,
+    "endMs": 124913,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "同一支笔改变大小和硬度，就能从局部边缘描画转向大面积铺色。",
+    "startMs": 125133,
+    "endMs": 131533,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "再调间距和纸纹，看看笔触怎样与画布纹理相处。",
+    "startMs": 131713,
+    "endMs": 136833,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "压感分别影响大小和透明度，响应曲线也能按你的手感重新调整。",
+    "startMs": 138133,
+    "endMs": 144473,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "需要规则图案时打开对称，先看轴线位置再落笔。",
+    "startMs": 144653,
+    "endMs": 149813,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "涂抹把已有颜色沿短笔触推开，少量混色可以连接相邻的大色块。",
+    "startMs": 150067,
+    "endMs": 156527,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "像素笔另有清晰的像素模式，自定义笔刷也能保存和导入。",
+    "startMs": 156707,
+    "endMs": 163027,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "先把花束看成暗红与深绿的大块，再用色轮仔细寻找冷暖关系。",
+    "startMs": 163133,
+    "endMs": 169013,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "把选好的颜色存进个人色卡，回到画布时少一些犹豫。",
+    "startMs": 169193,
+    "endMs": 174613,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "取色从画布寻找已经用过的颜色，也能提取一组互相联系的主要色。",
+    "startMs": 174833,
+    "endMs": 181693,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "色卡支持几种常见交换格式，输出前留意名称是否保留。",
+    "startMs": 181873,
+    "endMs": 187193,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "渐变从两个颜色端点开始，线性与径向能建立不同的空间方向。",
+    "startMs": 187400,
+    "endMs": 194140,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "填充用于铺区域色，渐变反转前先看预览，再决定是否确认。",
+    "startMs": 194320,
+    "endMs": 201940,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "选区先把需要修改的范围说清楚，自由套索尤其适合不规则形状。",
+    "startMs": 202167,
+    "endMs": 208527,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "矩形和椭圆更规则，魔棒则按颜色寻找相近区域。",
+    "startMs": 208707,
+    "endMs": 213947,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "选区可以叠加或相减，反选和边缘调整也能把修改范围整理准确。",
+    "startMs": 214167,
+    "endMs": 220267,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "复制和剪切把局部带到新图层，让修改更容易回头。",
+    "startMs": 220447,
+    "endMs": 226207,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "像素作品可以进入索引颜色模式，把整幅作品约束在同一张色卡内。",
+    "startMs": 226433,
+    "endMs": 233233,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "它有自己的工具限制，选择之前先想清楚作品需要什么。",
+    "startMs": 233413,
+    "endMs": 238413,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "背景与花朵先放进不同图层，把名字写清楚，再逐步加入局部细节。",
+    "startMs": 238533,
+    "endMs": 244633,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "拖动缩略图调整顺序，用图层组整理较复杂的作品。",
+    "startMs": 244813,
+    "endMs": 252513,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "图层的不透明度和八种混合模式，都能先在原画布上预览和比较。",
+    "startMs": 252733,
+    "endMs": 259453,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "透明度锁定适合改已有色块，内容锁定则保护整层。",
+    "startMs": 259633,
+    "endMs": 264713,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "蒙版用黑白控制图层显示范围，让遮挡和恢复都保留原来的画面。",
+    "startMs": 264933,
+    "endMs": 271773,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "剪贴图层把新颜色限制在底层，花瓣边缘就更容易保持。",
+    "startMs": 271953,
+    "endMs": 277673,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "变换先预览图层的位置和尺寸，满意以后再提交为一笔完整编辑。",
+    "startMs": 277900,
+    "endMs": 283700,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "曲线和渐变映射也能用于调整图层，继续保留修改空间。",
+    "startMs": 283880,
+    "endMs": 289360,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "基础矢量能编辑节点，透视助手和漫画线都可预览。",
+    "startMs": 289567,
+    "endMs": 295247,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "复杂层导出前，先检查哪些效果需要烘焙。",
+    "startMs": 295427,
+    "endMs": 300367,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "逐帧动画从打开时间轴开始，原画布仍然保留你熟悉的绘画方式。",
+    "startMs": 300467,
+    "endMs": 306167,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "先加几帧简单变化，观察轮廓怎样从上一帧走到下一帧。",
+    "startMs": 306347,
+    "endMs": 311567,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "先复制一帧再画变化，适合保留已经建立好的轮廓和基础色块。",
+    "startMs": 311767,
+    "endMs": 317787,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "洋葱皮让前后位置更容易比较，但不会成为输出画面。",
+    "startMs": 317967,
+    "endMs": 324107,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "时间轴的图层轨道对应画面结构，关键帧指出哪里出现新的内容。",
+    "startMs": 324333,
+    "endMs": 331133,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "连续单元可以共享画面，拖动标尺就能查看更长的片段。",
+    "startMs": 331313,
+    "endMs": 336993,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "每一帧的时长决定动作节奏，先在实际播放里检查轻重和停顿。",
+    "startMs": 337200,
+    "endMs": 343520,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "范围和播放方向可以调整，小动画也值得把节奏做清楚。",
+    "startMs": 343700,
+    "endMs": 348700,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "完成之后导出动图或图片图集，按照展示与使用方式选择输出。",
+    "startMs": 348900,
+    "endMs": 355340,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "动图有颜色和透明度限制，格式交换也不是所有功能都通用。",
+    "startMs": 355520,
+    "endMs": 361380,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "这是一段基于参考取色的加速笔触练习。",
+    "startMs": 361500,
+    "endMs": 365480,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "图像没有导入为作品，五个阶段由原生笔刷重新铺出。",
+    "startMs": 365660,
+    "endMs": 371380,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "第一阶段用大号油画笔建立宽阔色块。",
+    "startMs": 372067,
+    "endMs": 375467,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "先分开背景和花束，让黑色包装承托红色花团。",
+    "startMs": 375647,
+    "endMs": 379827,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "第二阶段重新建立主要暗部和受光面。",
+    "startMs": 382633,
+    "endMs": 386473,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "先看大面积的明暗关系，不急着描画每一片花瓣。",
+    "startMs": 386653,
+    "endMs": 391293,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "观察冷红与暖红的交替，让花团形成前后层次。",
+    "startMs": 393200,
+    "endMs": 398520,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "这段取色练习展示笔触的累积，不是原速手工录像。",
+    "startMs": 398700,
+    "endMs": 403680,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "第三阶段缩小笔触，逐步找回叶片和包装的转折。",
+    "startMs": 403900,
+    "endMs": 408360,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "油画笔与干平刷留下不同边缘，帮助区分形体。",
+    "startMs": 408540,
+    "endMs": 413440,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "厚涂感来自色块的安排，以及有方向的笔触。",
+    "startMs": 414367,
+    "endMs": 418827,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "这里没有模拟三维颜料，重点是明暗和边缘的控制。",
+    "startMs": 419007,
+    "endMs": 425087,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "第四阶段继续细化花瓣，把细节留给主要花朵。",
+    "startMs": 425300,
+    "endMs": 429720,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "暗部保持简洁，少量明确的亮面就能塑造花瓣。",
+    "startMs": 429900,
+    "endMs": 434180,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "先把这一阶段与前面的铺色比较，再决定细化多少。",
+    "startMs": 435500,
+    "endMs": 440160,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "有些边缘保持模糊，画面才会留下安静的空间。",
+    "startMs": 440340,
+    "endMs": 445000,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "最后阶段补充浅色小花与高光，再检查整体层次。",
+    "startMs": 446067,
+    "endMs": 450687,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "练习画布由真实笔触组成，与生成参考分开展示。",
+    "startMs": 450867,
+    "endMs": 456327,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "下面这些都是项目真实源码摘录，用来解释画面背后的分工。",
+    "startMs": 458400,
+    "endMs": 464000,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "用浅色编辑器式排版帮助阅读，让关键代码和职责能逐行对应。",
+    "startMs": 464180,
+    "endMs": 470380,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Compose Multiplatform 是 Kotlin 声明式界面框架。",
+    "startMs": 470600,
+    "endMs": 476120,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "状态决定界面，按钮接收输入，像素交给 Rust 引擎。",
+    "startMs": 476300,
+    "endMs": 481460,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "笔形指针这一段从资源读取开始，大小来自界面的基础密度。",
+    "startMs": 481667,
+    "endMs": 487767,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "它连接系统指针服务，画布上的作品不需要为鼠标再加一圈。",
+    "startMs": 487947,
+    "endMs": 493587,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "画布输入先进入协调层，笔和触摸都要遵守同一套编辑边界。",
+    "startMs": 493800,
+    "endMs": 501640,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "输入队列是有界的，后台任务再把结果带回显示层。",
+    "startMs": 501820,
+    "endMs": 506720,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Rust 引擎处理笔触和像素，也负责闭合填色等实际绘画操作。",
+    "startMs": 506933,
+    "endMs": 516073,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "这不是一段播放好的效果动画，画布结果来自真实引擎。",
+    "startMs": 516253,
+    "endMs": 522013,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "画布按像素块组织，发生修改的区域才需要更新到界面。",
+    "startMs": 522233,
+    "endMs": 527413,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "未改像素共享能减少重复复制，也为每一次撤销保留原来内容。",
+    "startMs": 527593,
+    "endMs": 534053,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "历史和工程文件同样属于引擎职责，界面主要协调用户的操作。",
+    "startMs": 534267,
+    "endMs": 539847,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Rust 在后台处理这些工作，不能把它们都称作显卡计算。",
+    "startMs": 540027,
+    "endMs": 545667,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "基础矢量和绘画助手也沿着这条路径，把参数变成可预览的结果。",
+    "startMs": 545867,
+    "endMs": 554507,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "把状态与像素职责分清楚，修改就更容易预览和确认。",
+    "startMs": 554687,
+    "endMs": 559887,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "桌面与移动平台都有独立构建入口。",
+    "startMs": 560000,
+    "endMs": 563420,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "下载文件以发行页为准，设备和驱动仍需实机验证。",
+    "startMs": 563600,
+    "endMs": 570040,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "工程留给继续编辑，图片用于分享。",
+    "startMs": 570267,
+    "endMs": 573927,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "分层效果和文件交换，请先检查各格式的支持范围。",
+    "startMs": 574107,
+    "endMs": 578887,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "代码采用 MIT 许可，字体和图标保留各自署名。",
+    "startMs": 580000,
+    "endMs": 585600,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "参考图为生成素材。",
+    "startMs": 585780,
+    "endMs": 588020,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "从一块颜色开始，逐步建立形体和笔触。",
+    "startMs": 590267,
+    "endMs": 594527,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "保存工程，为明天继续修改留下空间。",
+    "startMs": 594707,
+    "endMs": 599027,
+    "timestampMs": null,
+    "confidence": null
+  }
+]

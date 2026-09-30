@@ -1,0 +1,86 @@
+[
+  {
+    "text": "Read the bouquet as broad dark reds and greens, then find their warm and cool shifts.",
+    "startMs": 163133,
+    "endMs": 169013,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Save chosen colors to a personal palette so painting stays decisive.",
+    "startMs": 169193,
+    "endMs": 174613,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Pick colors already used on the canvas, or extract a related set of dominant hues.",
+    "startMs": 174833,
+    "endMs": 181693,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Palettes support common exchange formats; check whether names survive export.",
+    "startMs": 181873,
+    "endMs": 187193,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Gradients start with two color endpoints; linear and radial shapes suggest different space.",
+    "startMs": 187400,
+    "endMs": 194140,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Fill lays regional color. Preview a gradient's reversal before committing.",
+    "startMs": 194320,
+    "endMs": 201940,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "A selection defines the editing area; a freehand lasso suits irregular shapes.",
+    "startMs": 202167,
+    "endMs": 208527,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Rectangles and ellipses are regular; the wand finds areas by color.",
+    "startMs": 208707,
+    "endMs": 213947,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Add or subtract selections, invert them, and refine edges to define the edit accurately.",
+    "startMs": 214167,
+    "endMs": 220267,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Copy and cut move a region into a new layer, making revisions easier.",
+    "startMs": 220447,
+    "endMs": 226207,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "An indexed-color document keeps the whole pixel artwork within one palette.",
+    "startMs": 226433,
+    "endMs": 233233,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "It has its own tool limits; choose it to suit the artwork.",
+    "startMs": 233413,
+    "endMs": 238413,
+    "timestampMs": null,
+    "confidence": null
+  }
+]

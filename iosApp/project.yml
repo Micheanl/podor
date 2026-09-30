@@ -1,0 +1,30 @@
+name: podor
+options:
+  bundleIdPrefix: app.podor
+  deploymentTarget:
+    iOS: "15.0"
+targets:
+  podor:
+    type: application
+    platform: iOS
+    sources:
+      - PodorApp.swift
+      - Assets.xcassets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.podor
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        FRAMEWORK_SEARCH_PATHS: "$(inherited) ../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
+        LIBRARY_SEARCH_PATHS[sdk=iphoneos*]: '$(inherited) "$(SRCROOT)/../target/aarch64-apple-ios/release"'
+        LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]: '$(inherited) "$(SRCROOT)/../target/aarch64-apple-ios-sim/release"'
+        OTHER_LDFLAGS: "$(inherited) -framework PodorShared -lpodor_engine"
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+    preBuildScripts:
+      - name: Build shared framework
+        script: |
+          cd "$SRCROOT/.."
+          ./gradlew :shared:embedAndSignAppleFrameworkForXcode
+        basedOnDependencyAnalysis: false

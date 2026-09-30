@@ -1,0 +1,86 @@
+[
+  {
+    "text": "先把花束看成暗红与深绿的大块，再用色轮仔细寻找冷暖关系。",
+    "startMs": 163133,
+    "endMs": 169013,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "把选好的颜色存进个人色卡，回到画布时少一些犹豫。",
+    "startMs": 169193,
+    "endMs": 174613,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "取色从画布寻找已经用过的颜色，也能提取一组互相联系的主要色。",
+    "startMs": 174833,
+    "endMs": 181693,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "色卡支持几种常见交换格式，输出前留意名称是否保留。",
+    "startMs": 181873,
+    "endMs": 187193,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "渐变从两个颜色端点开始，线性与径向能建立不同的空间方向。",
+    "startMs": 187400,
+    "endMs": 194140,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "填充用于铺区域色，渐变反转前先看预览，再决定是否确认。",
+    "startMs": 194320,
+    "endMs": 201940,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "选区先把需要修改的范围说清楚，自由套索尤其适合不规则形状。",
+    "startMs": 202167,
+    "endMs": 208527,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "矩形和椭圆更规则，魔棒则按颜色寻找相近区域。",
+    "startMs": 208707,
+    "endMs": 213947,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "选区可以叠加或相减，反选和边缘调整也能把修改范围整理准确。",
+    "startMs": 214167,
+    "endMs": 220267,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "复制和剪切把局部带到新图层，让修改更容易回头。",
+    "startMs": 220447,
+    "endMs": 226207,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "像素作品可以进入索引颜色模式，把整幅作品约束在同一张色卡内。",
+    "startMs": 226433,
+    "endMs": 233233,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "它有自己的工具限制，选择之前先想清楚作品需要什么。",
+    "startMs": 233413,
+    "endMs": 238413,
+    "timestampMs": null,
+    "confidence": null
+  }
+]

@@ -1,0 +1,18 @@
+Aseprite application icon
+
+Copyright (C) 2001-2016 David Capello and Aseprite contributors.
+
+Asset: shared/src/commonMain/composeResources/drawable/format_aseprite.png
+Original file: data/icons/ase32.png, official Aseprite v1.1.6 repository.
+Source: https://github.com/aseprite/aseprite/blob/92084fe14ad6756c433cab6d5c358fa7d9dfa5ed/data/icons/ase32.png
+Direct download: https://raw.githubusercontent.com/aseprite/aseprite/92084fe14ad6756c433cab6d5c358fa7d9dfa5ed/data/icons/ase32.png
+SHA-256: 0191B5A746DC316EF6DD16397E4AA76B1CF5330D7A5E69D474F1C5E1BBCEEBCD
+
+This file was downloaded unmodified from the official GPLv2 release source.
+The original PNG is the preferred source form of this unmodified artwork.
+The asset remains under GNU GPL version 2; see the accompanying LICENSE.
+Upstream licensing statement: https://github.com/aseprite/aseprite/blob/v1.1.6/README.md#license
+
+The current Aseprite repository uses a different EULA; no artwork from that
+EULA release is redistributed here. The icon identifies Aseprite-compatible
+export and does not imply sponsorship, affiliation, or endorsement.

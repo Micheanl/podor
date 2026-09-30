@@ -1,0 +1,72 @@
+[
+  {
+    "text": "Open the timeline to begin frame animation while keeping the familiar painting canvas.",
+    "startMs": 300467,
+    "endMs": 306167,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Add a few simple changes and watch a form move from one frame to the next.",
+    "startMs": 306347,
+    "endMs": 311567,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Duplicate a frame before changing it to preserve the established outline and color masses.",
+    "startMs": 311767,
+    "endMs": 317787,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Onion skin helps compare neighboring positions without appearing in the output.",
+    "startMs": 317967,
+    "endMs": 324107,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Timeline layer tracks reflect the artwork's structure; keyframes mark new content.",
+    "startMs": 324333,
+    "endMs": 331133,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Held cells can share artwork; drag the ruler to browse a longer sequence.",
+    "startMs": 331313,
+    "endMs": 336993,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Each frame's duration shapes the rhythm; check its emphasis and pauses in actual playback.",
+    "startMs": 337200,
+    "endMs": 343520,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Adjust the range and direction; even a small animation benefits from clear timing.",
+    "startMs": 343700,
+    "endMs": 348700,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Export a GIF or image atlas according to how the sequence will be shown and used.",
+    "startMs": 348900,
+    "endMs": 355340,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "GIF has color and alpha limits, and interchange formats do not preserve every feature.",
+    "startMs": 355520,
+    "endMs": 361380,
+    "timestampMs": null,
+    "confidence": null
+  }
+]

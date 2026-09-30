@@ -1,0 +1,114 @@
+[
+  {
+    "text": "下面这些都是项目真实源码摘录，用来解释画面背后的分工。",
+    "startMs": 458400,
+    "endMs": 464000,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "用浅色编辑器式排版帮助阅读，让关键代码和职责能逐行对应。",
+    "startMs": 464180,
+    "endMs": 470380,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Compose Multiplatform 是 Kotlin 声明式界面框架。",
+    "startMs": 470600,
+    "endMs": 476120,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "状态决定界面，按钮接收输入，像素交给 Rust 引擎。",
+    "startMs": 476300,
+    "endMs": 481460,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "笔形指针这一段从资源读取开始，大小来自界面的基础密度。",
+    "startMs": 481667,
+    "endMs": 487767,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "它连接系统指针服务，画布上的作品不需要为鼠标再加一圈。",
+    "startMs": 487947,
+    "endMs": 493587,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "画布输入先进入协调层，笔和触摸都要遵守同一套编辑边界。",
+    "startMs": 493800,
+    "endMs": 501640,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "输入队列是有界的，后台任务再把结果带回显示层。",
+    "startMs": 501820,
+    "endMs": 506720,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Rust 引擎处理笔触和像素，也负责闭合填色等实际绘画操作。",
+    "startMs": 506933,
+    "endMs": 516073,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "这不是一段播放好的效果动画，画布结果来自真实引擎。",
+    "startMs": 516253,
+    "endMs": 522013,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "画布按像素块组织，发生修改的区域才需要更新到界面。",
+    "startMs": 522233,
+    "endMs": 527413,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "未改像素共享能减少重复复制，也为每一次撤销保留原来内容。",
+    "startMs": 527593,
+    "endMs": 534053,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "历史和工程文件同样属于引擎职责，界面主要协调用户的操作。",
+    "startMs": 534267,
+    "endMs": 539847,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Rust 在后台处理这些工作，不能把它们都称作显卡计算。",
+    "startMs": 540027,
+    "endMs": 545667,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "基础矢量和绘画助手也沿着这条路径，把参数变成可预览的结果。",
+    "startMs": 545867,
+    "endMs": 554507,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "把状态与像素职责分清楚，修改就更容易预览和确认。",
+    "startMs": 554687,
+    "endMs": 559887,
+    "timestampMs": null,
+    "confidence": null
+  }
+]

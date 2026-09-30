@@ -1,0 +1,72 @@
+[
+  {
+    "text": "背景与花朵先放进不同图层，把名字写清楚，再逐步加入局部细节。",
+    "startMs": 238533,
+    "endMs": 244633,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "拖动缩略图调整顺序，用图层组整理较复杂的作品。",
+    "startMs": 244813,
+    "endMs": 252513,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "图层的不透明度和八种混合模式，都能先在原画布上预览和比较。",
+    "startMs": 252733,
+    "endMs": 259453,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "透明度锁定适合改已有色块，内容锁定则保护整层。",
+    "startMs": 259633,
+    "endMs": 264713,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "蒙版用黑白控制图层显示范围，让遮挡和恢复都保留原来的画面。",
+    "startMs": 264933,
+    "endMs": 271773,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "剪贴图层把新颜色限制在底层，花瓣边缘就更容易保持。",
+    "startMs": 271953,
+    "endMs": 277673,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "变换先预览图层的位置和尺寸，满意以后再提交为一笔完整编辑。",
+    "startMs": 277900,
+    "endMs": 283700,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "曲线和渐变映射也能用于调整图层，继续保留修改空间。",
+    "startMs": 283880,
+    "endMs": 289360,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "基础矢量能编辑节点，透视助手和漫画线都可预览。",
+    "startMs": 289567,
+    "endMs": 295247,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "复杂层导出前，先检查哪些效果需要烘焙。",
+    "startMs": 295427,
+    "endMs": 300367,
+    "timestampMs": null,
+    "confidence": null
+  }
+]
